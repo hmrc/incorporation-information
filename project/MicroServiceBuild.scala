@@ -9,7 +9,7 @@ object MicroServiceBuild extends Build with MicroService {
 
   val appName = "incorporation-information"
 
-  override lazy val appDependencies: Seq[ModuleID] = compile ++ test()
+  override lazy val appDependencies: Seq[ModuleID] = compile ++ test() ++ itest()
 
   val compile = Seq(
     ws,
@@ -23,11 +23,21 @@ object MicroServiceBuild extends Build with MicroService {
     "uk.gov.hmrc" %% "domain" % "4.1.0"
   )
 
-  def test(scope: String = "test,it") = Seq(
+  def test(scope: String = "test") = Seq(
     "uk.gov.hmrc" %% "hmrctest" % "2.3.0" % scope,
-    "org.scalatest" %% "scalatest" % "3.0.1" % scope,
+    "org.scalatest" %% "scalatest" % "2.2.6" % scope,
     "org.pegdown" % "pegdown" % "1.5.0" % scope,
     "com.typesafe.play" %% "play-test" % PlayVersion.current % scope
+  )
+
+  def itest(scope: String = "it") = Seq(
+    "uk.gov.hmrc" %% "hmrctest" % "2.3.0" % scope,
+    "org.scalatest" %% "scalatest" % "2.2.6" % scope,
+    "org.pegdown" % "pegdown" % "1.5.0" % scope,
+    "com.typesafe.play" %% "play-test" % PlayVersion.current % scope,
+    "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.1" % scope,
+    "uk.gov.hmrc" %% "reactivemongo-test" % "2.0.0" % scope,
+    "com.github.tomakehurst" % "wiremock" % "2.5.0" % scope
   )
 
 }
