@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.incorporationinformation.controllers
+package config
 
-import uk.gov.hmrc.play.microservice.controller.BaseController
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
-import play.api.mvc._
-import scala.concurrent.Future
+import javax.inject.Inject
 
-object MicroserviceHelloWorld extends MicroserviceHelloWorld
+import com.google.inject.ImplementedBy
+import uk.gov.hmrc.play.config.inject.ServicesConfig
 
-trait MicroserviceHelloWorld extends BaseController {
+class MicroserviceConfigImpl @Inject()(val config: ServicesConfig) extends MicroserviceConfig
 
-	def hello() = Action.async { implicit request =>
-		Future.successful(Ok("Hello world"))
-	}
+@ImplementedBy(classOf[MicroserviceConfigImpl])
+trait MicroserviceConfig {
+  protected val config: ServicesConfig
+
+  lazy val IncorpFrontendStubUrl = config.baseUrl("incorp-frontend-stubs")
 }

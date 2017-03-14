@@ -1,3 +1,4 @@
 # microservice specific routes
 
-GET        /hello-world             uk.gov.hmrc.incorporationinformation.controllers.MicroserviceHelloWorld.hello
+#GET        /hello-world                               uk.gov.hmrc.incorporationinformation.controllers.MicroserviceHelloWorld.hello
+GET        /:transactionId/company-profile             @controllers.TransactionalController.fetchCompanyProfile(transactionId)
