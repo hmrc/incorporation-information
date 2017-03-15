@@ -13,29 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package helpers
 
-package uk.gov.hmrc.incorporationinformation.controllers
-
-import play.api.http.Status
-import play.api.test.FakeRequest
-import play.api.http.Status
-import play.api.test.FakeRequest
+import org.scalatest._
+import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
+import org.scalatestplus.play.OneServerPerSuite
 import uk.gov.hmrc.play.test.UnitSpec
-import uk.gov.hmrc.play.test.WithFakeApplication
-import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 
+trait IntegrationSpecBase extends UnitSpec
+  with GivenWhenThen
+  with OneServerPerSuite with ScalaFutures with IntegrationPatience with Matchers
+  with WiremockHelper with BeforeAndAfterEach with BeforeAndAfterAll {
 
-class MicroserviceHelloWorldControllerSpec extends UnitSpec with WithFakeApplication{
-
-  val fakeRequest = FakeRequest("GET", "/")
-
-
-  "GET /" should {
-    "return 200" in {
-      val result = MicroserviceHelloWorld.hello()(fakeRequest)
-      status(result) shouldBe Status.OK
-    }
+  override def beforeEach() = {
+    resetWiremock()
   }
 
+  override def beforeAll() = {
+    super.beforeAll()
+    startWiremock()
+  }
 
+  override def afterAll() = {
+    stopWiremock()
+    super.afterAll()
+  }
 }
