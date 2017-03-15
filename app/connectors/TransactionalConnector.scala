@@ -20,7 +20,7 @@ import javax.inject.Inject
 
 import com.google.inject.ImplementedBy
 import config.{MicroserviceConfig, WSHttp, WSHttpProxy}
-import play.api.libs.json.{JsObject, JsValue}
+import play.api.libs.json.JsValue
 import uk.gov.hmrc.play.http.{HttpException, NotFoundException, HeaderCarrier, HttpGet}
 import uk.gov.hmrc.play.http.ws.WSProxy
 import utils.SCRSFeatureSwitches
@@ -28,13 +28,11 @@ import utils.SCRSFeatureSwitches
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
-sealed trait TransactionalResponse
-case class SuccessfulTransactionalResponse(js: JsValue) extends TransactionalResponse
-case object FailedTransactionalResponse extends TransactionalResponse
+sealed trait TransactionalAPIResponse
+case class SuccessfulTransactionalAPIResponse(js: JsValue) extends TransactionalAPIResponse
+case object FailedTransactionalAPIResponse extends TransactionalAPIResponse
 
-//todo: bind in module
 class TransactionalConnectorImpl @Inject()(config: MicroserviceConfig) extends TransactionalConnector {
-  //todo: DI feature switch
   val featureSwitch = SCRSFeatureSwitches
   val stubUrl = config.IncorpFrontendStubUrl
   val cohoUrl = "get from injected config"  //todo: get from injected config
@@ -45,35 +43,27 @@ class TransactionalConnectorImpl @Inject()(config: MicroserviceConfig) extends T
 @ImplementedBy(classOf[TransactionalConnectorImpl])
 trait TransactionalConnector {
 
-  val featureSwitch: SCRSFeatureSwitches
-  def httpProxy: HttpGet with WSProxy
-  def httpNoProxy: HttpGet
-  val stubUrl: String
-  val cohoUrl: String
+  protected def httpProxy: HttpGet with WSProxy
+  protected def httpNoProxy: HttpGet
+  protected val featureSwitch: SCRSFeatureSwitches
+  protected val stubUrl: String
+  protected val cohoUrl: String
 
   //todo: fetch all from stub
-  def fetchTransactionalData(transactionID: String)(implicit hc: HeaderCarrier): Future[TransactionalResponse] = {
+  def fetchTransactionalData(transactionID: String)(implicit hc: HeaderCarrier): Future[TransactionalAPIResponse] = {
     val (http, url) = useProxy match {
       case true => (httpProxy, s"$cohoUrl") //todo: append real coho API path
       case false => (httpNoProxy, s"$stubUrl/incorporation-frontend-stubs/fetch-data/$transactionID")
     }
     http.GET[JsValue](url) map {
-      SuccessfulTransactionalResponse
+      SuccessfulTransactionalAPIResponse
     } recover {
-      case ex: NotFoundException => FailedTransactionalResponse
-      case ex: HttpException => FailedTransactionalResponse
-      case ex: Throwable => FailedTransactionalResponse
+      case ex: NotFoundException => FailedTransactionalAPIResponse
+      case ex: HttpException => FailedTransactionalAPIResponse
+      case ex: Throwable => FailedTransactionalAPIResponse
     }
-    //todo: recover from errors - maybe return sealed trait type that other functions can match against
+    //todo: log errors
   }
 
-  //todo get company profile from trans data
-  def fetchCompanyProfile(transactionID: String)(implicit hc: HeaderCarrier) = {
-    fetchTransactionalData(transactionID)
-    //todo: pull from json with a jspath find - (js \ "path-to-json")
-  }
-
-  private[connectors] def useProxy: Boolean = {
-    featureSwitch.transactionalAPI.enabled
-  }
+  private[connectors] def useProxy: Boolean = featureSwitch.transactionalAPI.enabled
 }

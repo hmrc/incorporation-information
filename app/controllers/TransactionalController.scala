@@ -19,9 +19,8 @@ package controllers
 import javax.inject.Inject
 
 import com.google.inject.ImplementedBy
-import connectors.{FailedTransactionalResponse, SuccessfulTransactionalResponse}
+import connectors.{FailedTransactionalAPIResponse, SuccessfulTransactionalAPIResponse}
 import play.api.mvc.Action
-import play.api.mvc.Results.{Ok, NotFound}
 import services.TransactionalService
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
@@ -32,15 +31,37 @@ class TransactionalControllerImpl @Inject()(val service: TransactionalService) e
 @ImplementedBy(classOf[TransactionalControllerImpl])
 trait TransactionalController extends BaseController {
 
-  val service: TransactionalService
+  protected val service: TransactionalService
 
   def fetchCompanyProfile(transactionId: String) = Action.async {
     implicit request =>
       service.fetchCompanyProfile(transactionId).map {
-        case SuccessfulTransactionalResponse(json) =>
-          println("============== pucker")
-          Ok(json)
-        case FailedTransactionalResponse => NotFound
+        case Some(json) => Ok(json)
+        case _ => NotFound
+      }
+  }
+
+  def fetchOfficerList(transactionId: String) = Action.async {
+    implicit request =>
+      service.fetchOfficerList(transactionId).map {
+        case Some(json) => Ok(json)
+        case _ => NotFound
+      }
+  }
+
+  def fetchOfficerAppointments(transactionId: String, officerId: String) = Action.async {
+    implicit request =>
+      service.fetchOfficerAppointments(transactionId, officerId).map {
+        case SuccessfulTransactionalAPIResponse(json) => Ok(json)
+        case FailedTransactionalAPIResponse => NotFound
+      }
+  }
+
+  def fetchOfficerDisqualifications(transactionId: String, officerId: String) = Action.async {
+    implicit request =>
+      service.fetchOfficerDisqualifications(transactionId, officerId).map {
+        case SuccessfulTransactionalAPIResponse(json) => Ok(json)
+        case FailedTransactionalAPIResponse => NotFound
       }
   }
 }

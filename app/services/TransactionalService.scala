@@ -19,23 +19,43 @@ package services
 import javax.inject.Inject
 
 import com.google.inject.ImplementedBy
-import connectors.TransactionalConnector
+import connectors.{TransactionalAPIResponse, FailedTransactionalAPIResponse, SuccessfulTransactionalAPIResponse, TransactionalConnector}
+import play.api.libs.json.JsValue
 import uk.gov.hmrc.play.http.HeaderCarrier
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class TransactionalServiceImpl @Inject()(val connector: TransactionalConnector) extends TransactionalService
 
 @ImplementedBy(classOf[TransactionalServiceImpl])
 trait TransactionalService {
 
-  val connector: TransactionalConnector
+  protected val connector: TransactionalConnector
 
-  def fetchCompanyProfile(transactionId: String)(implicit hc: HeaderCarrier) = {
-    connector.fetchCompanyProfile(transactionId).map{ p =>
-      println("====================" + p)
-      p
-    }
+  //todo: each function should pull the part of the json the need
+
+  def fetchCompanyProfile(transactionId: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
+    extractJson(connector.fetchTransactionalData(transactionId), "SCRSCompanyProfile")
   }
 
+  def fetchOfficerList(transactionId: String)(implicit hc: HeaderCarrier) = {
+    extractJson(connector.fetchTransactionalData(transactionId), "SCRSCompanyOfficerList")
+  }
+
+  def fetchOfficerAppointments(transactionId: String, officerId: String)(implicit hc: HeaderCarrier) = {
+    //todo: need API schema to see how to extract by officer id
+    connector.fetchTransactionalData(transactionId)
+  }
+
+  def fetchOfficerDisqualifications(transactionId: String, officerId: String)(implicit hc: HeaderCarrier) = {
+    //todo: need API schema to see how to extract by officer id
+    connector.fetchTransactionalData(transactionId)
+  }
+
+  private def extractJson(f: => Future[TransactionalAPIResponse], key: String) = {
+    f.map {
+      case SuccessfulTransactionalAPIResponse(json) => (json \ key).toOption
+      case FailedTransactionalAPIResponse => None
+    }
+  }
 }
