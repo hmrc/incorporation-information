@@ -2,5 +2,3 @@
 
 GET        /:transactionId/company-profile                             @controllers.TransactionalController.fetchCompanyProfile(transactionId)
 GET        /:transactionId/officer-list                                @controllers.TransactionalController.fetchOfficerList(transactionId)
-GET        /:transactionId/officer-appointments/:officerId             @controllers.TransactionalController.fetchOfficerAppointments(transactionId, officerId)
-GET        /:transactionId/officer-disqualifications/:officerId        @controllers.TransactionalController.fetchOfficerDisqualifications(transactionId, officerId)

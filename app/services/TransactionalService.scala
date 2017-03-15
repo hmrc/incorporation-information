@@ -24,6 +24,7 @@ import play.api.libs.json.JsValue
 import uk.gov.hmrc.play.http.HeaderCarrier
 
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class TransactionalServiceImpl @Inject()(val connector: TransactionalConnector) extends TransactionalService
 
@@ -32,24 +33,12 @@ trait TransactionalService {
 
   protected val connector: TransactionalConnector
 
-  //todo: each function should pull the part of the json the need
-
   def fetchCompanyProfile(transactionId: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
     extractJson(connector.fetchTransactionalData(transactionId), "SCRSCompanyProfile")
   }
 
   def fetchOfficerList(transactionId: String)(implicit hc: HeaderCarrier) = {
     extractJson(connector.fetchTransactionalData(transactionId), "SCRSCompanyOfficerList")
-  }
-
-  def fetchOfficerAppointments(transactionId: String, officerId: String)(implicit hc: HeaderCarrier) = {
-    //todo: need API schema to see how to extract by officer id
-    connector.fetchTransactionalData(transactionId)
-  }
-
-  def fetchOfficerDisqualifications(transactionId: String, officerId: String)(implicit hc: HeaderCarrier) = {
-    //todo: need API schema to see how to extract by officer id
-    connector.fetchTransactionalData(transactionId)
   }
 
   private def extractJson(f: => Future[TransactionalAPIResponse], key: String) = {

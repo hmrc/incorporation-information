@@ -17,7 +17,6 @@
 package controllers
 
 import Helpers.SCRSSpec
-import connectors.{FailedTransactionalAPIResponse, SuccessfulTransactionalAPIResponse}
 import play.api.libs.json.Json
 import play.api.test.FakeRequest
 import services.TransactionalService
@@ -44,10 +43,8 @@ class TransactionalControllerSpec extends SCRSSpec {
     val json = Json.parse("""{"test":"json"}""")
 
     "return a 200 and a json when a company profile is successfully fetched" in new Setup {
-      val successResponse = SuccessfulTransactionalAPIResponse(json)
-
       when(mockService.fetchCompanyProfile(eqTo(transactionId))(any()))
-        .thenReturn(Future.successful(successResponse))
+        .thenReturn(Future.successful(Some(json)))
 
       val result = controller.fetchCompanyProfile(transactionId)(FakeRequest())
       status(result) shouldBe 200
@@ -55,10 +52,8 @@ class TransactionalControllerSpec extends SCRSSpec {
     }
 
     "return a 404 when a company profile could not be found by the supplied transaction Id" in new Setup {
-      val failedResponse = FailedTransactionalAPIResponse
-
       when(mockService.fetchCompanyProfile(eqTo(transactionId))(any()))
-        .thenReturn(Future.successful(failedResponse))
+        .thenReturn(Future.successful(None))
 
       val result = controller.fetchCompanyProfile(transactionId)(FakeRequest())
       status(result) shouldBe 404
@@ -70,10 +65,8 @@ class TransactionalControllerSpec extends SCRSSpec {
     val json = Json.parse("""{"test":"json"}""")
 
     "return a 200 and a json when an officer list is successfully fetched" in new Setup {
-      val successResponse = SuccessfulTransactionalAPIResponse(json)
-
       when(mockService.fetchOfficerList(eqTo(transactionId))(any()))
-        .thenReturn(Future.successful(successResponse))
+        .thenReturn(Future.successful(Some(json)))
 
       val result = controller.fetchOfficerList(transactionId)(FakeRequest())
       status(result) shouldBe 200
@@ -81,38 +74,10 @@ class TransactionalControllerSpec extends SCRSSpec {
     }
 
     "return a 404 when an officer list could not be found by the supplied transaction Id" in new Setup {
-      val failedResponse = FailedTransactionalAPIResponse
-
       when(mockService.fetchOfficerList(eqTo(transactionId))(any()))
-        .thenReturn(Future.successful(failedResponse))
+        .thenReturn(Future.successful(None))
 
       val result = controller.fetchCompanyProfile(transactionId)(FakeRequest())
-      status(result) shouldBe 404
-    }
-  }
-
-  "fetchOfficerAppointments" should {
-
-    val json = Json.parse("""{"test":"json"}""")
-
-    "return a 200 and a json when an officer list is successfully fetched" in new Setup {
-      val successResponse = SuccessfulTransactionalAPIResponse(json)
-
-      when(mockService.fetchOfficerAppointments(eqTo(transactionId), any())(any()))
-        .thenReturn(Future.successful(successResponse))
-
-      val result = controller.fetchOfficerAppointments(transactionId, officerId)(FakeRequest())
-      status(result) shouldBe 200
-      jsonBodyOf(await(result)) shouldBe json
-    }
-
-    "return a 404 when an officer list could not be found by the supplied transaction Id" in new Setup {
-      val failedResponse = FailedTransactionalAPIResponse
-
-      when(mockService.fetchOfficerAppointments(eqTo(transactionId), any())(any()))
-        .thenReturn(Future.successful(failedResponse))
-
-      val result = controller.fetchOfficerAppointments(transactionId, officerId)(FakeRequest())
       status(result) shouldBe 404
     }
   }

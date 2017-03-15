@@ -48,20 +48,4 @@ trait TransactionalController extends BaseController {
         case _ => NotFound
       }
   }
-
-  def fetchOfficerAppointments(transactionId: String, officerId: String) = Action.async {
-    implicit request =>
-      service.fetchOfficerAppointments(transactionId, officerId).map {
-        case SuccessfulTransactionalAPIResponse(json) => Ok(json)
-        case FailedTransactionalAPIResponse => NotFound
-      }
-  }
-
-  def fetchOfficerDisqualifications(transactionId: String, officerId: String) = Action.async {
-    implicit request =>
-      service.fetchOfficerDisqualifications(transactionId, officerId).map {
-        case SuccessfulTransactionalAPIResponse(json) => Ok(json)
-        case FailedTransactionalAPIResponse => NotFound
-      }
-  }
 }

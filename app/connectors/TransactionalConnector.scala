@@ -49,7 +49,6 @@ trait TransactionalConnector {
   protected val stubUrl: String
   protected val cohoUrl: String
 
-  //todo: fetch all from stub
   def fetchTransactionalData(transactionID: String)(implicit hc: HeaderCarrier): Future[TransactionalAPIResponse] = {
     val (http, url) = useProxy match {
       case true => (httpProxy, s"$cohoUrl") //todo: append real coho API path
