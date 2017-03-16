@@ -16,10 +16,10 @@
 
 package mongo
 
-import javax.inject.{Inject, Singleton}
+import javax.inject.{Singleton}
 
 import model.Subscription
-import play.modules.reactivemongo.{MongoDbConnection, ReactiveMongoComponent}
+import play.modules.reactivemongo.MongoDbConnection
 import reactivemongo.api.DB
 import reactivemongo.api.commands._
 import reactivemongo.api.indexes.{Index, IndexType}
@@ -87,9 +87,9 @@ class SubscriptionsMongoRepository(mongo: () => DB)
     collection.find(query).one[Subscription]
   }
 
+
   def wipeTestData(): Future[WriteResult] = {
     removeAll(WriteConcern.Acknowledged)
   }
 
 }
-
