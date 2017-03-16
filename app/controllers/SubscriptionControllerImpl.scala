@@ -20,6 +20,7 @@ import javax.inject.Inject
 
 import com.google.inject.ImplementedBy
 import play.api.mvc.Action
+import reactivemongo.api.commands.DefaultWriteResult
 import services.SubscriptionService
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
@@ -35,21 +36,14 @@ trait SubscriptionController extends BaseController {
 
   protected val service: SubscriptionService
 
-  def setupSubscription(subscriber: String, discriminator: String, transactionId: String) = Action.async {
+  def setupSubscription(transactionId: String, subscriber: String, regime: String) = Action.async {
     implicit request =>
-      service.addSubscription(subscriber, discriminator, transactionId).map {
-        case Ok => Ok("You have successfully added a subscription")
+      service.addSubscription(subscriber, regime, transactionId).map {
+        case _ => Ok("You have successfully added a subscription")
         case _ => InternalServerError
       }
   }
 
-  def setupSubscription2(subscriber: String) = Action.async {
-    implicit request =>
-      service.addSubscription(subscriber, "hello", "1234").map {
-        case Ok => Ok("You have successfully added a subscription")
-        case _ => InternalServerError
-      }
-  }
 
 
 }
