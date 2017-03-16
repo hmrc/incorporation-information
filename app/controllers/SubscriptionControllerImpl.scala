@@ -19,34 +19,37 @@ package controllers
 import javax.inject.Inject
 
 import com.google.inject.ImplementedBy
-import connectors.{FailedTransactionalAPIResponse, SuccessfulTransactionalAPIResponse}
 import play.api.mvc.Action
-import services.TransactionalService
+import services.SubscriptionService
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class TransactionalControllerImpl @Inject()(val service: TransactionalService) extends TransactionalController
+/**
+  * Created by jackie on 16/03/17.
+  */
+class SubscriptionControllerImpl @Inject()(val service: SubscriptionService) extends SubscriptionController
 
-@ImplementedBy(classOf[TransactionalControllerImpl])
-trait TransactionalController extends BaseController {
+@ImplementedBy(classOf[SubscriptionControllerImpl])
+trait SubscriptionController extends BaseController {
 
-  protected val service: TransactionalService
+  protected val service: SubscriptionService
 
-  def fetchCompanyProfile(transactionId: String) = Action.async {
+  def setupSubscription(subscriber: String, discriminator: String, transactionId: String) = Action.async {
     implicit request =>
-      service.fetchCompanyProfile(transactionId).map {
-        case Some(json) => Ok(json)
-        case _ => NotFound
+      service.addSubscription(subscriber, discriminator, transactionId).map {
+        case Ok => Ok("You have successfully added a subscription")
+        case _ => InternalServerError
       }
   }
 
-  def fetchOfficerList(transactionId: String) = Action.async {
+  def setupSubscription2(subscriber: String) = Action.async {
     implicit request =>
-      service.fetchOfficerList(transactionId).map {
-        case Some(json) => Ok(json)
-        case _ => NotFound
+      service.addSubscription(subscriber, "hello", "1234").map {
+        case Ok => Ok("You have successfully added a subscription")
+        case _ => InternalServerError
       }
   }
+
+
 }
-

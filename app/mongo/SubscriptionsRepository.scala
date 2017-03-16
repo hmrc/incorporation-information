@@ -16,8 +16,10 @@
 
 package mongo
 
+import javax.inject.Inject
+
 import model.Subscription
-import play.modules.reactivemongo.MongoDbConnection
+import play.modules.reactivemongo.{MongoDbConnection, ReactiveMongoComponent}
 import reactivemongo.api.DB
 import reactivemongo.api.commands._
 import reactivemongo.api.indexes.{Index, IndexType}
@@ -30,26 +32,27 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
 
-object SubscriptionsRepository extends MongoDbConnection {
-  private lazy val repository = new MongoSubscriptionsRepository
-
-  def apply() : SubscriptionsRepository = repository
-}
-
-trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
-  def insertSub(feSub : Subscription) : Future[WriteResult]
-
-  def getSubscription(transactionId: String) : Future[Option[Subscription]]
-
-  def wipeTestData() : Future[WriteResult]
-}
-
-
+//object SubscriptionsRepository extends MongoDbConnection {
+//  private lazy val repository = new MongoSubscriptionsRepository
+//
+//  def apply() : SubscriptionsRepository = repository
+//}
+//
+//trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
+//  def insertSub(feSub : Subscription) : Future[WriteResult]
+//
+//  def getSubscription(transactionId: String) : Future[Option[Subscription]]
+//
+//  def wipeTestData() : Future[WriteResult]
+//}
 
 
-class MongoSubscriptionsRepository (implicit mongo: () => DB)
-  extends ReactiveRepository[Subscription, BSONObjectID]("subscriptions", mongo, Subscription.format, ReactiveMongoFormats.objectIdFormats)
-    with SubscriptionsRepository {
+
+
+class MongoSubscriptionsRepository @Inject() (mongo: ReactiveMongoComponent)
+  extends ReactiveRepository[Subscription, BSONObjectID]("subscriptions", mongo.mongoConnector.db, Subscription.format, ReactiveMongoFormats.objectIdFormats)
+    //with SubscriptionsRepository
+{
 
   override def indexes: Seq[Index] = Seq(
     Index(
@@ -62,13 +65,14 @@ class MongoSubscriptionsRepository (implicit mongo: () => DB)
     insert(sub)
   }
 
-  override def getSubscription(transactionId: String): Future[Option[Subscription]] = {
+  def getSubscription(transactionId: String): Future[Option[Subscription]] = {
     val query = BSONDocument("transactionId" -> transactionId)
     collection.find(query).one[Subscription]
   }
 
-  override def wipeTestData(): Future[WriteResult] = {
+  def wipeTestData(): Future[WriteResult] = {
     removeAll(WriteConcern.Acknowledged)
   }
 
 }
+
