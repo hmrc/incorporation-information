@@ -30,6 +30,7 @@ object MicroServiceBuild extends Build with MicroService {
     "org.pegdown" % "pegdown" % "1.5.0" % scope,
     "com.github.tomakehurst" % "wiremock" % "2.5.0" % "it",
     "com.typesafe.play" %% "play-test" % PlayVersion.current % scope,
+    "uk.gov.hmrc" %% "reactivemongo-test" % "2.0.0" % scope,
     "org.mockito" % "mockito-all" % "1.9.5" % scope
   )
 }
