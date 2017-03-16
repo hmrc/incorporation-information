@@ -63,9 +63,9 @@ class MongoSubscriptionsRepository @Inject() (mongo: ReactiveMongoComponent)
 
   def insertSub(sub: Subscription) : Future[WriteResult] = {
     insert(sub) map {
-      wr => wr match
+      wr => wr.n match
       {
-        case r => Future.successful("The subscription has been saved")
+        case 1 => Future.successful(DefaultWriteResult(true, 1, Seq.empty, None, None, None))
         case _ => Future.successful("The subscription failed to save")
       }
     }
