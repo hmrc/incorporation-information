@@ -41,7 +41,7 @@ trait TransactionalService {
     extractJson(connector.fetchTransactionalData(transactionId), "SCRSCompanyOfficerList")
   }
 
-  private def extractJson(f: => Future[TransactionalAPIResponse], key: String) = {
+  private[services] def extractJson(f: => Future[TransactionalAPIResponse], key: String) = {
     f.map {
       case SuccessfulTransactionalAPIResponse(json) => (json \ key).toOption
       case FailedTransactionalAPIResponse => None
