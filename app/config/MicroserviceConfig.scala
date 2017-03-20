@@ -27,5 +27,6 @@ class MicroserviceConfigImpl @Inject()(val config: ServicesConfig) extends Micro
 trait MicroserviceConfig {
   protected val config: ServicesConfig
 
-  lazy val IncorpFrontendStubUrl = config.baseUrl("incorp-frontend-stubs")
+  lazy val incorpFrontendStubUrl = config.baseUrl("incorp-frontend-stubs")
+  lazy val companiesHouseUrl = config.baseUrl("companies-house")
 }
