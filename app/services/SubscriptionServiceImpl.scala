@@ -16,12 +16,8 @@
 
 package services
 
-import javax.inject.Inject
-
-import com.google.inject.ImplementedBy
 import model.Subscription
-import mongo.MongoSubscriptionsRepository
-import reactivemongo.api.commands.WriteResult
+import mongo.{Repositories, SubscriptionStatus, SubscriptionsRepository}
 import uk.gov.hmrc.play.http.HeaderCarrier
 
 import scala.concurrent.Future
@@ -29,15 +25,19 @@ import scala.concurrent.Future
 /**
   * Created by jackie on 16/03/17.
   */
-class SubscriptionServiceImpl @Inject()(val connector: MongoSubscriptionsRepository) extends SubscriptionService
+object SubscriptionService
+extends SubscriptionService {
 
-@ImplementedBy(classOf[SubscriptionServiceImpl])
+  override protected val connector = Repositories.msRepository
+}
+
+
 trait SubscriptionService {
 
-  protected val connector: MongoSubscriptionsRepository
+  protected val connector: SubscriptionsRepository
 
-  def addSubscription(subscriber: String, discriminator: String, transactionId: String)(implicit hc: HeaderCarrier): Future[WriteResult] = {
-    val sub = Subscription(subscriber, discriminator, transactionId)
+  def addSubscription(transactionId: String, regime: String, subscriber: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
+    val sub = Subscription(transactionId, regime, subscriber)
     connector.insertSub(sub)
   }
 

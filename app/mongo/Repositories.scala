@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-package model
+package mongo
 
-import play.api.libs.json.Json
+import play.modules.reactivemongo.MongoDbConnection
+
+/**
+  * Created by jackie on 20/03/17.
+  */
+object Repositories {
+
+  private implicit val mongo = new MongoDbConnection {}.db
+
+  lazy val msRepository = new MongoSubscriptionsRepository(mongo)
 
 
-case class Subscription(
-    transactionId : String,
-    regime: String,
-    subscriber: String
-                       )
-
-object Subscription {
-  implicit val format = Json.format[Subscription]
 }
-

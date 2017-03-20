@@ -16,30 +16,29 @@
 
 package controllers
 
-import javax.inject.Inject
-
 import com.google.inject.ImplementedBy
+import mongo.SuccessfulSub
 import play.api.mvc.Action
-import reactivemongo.api.commands.DefaultWriteResult
 import services.SubscriptionService
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-/**
-  * Created by jackie on 16/03/17.
-  */
-class SubscriptionControllerImpl @Inject()(val service: SubscriptionService) extends SubscriptionController
+
+class SubscriptionControllerImpl
+  extends SubscriptionController {
+  override protected val service = SubscriptionService
+}
 
 @ImplementedBy(classOf[SubscriptionControllerImpl])
 trait SubscriptionController extends BaseController {
 
   protected val service: SubscriptionService
 
-  def setupSubscription(transactionId: String, subscriber: String, regime: String) = Action.async {
+  def setupSubscription(transactionId: String, regime: String, subscriber: String) = Action.async {
     implicit request =>
-      service.addSubscription(subscriber, regime, transactionId).map {
-        case _ => Ok("You have successfully added a subscription")
+      service.addSubscription(transactionId, regime, subscriber).map {
+        case SuccessfulSub => Accepted("You have successfully added a subscription")
         case _ => InternalServerError
       }
   }

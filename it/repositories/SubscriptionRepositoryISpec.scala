@@ -17,10 +17,10 @@
 package repositories
 
 import model.Subscription
-import mongo.{MongoSubscriptionsRepository}
+import mongo.{MongoSubscriptionsRepository, SuccessfulSub}
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import play.api.libs.json.Json
-import play.modules.reactivemongo.ReactiveMongoComponent
+import play.modules.reactivemongo.{MongoDbConnection, ReactiveMongoComponent}
 import uk.gov.hmrc.mongo.MongoSpecSupport
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 
@@ -33,15 +33,14 @@ class SubscriptionRepositoryISpec extends UnitSpec with MongoSpecSupport with Be
 
   def construct() =
     Subscription(
-      "CT",
+      "transId1",
       "test",
-      "transId1"
+      "CT"
     )
 
 
-  class Setup {
-    val db = fakeApplication.injector.instanceOf(classOf[ReactiveMongoComponent])
-    val repository = new MongoSubscriptionsRepository
+  class Setup extends MongoDbConnection{
+    val repository = new MongoSubscriptionsRepository(db)
     await(repository.drop)
     await(repository.ensureIndexes)
   }
@@ -65,7 +64,7 @@ class SubscriptionRepositoryISpec extends UnitSpec with MongoSpecSupport with Be
   "insertSub" should {
     "return a WriteResult" in new Setup {
       val result = await(repository.insertSub(testValid))
-      result.hasErrors shouldBe false
+      result shouldBe SuccessfulSub
     }
 
   }

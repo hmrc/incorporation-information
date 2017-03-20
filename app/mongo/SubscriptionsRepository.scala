@@ -37,37 +37,43 @@ import scala.concurrent.ExecutionContext.Implicits.global
 //
 //  def apply() : SubscriptionsRepository = repository
 //}
-//
-//trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
-//  def insertSub(feSub : Subscription) : Future[WriteResult]
-//
-//  def getSubscription(transactionId: String) : Future[Option[Subscription]]
-//
-//  def wipeTestData() : Future[WriteResult]
-//}
+
+trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
+  def insertSub(sub: Subscription) : Future[SubscriptionStatus]
+
+  def getSubscription(transactionId: String) : Future[Option[Subscription]]
+
+  def wipeTestData() : Future[WriteResult]
+}
 
 
+sealed trait SubscriptionStatus
+case object SuccessfulSub extends SubscriptionStatus
+case object FailedSub extends SubscriptionStatus
 
 
-class MongoSubscriptionsRepository @Inject() (mongo: ReactiveMongoComponent)
-  extends ReactiveRepository[Subscription, BSONObjectID]("subscriptions", mongo.mongoConnector.db, Subscription.format, ReactiveMongoFormats.objectIdFormats)
-    //with SubscriptionsRepository
+class MongoSubscriptionsRepository @Inject() (mongo: () => DB)
+  extends ReactiveRepository[Subscription, BSONObjectID]("subscriptions", mongo, Subscription.format, ReactiveMongoFormats.objectIdFormats)
+    with SubscriptionsRepository
 {
 
   override def indexes: Seq[Index] = Seq(
     Index(
-      key = Seq("transactionId" -> IndexType.Ascending),
-      name = Some("TransactionIdIndex"), unique = false, sparse = false
+      key = Seq("transactionId" -> IndexType.Ascending, "regime" -> IndexType.Ascending, "subscriber" -> IndexType.Ascending),
+      name = Some("SubscriptionIdIndex"), unique = true, sparse = false
     )
   )
 
-  def insertSub(sub: Subscription) : Future[WriteResult] = {
-    insert(sub) map {
-      wr => wr.n match
-      {
-        case 1 => Future.successful(DefaultWriteResult(true, 1, Seq.empty, None, None, None))
-        case _ => Future.successful("The subscription failed to save")
-      }
+  def insertSub(sub: Subscription) : Future[SubscriptionStatus] = {
+    collection.insert(sub) map {
+      wr =>
+        wr.n match {
+          case 1 => SuccessfulSub
+          case _ => {
+            logger.error("[MongoSubscriptionsRepository] [insertSub] the subscription was not inserted")
+            FailedSub
+          }
+        }
     }
   }
 
