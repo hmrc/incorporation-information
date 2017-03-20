@@ -22,10 +22,12 @@ import play.api.test.FakeApplication
 
 class TransactionalAPIISpec extends IntegrationSpecBase {
 
-  //todo: set feature switch to false aswell
+  //todo: set feature switch to false
   override implicit lazy val app = FakeApplication(additionalConfiguration = Map(
     "microservice.services.incorp-frontend-stubs.host" -> wiremockHost,
-    "microservice.services.incorp-frontend-stubs.port" -> wiremockPort
+    "microservice.services.incorp-frontend-stubs.port" -> wiremockPort,
+    "microservice.services.companies-house.host" -> wiremockHost,
+    "microservice.services.companies-house.port" -> wiremockPort
   ))
 
   "fetchTransactionalData" should {

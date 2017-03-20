@@ -77,7 +77,7 @@ class TransactionalControllerSpec extends SCRSSpec {
       when(mockService.fetchOfficerList(eqTo(transactionId))(any()))
         .thenReturn(Future.successful(None))
 
-      val result = controller.fetchCompanyProfile(transactionId)(FakeRequest())
+      val result = controller.fetchOfficerList(transactionId)(FakeRequest())
       status(result) shouldBe 404
     }
   }

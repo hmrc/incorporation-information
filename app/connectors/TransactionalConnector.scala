@@ -20,6 +20,7 @@ import javax.inject.Inject
 
 import com.google.inject.ImplementedBy
 import config.{MicroserviceConfig, WSHttp, WSHttpProxy}
+import play.api.Logger
 import play.api.libs.json.JsValue
 import uk.gov.hmrc.play.http.{HttpException, NotFoundException, HeaderCarrier, HttpGet}
 import uk.gov.hmrc.play.http.ws.WSProxy
@@ -34,8 +35,8 @@ case object FailedTransactionalAPIResponse extends TransactionalAPIResponse
 
 class TransactionalConnectorImpl @Inject()(config: MicroserviceConfig) extends TransactionalConnector {
   val featureSwitch = SCRSFeatureSwitches
-  val stubUrl = config.IncorpFrontendStubUrl
-  val cohoUrl = "get from injected config"  //todo: get from injected config
+  val stubUrl = config.incorpFrontendStubUrl
+  val cohoUrl = config.companiesHouseUrl
   lazy val httpProxy = WSHttpProxy
   lazy val httpNoProxy = WSHttp
 }
@@ -51,17 +52,22 @@ trait TransactionalConnector {
 
   def fetchTransactionalData(transactionID: String)(implicit hc: HeaderCarrier): Future[TransactionalAPIResponse] = {
     val (http, url) = useProxy match {
-      case true => (httpProxy, s"$cohoUrl") //todo: append real coho API path
+      case true => (httpProxy, s"$cohoUrl") //todo: append coho API path
       case false => (httpNoProxy, s"$stubUrl/incorporation-frontend-stubs/fetch-data/$transactionID")
     }
     http.GET[JsValue](url) map {
       SuccessfulTransactionalAPIResponse
     } recover {
-      case ex: NotFoundException => FailedTransactionalAPIResponse
-      case ex: HttpException => FailedTransactionalAPIResponse
-      case ex: Throwable => FailedTransactionalAPIResponse
+      case ex: NotFoundException =>
+        Logger.info(s"[TransactionalConnector] [fetchTransactionalData] - Could not find incorporation data for transaction ID - $transactionID")
+        FailedTransactionalAPIResponse
+      case ex: HttpException =>
+        Logger.info(s"[TransactionalConnector] [fetchTransactionalData] - GET of $url returned status code: ${ex.responseCode} for $transactionID - reason: ${ex.getMessage}")
+        FailedTransactionalAPIResponse
+      case ex: Throwable =>
+        Logger.info(s"[TransactionalConnector] [fetchTransactionalData] - GET of $url failed for $transactionID - reason: ${ex.getMessage}")
+        FailedTransactionalAPIResponse
     }
-    //todo: log errors
   }
 
   private[connectors] def useProxy: Boolean = featureSwitch.transactionalAPI.enabled
