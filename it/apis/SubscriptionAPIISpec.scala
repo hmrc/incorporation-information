@@ -72,7 +72,8 @@ class SubscriptionAPIISpec extends
 
       val response = await(client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").post("").futureValue)
       response.status shouldBe 500
-      response.body shouldBe s"DatabaseException['E11000 duplicate key error collection: incorporation-information.subscriptions index: SubscriptionIdIndex dup key: { : \"$transactionId\", : \"$regime\", : \"$subscriber\" }' (code = 11000)]"
+      response.body should include("E11000 duplicate key error collection:")
+
     }
   }
 
