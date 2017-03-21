@@ -87,6 +87,12 @@ trait SCRSFeatureSwitches {
 
   def transactionalAPI = FeatureSwitch.getProperty(TransactionalAPI)
 
+  // TODO - II-INCORP
+  def scheduler = FeatureSwitch.getProperty("submissionCheck")
+  // TODO - II-INCORP
+
+
+
   def apply(name: String): Option[FeatureSwitch] = name match {
     case TransactionalAPI => Some(transactionalAPI)
     case _ => None

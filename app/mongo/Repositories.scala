@@ -17,6 +17,7 @@
 package mongo
 
 import play.modules.reactivemongo.MongoDbConnection
+import uk.gov.hmrc.lock.LockRepository
 
 /**
   * Created by jackie on 20/03/17.
@@ -27,5 +28,5 @@ object Repositories {
 
   lazy val msRepository = new SubscriptionsMongoRepository(mongo)
 
-
+  lazy val lockRepository = new LockRepository()
 }
