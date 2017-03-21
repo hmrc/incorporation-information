@@ -61,6 +61,7 @@ class SubscriptionAPIISpec extends
   "setupSubscription" should {
 
     "return a 202 HTTP response" in new Setup {
+      await(repository.insertSub(sub))
 
       val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").post("").futureValue
       response.status shouldBe 202
@@ -72,7 +73,7 @@ class SubscriptionAPIISpec extends
 
       val response = await(client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").post("").futureValue)
       response.status shouldBe 500
-      response.body should include("E11000 duplicate key error collection:")
+      response.body should include("E11000 duplicate key error")
 
     }
   }
