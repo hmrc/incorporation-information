@@ -17,10 +17,9 @@
 package repositories
 
 import model.Subscription
-import mongo.{MongoSubscriptionsRepository, SuccessfulSub}
+import mongo.{SubscriptionsMongoRepository, SuccessfulSub}
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
-import play.api.libs.json.Json
-import play.modules.reactivemongo.{MongoDbConnection, ReactiveMongoComponent}
+import play.modules.reactivemongo.MongoDbConnection
 import uk.gov.hmrc.mongo.MongoSpecSupport
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 
@@ -40,7 +39,7 @@ class SubscriptionRepositoryISpec extends UnitSpec with MongoSpecSupport with Be
 
 
   class Setup extends MongoDbConnection{
-    val repository = new MongoSubscriptionsRepository(db)
+    val repository = new SubscriptionsMongoRepository(db)
     await(repository.drop)
     await(repository.ensureIndexes)
   }
