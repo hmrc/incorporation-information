@@ -43,8 +43,7 @@ class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
       // db.runCommand( {collMod: "incorp-info", validator: { crn: { $regex: /^bar[1-7]?$/  } } } )
       val commandDoc = BSONDocument(
         "collMod" -> repository.collection.name,
-        "validator" -> BSONDocument("crn" -> BSONDocument("$regex" -> BSONRegex(regex, ""))
-        )
+        "validator" -> BSONDocument("company_number" -> BSONDocument("$regex" -> BSONRegex(regex, "")))
       )
       val runner = Command.run(BSONSerializationPack)
       repository.collection.create() flatMap {
@@ -53,10 +52,17 @@ class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
     }
   }
 
-  def docs(num: Int = 1) = (1 to num).map(n => IncorpUpdate(s"foo$n", s"bar$n", None, None, "tp", None))
+  def docs(num: Int = 1) = (1 to num).map(n => IncorpUpdate(
+    transactionId = s"foo$n",
+    status = "accepted",
+    crn = Some(s"bar$n"),
+    incorpDate = None,
+    timepoint = s"tp$n",
+    statusDescription = None))
 
-  "Bulk insert" should {
-    "insert a single doc" in new Setup {
+  "storeIncorpUpdates" should {
+
+    "insert a single document" in new Setup {
       count shouldBe 0
 
       val fResponse = repository.storeIncorpUpdates(docs(1))
@@ -68,7 +74,7 @@ class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
       count shouldBe 1
     }
 
-    "insert a few docs" in new Setup {
+    "insert 6 docs" in new Setup {
       count shouldBe 0
       val num = 6
 
@@ -86,6 +92,7 @@ class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
       val numPart = 4
 
       await(repository.storeIncorpUpdates(docs(numPart)))
+      count shouldBe 4
 
       val num = 10
       val fResponse = repository.storeIncorpUpdates(docs(num))
@@ -109,10 +116,11 @@ class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
 
       val expectedNumErrors = 1
       val response = await(fResponse)
+      
+      response.errors.size shouldBe expectedNumErrors
 
       response.inserted shouldBe num - numPart - expectedNumErrors
       response.duplicate shouldBe numPart
-      response.errors.size shouldBe 1
       response.errors.head.index shouldBe 7
       response.errors.head.code shouldBe ERR_INVALID
       response.errors.head.errmsg should include("""failed validation""")
