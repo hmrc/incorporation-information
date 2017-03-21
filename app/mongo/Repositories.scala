@@ -25,7 +25,7 @@ object Repositories {
 
   private implicit val mongo = new MongoDbConnection {}.db
 
-  lazy val msRepository = new MongoSubscriptionsRepository(mongo)
+  lazy val msRepository = new SubscriptionsMongoRepository(mongo)
 
 
 }

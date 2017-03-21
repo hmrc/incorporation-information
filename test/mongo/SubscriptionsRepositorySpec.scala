@@ -22,6 +22,8 @@ import model.Subscription
 import org.mockito.Mockito._
 import services.SubscriptionService
 
+import scala.concurrent.ExecutionContext.Implicits.global
+
 import scala.concurrent.Future
 
 /**
@@ -31,8 +33,9 @@ class SubscriptionsRepositorySpec extends SCRSSpec {
 
   class Setup {
     val controller = new SubscriptionController {
-      val service = SubscriptionService
+      val service = mock[SubscriptionService]
     }
+    val mockService = mock[SubscriptionService]
     val mockRepo = mock[SubscriptionsRepository]
   }
   val transId = "transID"

@@ -16,7 +16,7 @@
 
 package mongo
 
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import model.Subscription
 import play.modules.reactivemongo.{MongoDbConnection, ReactiveMongoComponent}
@@ -38,6 +38,11 @@ import scala.concurrent.ExecutionContext.Implicits.global
 //  def apply() : SubscriptionsRepository = repository
 //}
 
+@Singleton
+class SubscriptionsMongo @Inject()(mongo: ReactiveMongoComponent) extends MongoDbConnection with ReactiveMongoFormats {
+  val store = new SubscriptionsMongoRepository(mongo.mongoConnector.db)
+}
+
 trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
   def insertSub(sub: Subscription) : Future[SubscriptionStatus]
 
@@ -52,7 +57,7 @@ case object SuccessfulSub extends SubscriptionStatus
 case object FailedSub extends SubscriptionStatus
 
 
-class MongoSubscriptionsRepository @Inject() (mongo: () => DB)
+class SubscriptionsMongoRepository(mongo: () => DB)
   extends ReactiveRepository[Subscription, BSONObjectID]("subscriptions", mongo, Subscription.format, ReactiveMongoFormats.objectIdFormats)
     with SubscriptionsRepository
 {

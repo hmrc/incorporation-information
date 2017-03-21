@@ -16,22 +16,31 @@
 
 package apis
 
-import controllers.SubscriptionController
-import itutil.IntegrationSpecBase
+import itutil.{IntegrationSpecBase, WiremockHelper}
 import model.Subscription
-import mongo.MongoSubscriptionsRepository
+import mongo.SubscriptionsMongo
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.ws.WS
-import services.SubscriptionService
-import uk.gov.hmrc.mongo.MongoSpecSupport
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class SubscriptionAPIISpec extends
-  IntegrationSpecBase with MongoSpecSupport {
+  IntegrationSpecBase {
+
+  val mockHost = WiremockHelper.wiremockHost
+  val mockPort = WiremockHelper.wiremockPort
+  val mockUrl = s"http://$mockHost:$mockPort"
+
+  val additionalConfiguration = Map(
+    "auditing.consumer.baseUri.host" -> s"$mockHost",
+    "auditing.consumer.baseUri.port" -> s"$mockPort",
+    "Test.auditing.consumer.baseUri.host" -> s"$mockHost",
+    "Test.auditing.consumer.baseUri.port" -> s"$mockPort"
+  )
 
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
+    .configure(additionalConfiguration)
     .build
 
   private def client(path: String) =
@@ -40,11 +49,8 @@ class SubscriptionAPIISpec extends
 
 
   class Setup {
-    val repository = new MongoSubscriptionsRepository(mongo)
-    val subscriptionService = SubscriptionService
-    val controller = new SubscriptionController {
-      val service = subscriptionService
-    }
+    val mongo = new SubscriptionsMongo()
+    val repository = mongo.store
     await(repository.drop)
     await(repository.ensureIndexes)
   }
@@ -61,7 +67,6 @@ class SubscriptionAPIISpec extends
   "setupSubscription" should {
 
     "return a 202 HTTP response" in new Setup {
-      await(repository.insertSub(sub))
 
       val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").post("").futureValue
       response.status shouldBe 202
