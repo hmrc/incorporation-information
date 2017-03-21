@@ -39,8 +39,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 //}
 
 @Singleton
-class SubscriptionsMongo @Inject()(mongo: ReactiveMongoComponent) extends MongoDbConnection with ReactiveMongoFormats {
-  val store = new SubscriptionsMongoRepository(mongo.mongoConnector.db)
+class SubscriptionsMongo extends MongoDbConnection with ReactiveMongoFormats {
+  val store = new SubscriptionsMongoRepository(db)
 }
 
 trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {

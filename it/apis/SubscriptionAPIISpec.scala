@@ -19,6 +19,7 @@ package apis
 import itutil.{IntegrationSpecBase, WiremockHelper}
 import model.Subscription
 import mongo.SubscriptionsMongo
+import play.api.Play
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.ws.WS
@@ -49,13 +50,16 @@ class SubscriptionAPIISpec extends
 
 
   class Setup {
-    val mongo = new SubscriptionsMongo()
+    val mongo = new SubscriptionsMongo
     val repository = mongo.store
+  }
+
+  override def beforeEach() = new Setup {
     await(repository.drop)
     await(repository.ensureIndexes)
   }
 
-  override def afterAll() = new Setup {
+  override def afterEach() = new Setup {
     await(repository.drop)
   }
 
@@ -66,7 +70,15 @@ class SubscriptionAPIISpec extends
 
   "setupSubscription" should {
 
+    def setupSimpleAuthMocks() = {
+      stubPost("/write/audit", 200, """{"x":2}""")
+      stubGet("/auth/authority", 200, """{"uri":"xxx","credentials":{"gatewayId":"xxx2"},"userDetailsLink":"xxx3","ids":"/auth/ids"}""")
+      stubGet("/auth/ids", 200, """{"internalId":"Int-xxx","externalId":"Ext-xxx"}""")
+    }
+
     "return a 202 HTTP response" in new Setup {
+
+      setupSimpleAuthMocks()
 
       val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").post("").futureValue
       response.status shouldBe 202
@@ -74,9 +86,11 @@ class SubscriptionAPIISpec extends
     }
 
     "return a 500 HTTP response" in new Setup {
-      repository.insertSub(sub)
+      setupSimpleAuthMocks()
 
-      val response = await(client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").post("").futureValue)
+      await(repository.insertSub(sub))
+
+      val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").post("").futureValue
       response.status shouldBe 500
       response.body should include("E11000 duplicate key error")
 
