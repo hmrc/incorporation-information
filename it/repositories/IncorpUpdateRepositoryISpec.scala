@@ -34,6 +34,7 @@ class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
     def count = await(repository.count)
   }
 
+
   trait DocValidator {
     val repository: IncorpUpdateMongoRepository
 

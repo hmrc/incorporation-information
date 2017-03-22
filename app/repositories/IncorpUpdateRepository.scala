@@ -33,7 +33,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 @Singleton
 class IncorpUpdateMongo @Inject()(mongo: ReactiveMongoComponent) extends ReactiveMongoFormats {
-  val repo = new IncorpUpdateMongoRepository(mongo.mongoConnector.db, IncorpUpdate.apiFormat)
+  val repo = new IncorpUpdateMongoRepository(mongo.mongoConnector.db, IncorpUpdate.mongoFormat)
 }
 
 trait IncorpUpdateRepository {

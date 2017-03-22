@@ -46,6 +46,16 @@ object IncorpUpdate {
 
   //TODO check DB structure
 
+  val mongoFormat = (
+    ( __ \ "_id" ).format[String] and
+      ( __ \ "transaction_status" ).format[String] and
+      ( __ \ "company_number" ).formatNullable[String] and
+      ( __ \ "incorporated_on" ).formatNullable[DateTime] and
+      ( __ \ "timepoint" ).format[String] and
+      ( __ \ "transaction_status_description" ).formatNullable[String]
+    )(IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
+
+
   val apiFormat = (
     ( __ \ "transaction_id" ).format[String] and
       ( __ \ "transaction_status" ).format[String] and
