@@ -26,10 +26,10 @@ import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 // TODO - II-INCORP
-class StateDataMongoRepositorySpec extends UnitSpec with ScalaFutures with MongoSpecSupport with BeforeAndAfterEach with BeforeAndAfterAll with WithFakeApplication {
+class TimepointMongoRepositorySpec extends UnitSpec with ScalaFutures with MongoSpecSupport with BeforeAndAfterEach with BeforeAndAfterAll with WithFakeApplication {
 
   class Setup {
-    val repository = new StateDataMongoRepository
+    val repository = new TimepointMongoRepository
     await(repository.drop)
     await(repository.ensureIndexes)
   }

@@ -16,7 +16,9 @@
 
 package mongo
 
+import models.IncorpUpdate
 import play.modules.reactivemongo.MongoDbConnection
+import repositories.{IncorpUpdateMongoRepository, TimepointMongoRepository}
 import uk.gov.hmrc.lock.LockRepository
 
 /**
@@ -29,4 +31,9 @@ object Repositories {
   lazy val msRepository = new SubscriptionsMongoRepository(mongo)
 
   lazy val lockRepository = new LockRepository()
+
+  lazy val incorpUpdateRepository = new IncorpUpdateMongoRepository(mongo, IncorpUpdate.apiFormat)
+
+  lazy val timepointRepository = new TimepointMongoRepository
+
 }

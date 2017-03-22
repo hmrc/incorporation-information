@@ -38,14 +38,14 @@ object TimePoint {
 // TODO - II-INCORP - Need this repo for timeepoint - maybe refactor (doesn't need to just be 'timepoints' - perhaps 'value'?)
 // TODO - II-INCORP - better as a key/value pair repo - key to retrieve, key & value to store
 // TODO - II-INCORP - Initially values just as strings - but should be parameterised types (via implicit reads/writes)
-trait StateDataRepository extends Repository[TimePoint, BSONObjectID] {
+trait TimepointRepository extends Repository[TimePoint, BSONObjectID] {
   def updateTimepoint(s: String) : Future[String]
   def retrieveTimePoint : Future[Option[String]]
 }
 
-class StateDataMongoRepository(implicit mongo: () => DB)
+class TimepointMongoRepository(implicit mongo: () => DB)
   extends ReactiveRepository[TimePoint, BSONObjectID]("state-data", mongo, TimePoint.formats, ReactiveMongoFormats.objectIdFormats)
-    with StateDataRepository {
+    with TimepointRepository {
 
   private val selector = BSONDocument("_id" -> "CH-INCORPSTATUS-TIMEPOINT")
 

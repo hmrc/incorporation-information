@@ -20,7 +20,7 @@ package jobs
 import mongo.Repositories
 import org.joda.time.Duration
 import play.api.Logger
-import services.RegistrationHoldingPenService
+import services.IncorpUpdateService
 import uk.gov.hmrc.lock.LockKeeper
 import uk.gov.hmrc.play.http.HeaderCarrier
 import uk.gov.hmrc.play.scheduling.ExclusiveScheduledJob
@@ -28,19 +28,18 @@ import utils.SCRSFeatureSwitches
 
 import scala.concurrent.{ExecutionContext, Future}
 
-// TODO - II-INCORP - needs a rename though
-trait CheckSubmissionJob extends ExclusiveScheduledJob with JobConfig {
+
+trait IncorpUpdatesJob extends ExclusiveScheduledJob with JobConfig {
 
   val lock: LockKeeper
-  val regHoldingPenService: RegistrationHoldingPenService
+  val incorpUpdateService: IncorpUpdateService
 
   //$COVERAGE-OFF$
   override def executeInMutex(implicit ec: ExecutionContext): Future[Result] = {
     SCRSFeatureSwitches.scheduler.enabled match {
       case true => lock.tryLock {
         Logger.info(s"Triggered $name")
-        // TODO - II-INCORP - not holding pen service now - method name needs altering
-//        regHoldingPenService.updateNextSubmissionByTimepoint(HeaderCarrier())
+        incorpUpdateService.updateNextIncorpUpdateJobLot(HeaderCarrier())
         Future.successful(Result(s"Feature is turned on"))
       } map {
         case Some(x) =>
@@ -58,9 +57,9 @@ trait CheckSubmissionJob extends ExclusiveScheduledJob with JobConfig {
   //$COVERAGE-ON$
 }
 
-object CheckSubmissionJob extends CheckSubmissionJob {
-  val name = "check-submission-job"
-  lazy val regHoldingPenService = RegistrationHoldingPenService
+object IncorpUpdatesJob extends IncorpUpdatesJob {
+  val name = "incorp-updates-job"
+  lazy val incorpUpdateService = IncorpUpdateService
 
   override lazy val lock: LockKeeper = new LockKeeper() {
     override val lockId = s"$name-lock"

@@ -18,8 +18,9 @@ package connectors
 
 import java.util.UUID
 
+import Helpers.SCRSSpec
 import config.WSHttp
-import models.{IncorpUpdate, SubmissionCheckResponse}
+import models.{IncorpUpdate, IncorpUpdatesResponse}
 import org.joda.time.DateTime
 import org.mockito.{ArgumentCaptor, Matchers}
 import org.scalatest.mock.MockitoSugar
@@ -31,9 +32,9 @@ import uk.gov.hmrc.play.http._
 import scala.concurrent.Future
 
 // TODO - II-INCORP - Also needs (?might be better as?) an IT with wiremock
-class SubmissionCheckAPIConnectorSpec extends UnitSpec with MockitoSugar with WithFakeApplication {
+class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
-  val testProxyUrl = "testBusinessRegUrl"
+  val testProxyUrl = "testIIUrl"
   implicit val hc = HeaderCarrier()
 
   val mockWSHttp = mock[WSHttp]
@@ -45,7 +46,7 @@ class SubmissionCheckAPIConnectorSpec extends UnitSpec with MockitoSugar with Wi
     }
   }
 
-  val validSubmissionResponse = SubmissionCheckResponse(
+  val validSubmissionResponse = IncorpUpdatesResponse(
     Seq(
       IncorpUpdate(
         "transactionId",
@@ -61,7 +62,7 @@ class SubmissionCheckAPIConnectorSpec extends UnitSpec with MockitoSugar with Wi
       IncorporationCheckAPIConnector.http shouldBe WSHttp
     }
     "use the correct proxyUrl" in {
-      IncorporationCheckAPIConnector.proxyUrl shouldBe "http://localhost:9970"
+      IncorporationCheckAPIConnector.proxyUrl shouldBe "http://localhost:9986"
     }
   }
 
@@ -72,7 +73,7 @@ class SubmissionCheckAPIConnectorSpec extends UnitSpec with MockitoSugar with Wi
     "return a submission status response when no timepoint is provided" in new Setup {
       val testTimepoint = UUID.randomUUID().toString
 
-      when(mockWSHttp.GET[SubmissionCheckResponse](Matchers.anyString())(Matchers.any(), Matchers.any()))
+      when(mockWSHttp.GET[IncorpUpdatesResponse](Matchers.anyString())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.successful(validSubmissionResponse))
 
       await(connector.checkSubmission()) shouldBe validSubmissionResponse
@@ -81,7 +82,7 @@ class SubmissionCheckAPIConnectorSpec extends UnitSpec with MockitoSugar with Wi
     "return a submission status response when a timepoint is provided" in new Setup {
       val testTimepoint = UUID.randomUUID().toString
 
-      when(mockWSHttp.GET[SubmissionCheckResponse](Matchers.anyString())(Matchers.any(), Matchers.any()))
+      when(mockWSHttp.GET[IncorpUpdatesResponse](Matchers.anyString())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.successful(validSubmissionResponse))
 
       await(connector.checkSubmission(Some(testTimepoint))) shouldBe validSubmissionResponse
@@ -92,7 +93,7 @@ class SubmissionCheckAPIConnectorSpec extends UnitSpec with MockitoSugar with Wi
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockWSHttp.GET[SubmissionCheckResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+      when(mockWSHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.successful(validSubmissionResponse))
 
       await(connector.checkSubmission(Some(testTimepoint)))
@@ -105,7 +106,7 @@ class SubmissionCheckAPIConnectorSpec extends UnitSpec with MockitoSugar with Wi
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockWSHttp.GET[SubmissionCheckResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+      when(mockWSHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.successful(validSubmissionResponse))
 
       await(connector.checkSubmission(None))
@@ -118,7 +119,7 @@ class SubmissionCheckAPIConnectorSpec extends UnitSpec with MockitoSugar with Wi
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockWSHttp.GET[SubmissionCheckResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+      when(mockWSHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(new BadRequestException("400")))
 
       intercept[SubmissionAPIFailure](await(connector.checkSubmission(None)))
@@ -131,7 +132,7 @@ class SubmissionCheckAPIConnectorSpec extends UnitSpec with MockitoSugar with Wi
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockWSHttp.GET[SubmissionCheckResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+      when(mockWSHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(new NotFoundException("404")))
 
       intercept[SubmissionAPIFailure](await(connector.checkSubmission(None)))
@@ -144,7 +145,7 @@ class SubmissionCheckAPIConnectorSpec extends UnitSpec with MockitoSugar with Wi
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockWSHttp.GET[SubmissionCheckResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+      when(mockWSHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(Upstream4xxResponse("429", 429, 429)))
 
       intercept[SubmissionAPIFailure](await(connector.checkSubmission(None)))
@@ -157,7 +158,7 @@ class SubmissionCheckAPIConnectorSpec extends UnitSpec with MockitoSugar with Wi
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockWSHttp.GET[SubmissionCheckResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+      when(mockWSHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(Upstream5xxResponse("502", 502, 502)))
 
       intercept[SubmissionAPIFailure](await(connector.checkSubmission(None)))
@@ -170,7 +171,7 @@ class SubmissionCheckAPIConnectorSpec extends UnitSpec with MockitoSugar with Wi
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockWSHttp.GET[SubmissionCheckResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+      when(mockWSHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(new NoSuchElementException))
 
       intercept[SubmissionAPIFailure](await(connector.checkSubmission(None)))

@@ -17,6 +17,7 @@
 package config
 
 import com.typesafe.config.Config
+import jobs.IncorpUpdatesJob
 import play.api.{Application, Configuration, Play}
 import uk.gov.hmrc.play.audit.filters.AuditFilter
 import uk.gov.hmrc.play.auth.controllers.AuthParamsControllerConfig
@@ -28,6 +29,7 @@ import net.ceedubs.ficus.Ficus._
 import uk.gov.hmrc.play.filters.MicroserviceFilterSupport
 import play.api.i18n.Messages.Implicits._
 import play.api.Play.current
+import uk.gov.hmrc.play.scheduling.RunningOfScheduledJobs
 
 
 object ControllerConfiguration extends ControllerConfig {
@@ -53,7 +55,7 @@ object MicroserviceAuthFilter extends AuthorisationFilter with MicroserviceFilte
   override def controllerNeedsAuth(controllerName: String): Boolean = ControllerConfiguration.paramsForController(controllerName).needsAuth
 }
 
-object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with MicroserviceFilterSupport {
+object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with MicroserviceFilterSupport with RunningOfScheduledJobs {
   override val auditConnector = MicroserviceAuditConnector
 
   override def microserviceMetricsConfig(implicit app: Application): Option[Configuration] = app.configuration.getConfig(s"microservice.metrics")
@@ -63,4 +65,7 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Mi
   override val microserviceAuditFilter = MicroserviceAuditFilter
 
   override val authFilter = Some(MicroserviceAuthFilter)
+
+  override val scheduledJobs = Seq(IncorpUpdatesJob)
 }
+

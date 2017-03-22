@@ -29,20 +29,22 @@ case class IncorpUpdate(transactionId : String,
                         statusDescription : Option[String] = None)
 
 object IncorpUpdate {
-//  private val dateReads = Reads[DateTime]( js =>
-//    js.validate[String].map[DateTime](
-//      DateTime.parse(_, DateTimeFormat.forPattern("yyyy-MM-dd"))
-//    )
-//  )
+  private val dateReads = Reads[DateTime]( js =>
+    js.validate[String].map[DateTime](
+      DateTime.parse(_, DateTimeFormat.forPattern("yyyy-MM-dd"))
+    )
+  )
 
-  val repoFormat = (
-    ( __ \ "_id" ).format[String] and
-      ( __ \ "transaction_status" ).format[String] and
-      ( __ \ "company_number" ).formatNullable[String] and
-      ( __ \ "incorporated_on" ).formatNullable[DateTime] and
-      ( __ \ "timepoint" ).format[String] and
-      ( __ \ "transaction_status_description" ).formatNullable[String]
-    )(IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
+  implicit val incorpReads : Reads[IncorpUpdate] = (
+    ( __ \ "_id" ).read[String] and
+      ( __ \ "transaction_status" ).read[String] and
+      ( __ \ "company_number" ).readNullable[String] and
+      ( __ \ "incorporated_on" ).readNullable[DateTime] and
+      ( __ \ "timepoint" ).read[String] and
+      ( __ \ "transaction_status_description" ).readNullable[String]
+    )(IncorpUpdate.apply _)
+
+  //TODO check DB structure
 
   val apiFormat = (
     ( __ \ "transaction_id" ).format[String] and
