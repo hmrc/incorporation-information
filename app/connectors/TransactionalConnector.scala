@@ -72,3 +72,4 @@ trait TransactionalConnector {
 
   private[connectors] def useProxy: Boolean = featureSwitch.transactionalAPI.enabled
 }
+

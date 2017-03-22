@@ -16,37 +16,33 @@
 
 package controllers
 
-import javax.inject.Inject
-
 import com.google.inject.ImplementedBy
-import connectors.{FailedTransactionalAPIResponse, SuccessfulTransactionalAPIResponse}
+import mongo.SuccessfulSub
 import play.api.mvc.Action
-import services.TransactionalService
+import services.SubscriptionService
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class TransactionalControllerImpl @Inject()(val service: TransactionalService) extends TransactionalController
 
-@ImplementedBy(classOf[TransactionalControllerImpl])
-trait TransactionalController extends BaseController {
-
-  protected val service: TransactionalService
-
-  def fetchCompanyProfile(transactionId: String) = Action.async {
-    implicit request =>
-      service.fetchCompanyProfile(transactionId).map {
-        case Some(json) => Ok(json)
-        case _ => NotFound
-      }
-  }
-
-  def fetchOfficerList(transactionId: String) = Action.async {
-    implicit request =>
-      service.fetchOfficerList(transactionId).map {
-        case Some(json) => Ok(json)
-        case _ => NotFound
-      }
-  }
+class SubscriptionControllerImpl
+  extends SubscriptionController {
+  override protected val service = SubscriptionService
 }
 
+@ImplementedBy(classOf[SubscriptionControllerImpl])
+trait SubscriptionController extends BaseController {
+
+  protected val service: SubscriptionService
+
+  def setupSubscription(transactionId: String, regime: String, subscriber: String) = Action.async {
+    implicit request =>
+      service.addSubscription(transactionId, regime, subscriber).map {
+        case SuccessfulSub => Accepted("You have successfully added a subscription")
+        case _ => InternalServerError
+      }
+  }
+
+
+
+}
