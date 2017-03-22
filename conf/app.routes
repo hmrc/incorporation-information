@@ -2,3 +2,11 @@
 
 GET        /:transactionId/company-profile                             @controllers.TransactionalController.fetchCompanyProfile(transactionId)
 GET        /:transactionId/officer-list                                @controllers.TransactionalController.fetchOfficerList(transactionId)
+
+POST       /subscribe/:transId/regime/:regime/subscriber/:sub          @controllers.SubscriptionController.setupSubscription(transId, regime, sub)
+
+
+
+
+
+
