@@ -26,6 +26,7 @@ import reactivemongo.api.commands.WriteError
 import reactivemongo.bson.{BSONDocument, BSONObjectID}
 import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
+import constants.CollectionNames.INCORP_INFO
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -40,7 +41,7 @@ trait IncorpUpdateRepository {
 }
 
 class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate]) extends ReactiveRepository[IncorpUpdate, BSONObjectID](
-  collectionName = "incorporation-information",
+  collectionName = INCORP_INFO,
   mongo = mongo,
   domainFormat = format
 ) with IncorpUpdateRepository
@@ -54,7 +55,7 @@ class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])
     bulkInsert(updates) map {
       wr =>
         val inserted = wr.n
-        val (duplicates, errors) = wr.writeErrors.partition(e => e.code == ERR_DUPLICATE)
+        val (duplicates, errors) = wr.writeErrors.partition(_.code == ERR_DUPLICATE)
         InsertResult(inserted, duplicates.size, errors)
     }
   }
