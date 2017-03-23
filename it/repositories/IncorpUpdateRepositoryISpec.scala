@@ -128,5 +128,19 @@ class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
       count shouldBe num - expectedNumErrors
     }
   }
+
+  "getIncorpUpdate" should {
+
+    val incorpUpdate = docs(1).head
+    val transactionId = incorpUpdate.transactionId
+
+    "find a document" in new Setup {
+      count shouldBe 0
+      await(repository.insert(incorpUpdate))
+
+      val res = repository.getIncorpUpdate(transactionId)
+      await(res) shouldBe Some(incorpUpdate)
+    }
+  }
 }
 

@@ -61,7 +61,8 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
   val transactionId = "123abc"
   val regime = "CT100"
   val subscriber = "abc123"
-  val sub = Subscription(transactionId, regime, subscriber)
+  val url = "www.url.com"
+  val sub = Subscription(transactionId, regime, subscriber, url)
 
   "setupSubscription" should {
 

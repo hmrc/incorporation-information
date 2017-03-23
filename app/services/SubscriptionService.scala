@@ -17,25 +17,50 @@
 package services
 
 import models.Subscription
-import repositories.{Repositories, SubscriptionStatus, SubscriptionsRepository}
+import repositories._
+import models.IncorpUpdate
 import uk.gov.hmrc.play.http.HeaderCarrier
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-// TODO - DI
-object SubscriptionService extends SubscriptionService {
-  override protected val repo = Repositories.msRepository
+
+object SubscriptionService
+extends SubscriptionService {
+
+  override protected val subRepo = Repositories.smRepository
+  override protected val incorpRepo = Repositories.incorpUpdateRepository
+
 }
 
 trait SubscriptionService {
 
-  protected val repo: SubscriptionsRepository
+  protected val subRepo: SubscriptionsRepository
+  protected val incorpRepo: IncorpUpdateRepository
 
-  def addSubscription(transactionId: String, regime: String, subscriber: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
-    val sub = Subscription(transactionId, regime, subscriber)
-    repo.insertSub(sub)
+
+  def checkForSubscription(transactionId: String, regime: String, subscriber: String, callBackUrl: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
+    checkForIncorpUpdate(transactionId) flatMap {
+      case Some(incorpUpdate) => {
+        Future.successful(IncorpExists(incorpUpdate))}
+      case None => {
+        addSubscription(transactionId, regime, subscriber, callBackUrl)
+      }
+    }
   }
 
+  def addSubscription(transactionId: String, regime: String, subscriber: String, callbackUrl: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
+    val sub = Subscription(transactionId, regime, subscriber, callbackUrl)
+    subRepo.insertSub(sub) map {
+      case UpsertResult(_, _, Seq()) => SuccessfulSub
+      case UpsertResult(_, _, errs) if errs.nonEmpty =>
+        Logger.error(s"[SubscriptionService] [addSubscription] Encountered when attempting to add a subscription - ${errs.toString()}")
+        FailedSub
+    }
+  }
 
+  private[services] def checkForIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]] = {
+    incorpRepo.getIncorpUpdate(transactionId)
+  }
 }
 

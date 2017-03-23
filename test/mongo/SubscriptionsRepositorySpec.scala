@@ -41,7 +41,7 @@ class SubscriptionsRepositorySpec extends SCRSSpec {
   val transId = "transID"
   val regime = "CT"
   val subscriber = "test"
-  val sub = Subscription("transID", "CT", "test")
+  val sub = Subscription("transID", "CT", "test", "url")
   val success = SuccessfulSub
   val failed = FailedSub
 

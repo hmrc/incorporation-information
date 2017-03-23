@@ -16,12 +16,15 @@
 
 package controllers
 
+import models.IncorpUpdate
+import repositories.{FailedSub, IncorpExists, SuccessfulSub}
+import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.Action
-import repositories.SuccessfulSub
 import services.SubscriptionService
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 
 class SubscriptionControllerImpl extends SubscriptionController {
@@ -32,11 +35,16 @@ trait SubscriptionController extends BaseController {
 
   protected val service: SubscriptionService
 
-  def setupSubscription(transactionId: String, regime: String, subscriber: String) = Action.async {
+  def checkSubscription(transactionId: String, regime: String, subscriber: String) = Action.async(parse.json) {
     implicit request =>
-      service.addSubscription(transactionId, regime, subscriber).map {
-        case SuccessfulSub => Accepted("You have successfully added a subscription")
-        case _ => InternalServerError
+      withJsonBody[JsObject] { js =>
+        val callbackUrl = (js \ "callbackUrl").as[String]
+        service.checkForSubscription(transactionId, regime, subscriber, callbackUrl).map {
+          case IncorpExists(update) => Ok(Json.toJson(update)(IncorpUpdate.writes(callbackUrl)))
+          case SuccessfulSub => Accepted("You have successfully added a subscription")
+          case FailedSub => InternalServerError
+        }
       }
   }
+
 }

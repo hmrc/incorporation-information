@@ -38,6 +38,8 @@ class IncorpUpdateMongo @Inject()(mongo: ReactiveMongoComponent) extends Reactiv
 
 trait IncorpUpdateRepository {
   def storeIncorpUpdates(updates: Seq[IncorpUpdate]): Future[InsertResult]
+
+  def getIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]]
 }
 
 class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate]) extends ReactiveRepository[IncorpUpdate, BSONObjectID](
@@ -49,7 +51,7 @@ class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])
 
   implicit val fmt = format
 
-  private def selector(update: IncorpUpdate) = BSONDocument("_id" -> update.transactionId)
+  private def selector(transactionId: String) = BSONDocument("_id" -> transactionId)
 
   def storeIncorpUpdates(updates: Seq[IncorpUpdate]): Future[InsertResult] = {
     bulkInsert(updates) map {
@@ -58,6 +60,10 @@ class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])
         val (duplicates, errors) = wr.writeErrors.partition(_.code == ERR_DUPLICATE)
         InsertResult(inserted, duplicates.size, errors)
     }
+  }
+
+  def getIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]] = {
+    collection.find(selector(transactionId)).one[IncorpUpdate]
   }
 }
 

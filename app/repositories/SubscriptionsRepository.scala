@@ -19,6 +19,7 @@ package repositories
 import javax.inject.Singleton
 
 import models.Subscription
+import models.IncorpUpdate
 import play.modules.reactivemongo.MongoDbConnection
 import reactivemongo.api.DB
 import reactivemongo.api.commands._
@@ -44,7 +45,7 @@ class SubscriptionsMongo extends MongoDbConnection with ReactiveMongoFormats {
 }
 
 trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
-  def insertSub(sub: Subscription) : Future[SubscriptionStatus]
+  def insertSub(sub: Subscription) : Future[UpsertResult]
 
   def getSubscription(transactionId: String) : Future[Option[Subscription]]
 
@@ -55,6 +56,7 @@ trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
 sealed trait SubscriptionStatus
 case object SuccessfulSub extends SubscriptionStatus
 case object FailedSub extends SubscriptionStatus
+case class IncorpExists(update: IncorpUpdate) extends SubscriptionStatus
 
 
 class SubscriptionsMongoRepository(mongo: () => DB)

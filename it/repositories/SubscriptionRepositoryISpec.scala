@@ -30,7 +30,8 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
     Subscription(
       "transId1",
       "test",
-      "CT"
+      "CT",
+      "url"
     )
 
   class Setup extends MongoDbConnection {
