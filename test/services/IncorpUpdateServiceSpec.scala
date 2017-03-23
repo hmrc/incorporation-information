@@ -17,20 +17,26 @@
 package services
 
 import connectors.IncorporationCheckAPIConnector
+import models.{IncorpUpdate, IncorpUpdatesResponse}
 import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.mock.MockitoSugar
-import repositories.{IncorpUpdateRepository, TimepointRepository}
+import repositories._
+import uk.gov.hmrc.play.http.HeaderCarrier
 import uk.gov.hmrc.play.test.UnitSpec
 
-/**
-  * Created by jackie on 22/03/17.
-  */
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+
+
+
 class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEach {
 
   val mockIncorporationCheckAPIConnector = mock[IncorporationCheckAPIConnector]
   val mockIncorpUpdateRepository = mock[IncorpUpdateRepository]
   val mockTimepointRepository = mock[TimepointRepository]
+
+  implicit val hc = HeaderCarrier()
 
   override def beforeEach() {
     resetMocks()
@@ -58,11 +64,74 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
     }
   }
 
+  val timepoint = TimePoint("id", "old timepoint")
+  val incorpUpdate = IncorpUpdate("transId", "accepted", None, None, timepoint.toString, None)
+  val incorpUpdates = IncorpUpdatesResponse(Seq(incorpUpdate, incorpUpdate), "nextLink")
+  val emptyUpdates = IncorpUpdatesResponse(Seq(), "nextLink")
+
+  "fetchIncorpUpdates" should {
+    "return some updates" in new Setup {
+      when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
+      when(mockIncorporationCheckAPIConnector.checkSubmission(Some(timepoint.toString))).thenReturn(Future.successful(incorpUpdates))
+
+      val response = service.fetchIncorpUpdates
+      response.size shouldBe 2
+    }
+
+    "return no updates when they are no updates available" in new Setup {
+      when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
+      when(mockIncorporationCheckAPIConnector.checkSubmission(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
+
+      val response = service.fetchIncorpUpdates
+      response.size shouldBe 0
+    }
+  }
+
+  "storeIncorpUpdates" should {
+    "return InsertResult(1, 0, Seq()) when one update has been inserted" in new Setup {
+      when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
+      when(mockIncorporationCheckAPIConnector.checkSubmission(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
+      when(mockIncorpUpdateRepository.storeIncorpUpdates(incorpUpdates.items)).thenReturn(InsertResult(1, 0, Seq()))
+
+      val response = service.storeIncorpUpdates(Future.successful(incorpUpdates.items))
+      response.map(ir => ir shouldBe InsertResult(1, 0, Seq()))
+    }
+
+    "return InsertResult(0, 0, Seq()) when there are no updates to store" in new Setup {
+      when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
+      when(mockIncorporationCheckAPIConnector.checkSubmission(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
+      when(mockIncorpUpdateRepository.storeIncorpUpdates(emptyUpdates.items)).thenReturn(InsertResult(0, 0, Seq()))
+
+      val response = service.storeIncorpUpdates(Future.successful(emptyUpdates.items))
+      response.map(ir => ir shouldBe InsertResult(0, 0, Seq()))
+    }
+  }
 
   "updateNextIncorpUpdateJobLot" should {
+
     "return a string stating that states 'No Incorporation updates were fetched'" in new Setup {
-      //when()
+      when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
+      when(mockIncorporationCheckAPIConnector.checkSubmission(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
+      when(mockIncorpUpdateRepository.storeIncorpUpdates(emptyUpdates.items)).thenReturn(Future(InsertResult(0, 0, Seq())))
+
+      val response = await(service.updateNextIncorpUpdateJobLot).toString
+      response should include("No Incorporation updates were fetched")
+
     }
+
+//    "return a string stating that the timepoint has been updated to 'new timepoint'" in new Setup {
+//      val newTimepoint = "new timepoint"
+//
+//      when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
+//      when(mockIncorporationCheckAPIConnector.checkSubmission(Some(timepoint.toString))).thenReturn(Future.successful(incorpUpdates))
+//      when(mockIncorpUpdateRepository.storeIncorpUpdates(incorpUpdates.items)).thenReturn(Future.successful(InsertResult(1, 0, Seq())))
+//      when(mockTimepointRepository.updateTimepoint(newTimepoint)).thenReturn(Future.successful(newTimepoint))
+//
+//      val response = await(service.updateNextIncorpUpdateJobLot)
+//      response shouldBe "" //include("Timepoint updated to new timepoint")
+//    }
+
+
   }
 }
 

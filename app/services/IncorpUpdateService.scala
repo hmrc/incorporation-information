@@ -69,14 +69,17 @@ trait IncorpUpdateService {
       fetchIncorpUpdates flatMap { items =>
         storeIncorpUpdates(items) flatMap {
           //maybe check for duplicates
-          case InsertResult(i, _, Seq()) if i > 0 => timepointRepository.updateTimepoint(items.reverse.head.timepoint)
-            .map(tp => s"Incorporation ${items.reverse.head.status} - Timepoint updated to $tp")
+          case InsertResult(i, _, Seq()) if i > 0 => {
+            timepointRepository.updateTimepoint(items.reverse.head.timepoint)
+              .map(
+                tp =>
+                  s"Incorporation ${items.reverse.head.status} - Timepoint updated to $tp")
+          }
           case InsertResult(_, _, Seq()) => Future.successful("No Incorporation updates were fetched")
           case _ => Future.successful("An error occured when trying to store the updates")
         }
       }
     }
-
 
 
 }
