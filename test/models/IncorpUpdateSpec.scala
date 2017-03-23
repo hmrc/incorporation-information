@@ -1,6 +1,6 @@
 package models
 
-import play.api.libs.json.{Json, Writes}
+import play.api.libs.json.Json
 import uk.gov.hmrc.play.test.UnitSpec
 
 /**
@@ -11,7 +11,7 @@ class IncorpUpdateSpec extends UnitSpec {
 
   "writes" should {
     "return json" in {
-      Json.toJson(IncorpUpdate)(Writes)
+      Json.toJson(IncorpUpdate("transID", "status", None, None, "tp", Some("des")))(IncorpUpdate.writes("www.url.com"))
     }
   }
 }
