@@ -18,6 +18,7 @@ package services
 
 import connectors.IncorporationCheckAPIConnector
 import models.{IncorpUpdate, IncorpUpdatesResponse}
+import org.mockito.{ArgumentCaptor, Matchers}
 import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.mock.MockitoSugar
@@ -58,15 +59,12 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
     val service = new mockService {}
   }
 
-  trait SetupMockedAudit {
-    val service = new mockService {
-      //override def processSuccessDesResponse(item: IncorpUpdate, ctReg: CorporationTaxRegistration, auditDetail: JsObject)(implicit hc: HeaderCarrier) = Future.successful(true)
-    }
-  }
-
   val timepoint = TimePoint("id", "old timepoint")
-  val incorpUpdate = IncorpUpdate("transId", "accepted", None, None, timepoint.toString, None)
-  val incorpUpdates = IncorpUpdatesResponse(Seq(incorpUpdate, incorpUpdate), "nextLink")
+  val timepointOld = "old-timepoint"
+  val timepointNew = "new-timepoint"
+  val incorpUpdate = IncorpUpdate("transId", "accepted", None, None, timepointOld, None)
+  val incorpUpdateNew = IncorpUpdate("transId", "accepted", None, None, timepointNew, None)
+  val incorpUpdates = IncorpUpdatesResponse(Seq(incorpUpdate, incorpUpdateNew), "nextLink")
   val emptyUpdates = IncorpUpdatesResponse(Seq(), "nextLink")
 
   "fetchIncorpUpdates" should {
@@ -107,6 +105,13 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
     }
   }
 
+  "latestTimepoint" should {
+    "return the latest timepoint when two have been given" in new Setup {
+      val response = service.latestTimepoint(incorpUpdates.items)
+      response shouldBe timepointNew
+    }
+  }
+
   "updateNextIncorpUpdateJobLot" should {
 
     "return a string stating that states 'No Incorporation updates were fetched'" in new Setup {
@@ -114,22 +119,28 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
       when(mockIncorporationCheckAPIConnector.checkSubmission(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
       when(mockIncorpUpdateRepository.storeIncorpUpdates(emptyUpdates.items)).thenReturn(Future(InsertResult(0, 0, Seq())))
 
-      val response = await(service.updateNextIncorpUpdateJobLot).toString
-      response should include("No Incorporation updates were fetched")
+      val response = await(service.updateNextIncorpUpdateJobLot)
+      response shouldBe false
 
     }
 
-//    "return a string stating that the timepoint has been updated to 'new timepoint'" in new Setup {
-//      val newTimepoint = "new timepoint"
-//
-//      when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
-//      when(mockIncorporationCheckAPIConnector.checkSubmission(Some(timepoint.toString))).thenReturn(Future.successful(incorpUpdates))
-//      when(mockIncorpUpdateRepository.storeIncorpUpdates(incorpUpdates.items)).thenReturn(Future.successful(InsertResult(1, 0, Seq())))
-//      when(mockTimepointRepository.updateTimepoint(newTimepoint)).thenReturn(Future.successful(newTimepoint))
-//
-//      val response = await(service.updateNextIncorpUpdateJobLot)
-//      response shouldBe "" //include("Timepoint updated to new timepoint")
-//    }
+    "return a string stating that the timepoint has been updated to 'new timepoint'" in new Setup {
+      val newTimepoint = timepointNew
+
+      when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepointOld)))
+      when(mockIncorporationCheckAPIConnector.checkSubmission(Matchers.eq(Some(timepointOld)))(Matchers.any())).thenReturn(Future.successful(incorpUpdates))
+      when(mockIncorpUpdateRepository.storeIncorpUpdates(incorpUpdates.items)).thenReturn(Future.successful(InsertResult(1, 0, Seq())))
+      when(mockTimepointRepository.updateTimepoint(Matchers.any())).thenReturn(Future.successful(newTimepoint))
+
+      val response = await(service.updateNextIncorpUpdateJobLot)
+
+      val captor = ArgumentCaptor.forClass(classOf[String])
+      verify(mockTimepointRepository).updateTimepoint(captor.capture())
+      captor.getValue shouldBe newTimepoint
+
+      val tp = response shouldBe true
+
+    }
 
 
   }

@@ -19,6 +19,7 @@ package services
 import connectors.IncorporationCheckAPIConnector
 import models.IncorpUpdate
 import mongo.Repositories
+import play.api.Logger
 import reactivemongo.api.commands.WriteError
 import repositories.{IncorpUpdateRepository, InsertResult, TimepointRepository}
 import uk.gov.hmrc.play.http.HeaderCarrier
@@ -62,21 +63,28 @@ trait IncorpUpdateService {
     }
   }
 
+  private[services] def latestTimepoint(items: Seq[IncorpUpdate]): String = items.reverse.head.timepoint
 
-    //the schedule job calls this function???
-    //add logging
-    def updateNextIncorpUpdateJobLot(implicit hc: HeaderCarrier): Future[String] = {
+  //the schedule job calls this function???
+    def updateNextIncorpUpdateJobLot(implicit hc: HeaderCarrier): Future[Boolean] = {
       fetchIncorpUpdates flatMap { items =>
         storeIncorpUpdates(items) flatMap {
-          //maybe check for duplicates
-          case InsertResult(i, _, Seq()) if i > 0 => {
-            timepointRepository.updateTimepoint(items.reverse.head.timepoint)
-              .map(
-                tp =>
-                  s"Incorporation ${items.reverse.head.status} - Timepoint updated to $tp")
+          case InsertResult(0, _, Seq()) => {
+            Logger.info("No Incorp updates were fetched")
+            Future(false)
           }
-          case InsertResult(_, _, Seq()) => Future.successful("No Incorporation updates were fetched")
-          case _ => Future.successful("An error occured when trying to store the updates")
+          case InsertResult(i, d, Seq()) => {
+            timepointRepository.updateTimepoint(latestTimepoint(items))
+              .map(tp => {
+                s"Incorporation ${items.reverse.head.status} - Timepoint updated to $tp"
+                Logger.info(s"$i incorp updates were inserted, $d incorp updates were duplicates, and the timepoint has been updated to $tp")
+              })
+            Future(true)
+          }
+          case InsertResult(_, _, e) => {
+            Logger.info(s"There was an error when inserting incorp updates, message: $e")
+            Future(false)
+          }
         }
       }
     }
