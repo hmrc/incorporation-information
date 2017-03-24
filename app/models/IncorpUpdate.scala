@@ -55,7 +55,7 @@ object IncorpUpdate {
     )(IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
 
 
-  def writes(callBackUrl: String): Writes[IncorpUpdate] = new Writes[IncorpUpdate] {
+  def writes(callBackUrl: String, transactionId: String): Writes[IncorpUpdate] = new Writes[IncorpUpdate] {
 
     def writes(u: IncorpUpdate) = {
       Json.obj(
@@ -63,15 +63,20 @@ object IncorpUpdate {
           "IncorpSubscriptionKey" -> Json.obj(
             "subscriber" -> "SCRS",
             "discriminator" -> "PAYE",
-            "transactionId" -> "NNASD9789F"
+            "transactionId" -> transactionId
           ),
           "SCRSIncorpSubscription" -> Json.obj(
-            "callbackUrl" -> "scrs-incorporation-update-listener.service/incorp-updates/incorp-status-update"
+            "callbackUrl" -> callBackUrl
           ),
             "IncorpStatusEvent" -> Json.obj(
               "status" -> u.status,
-              "description" -> u.statusDescription.get,
               "timestamp" -> "2017-12-21T10:13:09.429Z"//todo: create timestamp here?
+            ).++(
+              u.statusDescription.fold[JsObject](Json.obj())(s => Json.obj("description" -> s))
+            ).++(
+              u.crn.fold[JsObject](Json.obj())(s => Json.obj("crn" -> s))
+            ).++(
+              u.incorpDate.fold[JsObject](Json.obj())(s => Json.obj("incorporationDate" -> s))
             )
           )
       )

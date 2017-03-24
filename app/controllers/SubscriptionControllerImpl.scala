@@ -43,8 +43,20 @@ trait SubscriptionController extends BaseController {
           case IncorpExists(update) => Ok(Json.toJson(update)(IncorpUpdate.writes(callbackUrl)))
           case SuccessfulSub => Accepted("You have successfully added a subscription")
           case FailedSub => InternalServerError
+            val callbackUrl = (js \ "SCRSIncorpSubscription" \ "callbackUrl").as[String]
+            service.checkForSubscription(transactionId, regime, subscriber, callbackUrl).map {
+              case IncorpExists(update) => {
+                Ok(Json.toJson(update)(IncorpUpdate.writes(callbackUrl, transactionId)))
+              }
+              case SuccessfulSub => {
+                Accepted("You have successfully added a subscription")
+              }
+              case FailedSub => {
+                InternalServerError
+              }
+            }
         }
       }
-  }
 
+  }
 }

@@ -24,7 +24,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class SubscriptionRepositoryISpec extends SCRSMongoSpec {
 
-  val testValid = construct()
+  val testValid = sub()
 
   def construct() =
     Subscription(
@@ -34,10 +34,21 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
       "url"
     )
 
+  def sub() = Subscription(
+    "transId1",
+    "test",
+    "CT",
+    "url"
+  )
+
+
   class Setup extends MongoDbConnection {
     val repository = new SubscriptionsMongoRepository(db)
     await(repository.drop)
     await(repository.ensureIndexes)
+
+    def insert(sub: Subscription) = await(repository.insert(sub))
+    def count = await(repository.count)
   }
 
   override def afterAll() = new Setup {
@@ -57,8 +68,18 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
   }
 
   "insertSub" should {
+
     "return a WriteResult" in new Setup {
       val result = await(repository.insertSub(testValid))
+      result shouldBe SuccessfulSub
+    }
+
+    "update an existing sub that matches the selector" in new Setup {
+      insert(sub)
+      count shouldBe 1
+
+      val result = await(repository.insertSub(sub))
+      count shouldBe 1
       result shouldBe SuccessfulSub
     }
 

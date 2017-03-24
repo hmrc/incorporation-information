@@ -19,6 +19,7 @@ package services
 import models.Subscription
 import repositories._
 import models.IncorpUpdate
+import play.api.Logger
 import uk.gov.hmrc.play.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -45,6 +46,11 @@ trait SubscriptionService {
         Future.successful(IncorpExists(incorpUpdate))}
       case None => {
         addSubscription(transactionId, regime, subscriber, callBackUrl)
+     checkForIncorpUpdate(transactionId) flatMap {
+      case Some(incorpUpdate) => {
+         Future.successful(IncorpExists(incorpUpdate))}
+      case None => {
+         addSubscription(transactionId, regime, subscriber, callBackUrl)
       }
     }
   }
@@ -57,6 +63,7 @@ trait SubscriptionService {
         Logger.error(s"[SubscriptionService] [addSubscription] Encountered when attempting to add a subscription - ${errs.toString()}")
         FailedSub
     }
+    subRepo.insertSub(sub)
   }
 
   private[services] def checkForIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]] = {

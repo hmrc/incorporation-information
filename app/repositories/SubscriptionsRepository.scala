@@ -72,9 +72,12 @@ class SubscriptionsMongoRepository(mongo: () => DB)
   )
 
   def insertSub(sub: Subscription) : Future[SubscriptionStatus] = {
-    collection.insert(sub) map {
-      wr =>
-        wr.n match {
+
+    val selector = BSONDocument("transactionId" -> sub.transactionId, "regime" -> sub.regime, "subscriber" -> sub.subscriber)
+
+    collection.update(selector, sub, upsert = true) map {
+      res =>
+        res.n match {
           case 1 => SuccessfulSub
           case _ => {
             logger.error("[MongoSubscriptionsRepository] [insertSub] the subscription was not inserted")
