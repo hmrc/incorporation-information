@@ -13,30 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package itutil
 
-import org.scalatest._
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatestplus.play.OneServerPerSuite
-import uk.gov.hmrc.play.test.UnitSpec
+package models
 
-trait IntegrationSpecBase extends UnitSpec
-  with OneServerPerSuite with ScalaFutures with IntegrationPatience with Matchers
-  with WiremockHelper with BeforeAndAfterEach with BeforeAndAfterAll {
+import play.api.libs.json.Json
 
-  override def beforeEach() = {
-    resetWiremock()
-  }
+case class Subscription(
+    transactionId : String,
+    regime: String,
+    subscriber: String
+                       )
 
-  override def beforeAll() = {
-    super.beforeAll()
-    startWiremock()
-  }
-
-  override def afterAll() = {
-    stopWiremock()
-    super.afterAll()
-  }
+object Subscription {
+  implicit val format = Json.format[Subscription]
 }
-
 

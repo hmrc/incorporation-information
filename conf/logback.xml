@@ -52,9 +52,11 @@
     <logger name="javax.management" level="INFO"/>
     <logger name="org.apache" level="INFO"/>
     <logger name="org.asynchttpclient.netty" level="INFO"/>
-    <logger name="org.eclipse.jetty" level="INFO"/>
-    <logger name="io.netty" level="INFO"/>
+    <logger name="org.eclipse.jetty" level="WARN"/>
+    <logger name="io.netty" level="WARN"/>
     <logger name="akka.event.EventStream" level="INFO" />
+    <logger name="play.api" level="INFO" />
+    <logger name="org.jboss" level="INFO"/>
 
     <logger name="connector" level="INFO">
         <appender-ref ref="STDOUT"/>

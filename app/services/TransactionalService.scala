@@ -18,17 +18,15 @@ package services
 
 import javax.inject.Inject
 
-import com.google.inject.ImplementedBy
-import connectors.{TransactionalAPIResponse, FailedTransactionalAPIResponse, SuccessfulTransactionalAPIResponse, TransactionalConnector}
+import connectors.{FailedTransactionalAPIResponse, SuccessfulTransactionalAPIResponse, TransactionalAPIResponse, TransactionalConnector}
 import play.api.libs.json.JsValue
 import uk.gov.hmrc.play.http.HeaderCarrier
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class TransactionalServiceImpl @Inject()(val connector: TransactionalConnector) extends TransactionalService
 
-@ImplementedBy(classOf[TransactionalServiceImpl])
 trait TransactionalService {
 
   protected val connector: TransactionalConnector

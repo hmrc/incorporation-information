@@ -1,5 +1,5 @@
 /*
-* Copyright 2016 HM Revenue & Customs
+* Copyright 2017 HM Revenue & Customs
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -18,18 +18,14 @@ package repositories
 
 import java.util.UUID
 
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
-import uk.gov.hmrc.mongo.MongoSpecSupport
-import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
+import helpers.SCRSMongoSpec
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-// TODO - II-INCORP
-class TimepointMongoRepositorySpec extends UnitSpec with ScalaFutures with MongoSpecSupport with BeforeAndAfterEach with BeforeAndAfterAll with WithFakeApplication {
+class TimepointMongoRepositorySpec extends SCRSMongoSpec { //UnitSpec with ScalaFutures with MongoSpecSupport with BeforeAndAfterEach with BeforeAndAfterAll with WithFakeApplication {
 
   class Setup {
-    val repository = new TimepointMongoRepository
+    val repository = new TimepointMongo(reactiveMongoComponent).repo
     await(repository.drop)
     await(repository.ensureIndexes)
   }

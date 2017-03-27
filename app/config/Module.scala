@@ -17,12 +17,37 @@
 package config
 
 import com.google.inject.AbstractModule
+import com.google.inject.name.Names
+import connectors.{IncorporationCheckAPIConnector, IncorporationCheckAPIConnectorImpl, TransactionalConnector, TransactionalConnectorImpl}
+import controllers.{SubscriptionController, SubscriptionControllerImpl, TransactionalController, TransactionalControllerImpl}
+import jobs.IncorpUpdatesJobImpl
+import services.{IncorpUpdateService, IncorpUpdateServiceImpl, TransactionalService, TransactionalServiceImpl}
 import uk.gov.hmrc.play.config.inject.{DefaultServicesConfig, ServicesConfig}
+import uk.gov.hmrc.play.scheduling.ScheduledJob
 
 class Module extends AbstractModule {
 
   override def configure(): Unit = {
 
     bind(classOf[ServicesConfig]).to(classOf[DefaultServicesConfig])
+    bind(classOf[MicroserviceConfig]).to(classOf[MicroserviceConfigImpl])
+
+    // controllers
+    bind(classOf[SubscriptionController]).to(classOf[SubscriptionControllerImpl])
+    bind(classOf[TransactionalController]).to(classOf[TransactionalControllerImpl])
+
+    // connectors
+    bind(classOf[IncorporationCheckAPIConnector]).to(classOf[IncorporationCheckAPIConnectorImpl])
+    bind(classOf[TransactionalConnector]).to(classOf[TransactionalConnectorImpl])
+
+    // services
+    bind(classOf[IncorpUpdateService]).to(classOf[IncorpUpdateServiceImpl])
+    bind(classOf[TransactionalService]).to(classOf[TransactionalServiceImpl])
+
+    // repositories
+// TODO ?
+
+    // jobs
+    bind(classOf[ScheduledJob]).annotatedWith(Names.named("incorp-update-job")).to(classOf[IncorpUpdatesJobImpl])
   }
 }

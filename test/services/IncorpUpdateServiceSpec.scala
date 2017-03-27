@@ -17,7 +17,7 @@
 package services
 
 import connectors.IncorporationCheckAPIConnector
-import models.{IncorpUpdate, IncorpUpdatesResponse}
+import models.IncorpUpdate
 import org.mockito.{ArgumentCaptor, Matchers}
 import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
@@ -28,8 +28,6 @@ import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-
-
 
 class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEach {
 
@@ -64,13 +62,13 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
   val timepointNew = "new-timepoint"
   val incorpUpdate = IncorpUpdate("transId", "accepted", None, None, timepointOld, None)
   val incorpUpdateNew = IncorpUpdate("transId", "accepted", None, None, timepointNew, None)
-  val incorpUpdates = IncorpUpdatesResponse(Seq(incorpUpdate, incorpUpdateNew), "nextLink")
-  val emptyUpdates = IncorpUpdatesResponse(Seq(), "nextLink")
+  val incorpUpdates = Seq(incorpUpdate, incorpUpdateNew)
+  val emptyUpdates = Seq()
 
   "fetchIncorpUpdates" should {
     "return some updates" in new Setup {
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
-      when(mockIncorporationCheckAPIConnector.checkSubmission(Some(timepoint.toString))).thenReturn(Future.successful(incorpUpdates))
+      when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(incorpUpdates))
 
       val response = service.fetchIncorpUpdates
       response.size shouldBe 2
@@ -78,7 +76,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
 
     "return no updates when they are no updates available" in new Setup {
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
-      when(mockIncorporationCheckAPIConnector.checkSubmission(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
+      when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
 
       val response = service.fetchIncorpUpdates
       response.size shouldBe 0
@@ -88,26 +86,26 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
   "storeIncorpUpdates" should {
     "return InsertResult(1, 0, Seq()) when one update has been inserted" in new Setup {
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
-      when(mockIncorporationCheckAPIConnector.checkSubmission(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
-      when(mockIncorpUpdateRepository.storeIncorpUpdates(incorpUpdates.items)).thenReturn(InsertResult(1, 0, Seq()))
+      when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
+      when(mockIncorpUpdateRepository.storeIncorpUpdates(incorpUpdates)).thenReturn(InsertResult(1, 0, Seq()))
 
-      val response = service.storeIncorpUpdates(Future.successful(incorpUpdates.items))
+      val response = service.storeIncorpUpdates(Future.successful(incorpUpdates))
       response.map(ir => ir shouldBe InsertResult(1, 0, Seq()))
     }
 
     "return InsertResult(0, 0, Seq()) when there are no updates to store" in new Setup {
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
-      when(mockIncorporationCheckAPIConnector.checkSubmission(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
-      when(mockIncorpUpdateRepository.storeIncorpUpdates(emptyUpdates.items)).thenReturn(InsertResult(0, 0, Seq()))
+      when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
+      when(mockIncorpUpdateRepository.storeIncorpUpdates(emptyUpdates)).thenReturn(InsertResult(0, 0, Seq()))
 
-      val response = service.storeIncorpUpdates(Future.successful(emptyUpdates.items))
+      val response = service.storeIncorpUpdates(Future.successful(emptyUpdates))
       response.map(ir => ir shouldBe InsertResult(0, 0, Seq()))
     }
   }
 
   "latestTimepoint" should {
     "return the latest timepoint when two have been given" in new Setup {
-      val response = service.latestTimepoint(incorpUpdates.items)
+      val response = service.latestTimepoint(incorpUpdates)
       response shouldBe timepointNew
     }
   }
@@ -116,11 +114,11 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
 
     "return a string stating that states 'No Incorporation updates were fetched'" in new Setup {
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
-      when(mockIncorporationCheckAPIConnector.checkSubmission(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
-      when(mockIncorpUpdateRepository.storeIncorpUpdates(emptyUpdates.items)).thenReturn(Future(InsertResult(0, 0, Seq())))
+      when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
+      when(mockIncorpUpdateRepository.storeIncorpUpdates(emptyUpdates)).thenReturn(Future(InsertResult(0, 0, Seq())))
 
       val response = await(service.updateNextIncorpUpdateJobLot)
-      response shouldBe false
+      response shouldBe InsertResult(0,0,Seq())
 
     }
 
@@ -128,8 +126,8 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
       val newTimepoint = timepointNew
 
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepointOld)))
-      when(mockIncorporationCheckAPIConnector.checkSubmission(Matchers.eq(Some(timepointOld)))(Matchers.any())).thenReturn(Future.successful(incorpUpdates))
-      when(mockIncorpUpdateRepository.storeIncorpUpdates(incorpUpdates.items)).thenReturn(Future.successful(InsertResult(1, 0, Seq())))
+      when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Matchers.eq(Some(timepointOld)))(Matchers.any())).thenReturn(Future.successful(incorpUpdates))
+      when(mockIncorpUpdateRepository.storeIncorpUpdates(incorpUpdates)).thenReturn(Future.successful(InsertResult(1, 0, Seq())))
       when(mockTimepointRepository.updateTimepoint(Matchers.any())).thenReturn(Future.successful(newTimepoint))
 
       val response = await(service.updateNextIncorpUpdateJobLot)
@@ -138,11 +136,8 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
       verify(mockTimepointRepository).updateTimepoint(captor.capture())
       captor.getValue shouldBe newTimepoint
 
-      val tp = response shouldBe true
-
+      response shouldBe InsertResult(1,0,Seq())
     }
-
-
   }
 }
 

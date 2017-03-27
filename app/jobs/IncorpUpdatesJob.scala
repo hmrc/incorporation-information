@@ -17,9 +17,11 @@
 package jobs
 
 
-import mongo.Repositories
+import javax.inject.{Inject, Singleton}
+
 import org.joda.time.Duration
 import play.api.Logger
+import repositories.Repositories
 import services.IncorpUpdateService
 import uk.gov.hmrc.lock.LockKeeper
 import uk.gov.hmrc.play.http.HeaderCarrier
@@ -28,6 +30,17 @@ import utils.SCRSFeatureSwitches
 
 import scala.concurrent.{ExecutionContext, Future}
 
+@Singleton
+class IncorpUpdatesJobImpl @Inject()(injService: IncorpUpdateService) extends IncorpUpdatesJob {
+  val name = "incorp-updates-job"
+  lazy val incorpUpdateService = injService
+
+  override lazy val lock: LockKeeper = new LockKeeper() {
+    override val lockId = s"$name-lock"
+    override val forceLockReleaseAfter: Duration = lockTimeout
+    override val repo = Repositories.lockRepository
+  }
+}
 
 trait IncorpUpdatesJob extends ExclusiveScheduledJob with JobConfig {
 
@@ -37,34 +50,29 @@ trait IncorpUpdatesJob extends ExclusiveScheduledJob with JobConfig {
   //$COVERAGE-OFF$
   override def executeInMutex(implicit ec: ExecutionContext): Future[Result] = {
     SCRSFeatureSwitches.scheduler.enabled match {
-      case true => lock.tryLock {
-        Logger.info(s"Triggered $name")
-        incorpUpdateService.updateNextIncorpUpdateJobLot(HeaderCarrier())
-        Future.successful(Result(s"Feature is turned on"))
-      } map {
-        case Some(x) =>
-          Logger.info(s"successfully acquired lock for $name")
-          Result(s"$name")
-        case None =>
-          Logger.info(s"failed to acquire lock for $name")
-          Result(s"$name failed")
-      } recover {
-        case _: Exception => Result(s"$name failed")
+      case true => {
+        lock.tryLock {
+          Logger.info(s"Triggered $name")
+          incorpUpdateService.updateNextIncorpUpdateJobLot(HeaderCarrier()) map { result =>
+            val message = s"Feature is turned on - result = ${result}"
+            Logger.info(message)
+            Result(message)
+          }
+        } map {
+          case Some(x) =>
+            Logger.info(s"successfully acquired lock for $name - result ${x}")
+            Result(s"$name")
+          case None =>
+            Logger.info(s"failed to acquire lock for $name")
+            Result(s"$name failed")
+        } recover {
+          case _: Exception => Result(s"$name failed")
+        }
       }
       case false => Future.successful(Result(s"Feature is turned off"))
     }
   }
+
   //$COVERAGE-ON$
-}
-
-object IncorpUpdatesJob extends IncorpUpdatesJob {
-  val name = "incorp-updates-job"
-  lazy val incorpUpdateService = IncorpUpdateService
-
-  override lazy val lock: LockKeeper = new LockKeeper() {
-    override val lockId = s"$name-lock"
-    override val forceLockReleaseAfter: Duration = lockTimeout
-    override val repo = Repositories.lockRepository
-  }
 }
 

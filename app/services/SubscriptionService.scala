@@ -16,29 +16,24 @@
 
 package services
 
-import model.Subscription
-import mongo.{Repositories, SubscriptionStatus, SubscriptionsRepository}
+import models.Subscription
+import repositories.{Repositories, SubscriptionStatus, SubscriptionsRepository}
 import uk.gov.hmrc.play.http.HeaderCarrier
 
 import scala.concurrent.Future
 
-/**
-  * Created by jackie on 16/03/17.
-  */
-object SubscriptionService
-extends SubscriptionService {
-
-  override protected val connector = Repositories.msRepository
+// TODO - DI
+object SubscriptionService extends SubscriptionService {
+  override protected val repo = Repositories.msRepository
 }
-
 
 trait SubscriptionService {
 
-  protected val connector: SubscriptionsRepository
+  protected val repo: SubscriptionsRepository
 
   def addSubscription(transactionId: String, regime: String, subscriber: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
     val sub = Subscription(transactionId, regime, subscriber)
-    connector.insertSub(sub)
+    repo.insertSub(sub)
   }
 
 

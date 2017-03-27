@@ -16,8 +16,11 @@
 
 package repositories
 
+import javax.inject.{Inject, Singleton}
+
 import play.api.Logger
 import play.api.libs.json.{JsValue, Json}
+import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DB
 import reactivemongo.bson.{BSONDocument, BSONObjectID}
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
@@ -31,19 +34,22 @@ case class TimePoint(
                       timepoint: String
                     )
 
+
 object TimePoint {
   implicit val formats = Json.format[TimePoint]
 }
 
-// TODO - II-INCORP - Need this repo for timeepoint - maybe refactor (doesn't need to just be 'timepoints' - perhaps 'value'?)
-// TODO - II-INCORP - better as a key/value pair repo - key to retrieve, key & value to store
-// TODO - II-INCORP - Initially values just as strings - but should be parameterised types (via implicit reads/writes)
+@Singleton
+class TimepointMongo @Inject()(mongo: ReactiveMongoComponent) extends ReactiveMongoFormats {
+  val repo = new TimepointMongoRepository(mongo.mongoConnector.db)
+}
+
 trait TimepointRepository extends Repository[TimePoint, BSONObjectID] {
   def updateTimepoint(s: String) : Future[String]
   def retrieveTimePoint : Future[Option[String]]
 }
 
-class TimepointMongoRepository(implicit mongo: () => DB)
+class TimepointMongoRepository(mongo: () => DB)
   extends ReactiveRepository[TimePoint, BSONObjectID]("state-data", mongo, TimePoint.formats, ReactiveMongoFormats.objectIdFormats)
     with TimepointRepository {
 

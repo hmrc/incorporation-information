@@ -25,32 +25,31 @@ import reactivemongo.bson.{BSONDocument, BSONRegex}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
+trait DocValidator {
+  val incorpRepo: IncorpUpdateMongoRepository
+
+  val MONGO_RESULT_OK = Json.obj("ok" -> JsNumber(1))
+
+  def validateCRN(regex: String = "^bar[1-7]$") = {
+    // db.runCommand( {collMod: "incorp-info", validator: { crn: { $regex: /^bar[1-7]?$/  } } } )
+    val commandDoc = BSONDocument(
+      "collMod" -> incorpRepo.collection.name,
+      "validator" -> BSONDocument("company_number" -> BSONDocument("$regex" -> BSONRegex(regex, "")))
+    )
+    val runner = Command.run(BSONSerializationPack)
+    incorpRepo.collection.create() flatMap {
+      _ => runner.apply(incorpRepo.collection.db, runner.rawCommand(commandDoc)).one[BSONDocument]
+    }
+  }
+}
+
 class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
 
   class Setup extends MongoErrorCodes {
-    val repository = new IncorpUpdateMongo(reactiveMongoComponent).repo
-    await(repository.drop)
+    val incorpRepo = new IncorpUpdateMongo(reactiveMongoComponent).repo
+    await(incorpRepo.drop)
 
-    def count = await(repository.count)
-  }
-
-
-  trait DocValidator {
-    val repository: IncorpUpdateMongoRepository
-
-    val MONGO_RESULT_OK = Json.obj("ok" -> JsNumber(1))
-
-    def validateCRN(regex: String = "^bar[1-7]$") = {
-      // db.runCommand( {collMod: "incorp-info", validator: { crn: { $regex: /^bar[1-7]?$/  } } } )
-      val commandDoc = BSONDocument(
-        "collMod" -> repository.collection.name,
-        "validator" -> BSONDocument("company_number" -> BSONDocument("$regex" -> BSONRegex(regex, "")))
-      )
-      val runner = Command.run(BSONSerializationPack)
-      repository.collection.create() flatMap {
-        _ => runner.apply(repository.collection.db, runner.rawCommand(commandDoc)).one[BSONDocument]
-      }
-    }
+    def count = await(incorpRepo.count)
   }
 
   def docs(num: Int = 1) = (1 to num).map(n => IncorpUpdate(
@@ -66,7 +65,7 @@ class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
     "insert a single document" in new Setup {
       count shouldBe 0
 
-      val fResponse = repository.storeIncorpUpdates(docs(1))
+      val fResponse = incorpRepo.storeIncorpUpdates(docs(1))
 
       val response = await(fResponse)
       response.inserted shouldBe 1
@@ -79,7 +78,7 @@ class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
       count shouldBe 0
       val num = 6
 
-      val fResponse = repository.storeIncorpUpdates(docs(num))
+      val fResponse = incorpRepo.storeIncorpUpdates(docs(num))
 
       val response = await(fResponse)
       response.inserted shouldBe num
@@ -92,11 +91,11 @@ class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
       count shouldBe 0
       val numPart = 4
 
-      await(repository.storeIncorpUpdates(docs(numPart)))
+      await(incorpRepo.storeIncorpUpdates(docs(numPart)))
       count shouldBe 4
 
       val num = 10
-      val fResponse = repository.storeIncorpUpdates(docs(num))
+      val fResponse = incorpRepo.storeIncorpUpdates(docs(num))
 
       val response = await(fResponse)
       response.inserted shouldBe num - numPart
@@ -110,10 +109,10 @@ class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
       val numPart = 4
       val result = await(validateCRN("^bar[12345679]$"))
 
-      await(repository.storeIncorpUpdates(docs(numPart)))
+      await(incorpRepo.storeIncorpUpdates(docs(numPart)))
 
       val num = 9
-      val fResponse = repository.storeIncorpUpdates(docs(num))
+      val fResponse = incorpRepo.storeIncorpUpdates(docs(num))
 
       val expectedNumErrors = 1
       val response = await(fResponse)

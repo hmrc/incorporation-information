@@ -16,56 +16,118 @@
 
 package connectors
 
-import config.WSHttp
-import models.IncorpUpdatesResponse
+import javax.inject.{Inject, Singleton}
+
+import config.{MicroserviceConfig, WSHttp, WSHttpProxy}
+import models.IncorpUpdate
+import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormat
 import play.api.Logger
+import play.api.libs.json.{Reads, __}
+import play.api.libs.functional.syntax._
 import uk.gov.hmrc.play.config.ServicesConfig
 import uk.gov.hmrc.play.http._
+import uk.gov.hmrc.play.http.logging.Authorization
+import uk.gov.hmrc.play.http.ws.WSProxy
+import utils.SCRSFeatureSwitches
 
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
 import scala.util.control.NoStackTrace
 
+case class IncorpUpdatesResponse(items: Seq[IncorpUpdate], nextLink: String)
+object IncorpUpdatesResponse {
+  val dateReads = Reads[DateTime]( js =>
+    js.validate[String].map[DateTime](DateTime.parse(_, DateTimeFormat.forPattern("yyyy-MM-dd")))
+  )
 
-object IncorporationCheckAPIConnector extends IncorporationCheckAPIConnector with ServicesConfig {
-  override val proxyUrl = baseUrl("incorp-frontend-stubs")
-  override val http = WSHttp
+  implicit val updateFmt = IncorpUpdate.apiFormat
+
+  implicit val reads : Reads[IncorpUpdatesResponse] = (
+    ( __ \ "items" ).read[Seq[IncorpUpdate]] and
+      (__ \ "links" \ "next").read[String]
+    )(IncorpUpdatesResponse.apply _)
+
 }
 
-class SubmissionAPIFailure extends NoStackTrace
+@Singleton
+class IncorporationCheckAPIConnectorImpl @Inject()(config: MicroserviceConfig) extends IncorporationCheckAPIConnector with ServicesConfig {
+  val cohoAPIStubUrl = config.incorpUpdateStubUrl
+  val cohoAPIUrl = config.incorpUpdateCohoAPIUrl
+  val cohoApiAuthToken = config.incorpUpdateCohoApiAuthToken
+  val itemsToFetch = config.incorpUpdateItemsToFetch
+  val httpNoProxy = WSHttp
+  val httpProxy = WSHttpProxy
+  val featureSwitch = SCRSFeatureSwitches
+}
+
+case class IncorpUpdateAPIFailure(ex: Exception) extends NoStackTrace
 
 trait IncorporationCheckAPIConnector {
 
-  val proxyUrl: String
-  val http: HttpGet with HttpPost
+  val cohoAPIStubUrl: String
+  val cohoAPIUrl: String
+  val cohoApiAuthToken: String
+  val itemsToFetch: String
+  val httpNoProxy: HttpGet
+  val httpProxy: HttpGet with WSProxy
+  val featureSwitch: SCRSFeatureSwitches
+
+  private[connectors] def useProxy: Boolean = featureSwitch.transactionalAPI.enabled
+
+  private[connectors] def buildQueryString(timepoint: Option[String], itemsPerPage: String = "1") = {
+    timepoint match {
+      case Some(tp) => s"?timepoint=$tp&items_per_page=$itemsPerPage"
+      case _ => s"?items_per_page=$itemsPerPage"
+    }
+  }
 
   def logError(ex: HttpException, timepoint: Option[String]) = {
     Logger.error(s"[IncorporationCheckAPIConnector] [incorpUpdates]" +
-      s" request to SubmissionCheckAPI returned a ${ex.responseCode}. " +
+      s" request to fetch incorp updates returned a ${ex.responseCode}. " +
       s"No incorporations were processed for timepoint ${timepoint} - Reason = ${ex.getMessage}")
   }
 
+  private[connectors] def appendAPIAuthHeader(hc: HeaderCarrier, token: String): HeaderCarrier = {
+    hc.copy(authorization = Some(Authorization(s"Bearer $token")))
+  }
+
   // TODO - II-INCORP - refactor the recover block - move to a separate method to provide more clarity
-  def checkSubmission(timepoint: Option[String] = None)(implicit hc: HeaderCarrier): Future[IncorpUpdatesResponse] = {
-    val tp = timepoint.fold("")(t => s"timepoint=$t&")
-    http.GET[IncorpUpdatesResponse](s"$proxyUrl/internal/check-submission?${tp}items_per_page=1") map {
-      res => res
+  def checkForIncorpUpdate(timepoint: Option[String] = None)(implicit hc: HeaderCarrier): Future[Seq[IncorpUpdate]] = {
+    import play.api.http.Status.{NO_CONTENT}
+
+    val queryString = buildQueryString(timepoint, itemsToFetch)
+
+    val (http, realHc, url) = useProxy match {
+      case true => (httpProxy, appendAPIAuthHeader(hc, cohoApiAuthToken), s"$cohoAPIUrl$queryString")
+      case false => (httpNoProxy, hc, s"$cohoAPIStubUrl$queryString")
+    }
+
+    val httpRds = implicitly[HttpReads[HttpResponse]]
+
+    http.GET[HttpResponse](url)(httpRds, realHc) map {
+      res =>
+        res.status match {
+          case NO_CONTENT => Seq()
+          case _ => res.json.as[IncorpUpdatesResponse].items
+        }
     } recover {
       case ex: BadRequestException =>
         logError(ex, timepoint)
-        throw new SubmissionAPIFailure
+        throw new IncorpUpdateAPIFailure(ex)
       case ex: NotFoundException =>
         logError(ex, timepoint)
-        throw new SubmissionAPIFailure
+        throw new IncorpUpdateAPIFailure(ex)
       case ex: Upstream4xxResponse =>
         Logger.error("[IncorporationCheckAPIConnector] [incorpUpdates]" + ex.upstreamResponseCode + " " + ex.message)
-        throw new SubmissionAPIFailure
+        throw new IncorpUpdateAPIFailure(ex)
       case ex: Upstream5xxResponse =>
         Logger.error("[IncorporationCheckAPIConnector] [incorpUpdates]" + ex.upstreamResponseCode + " " + ex.message)
-        throw new SubmissionAPIFailure
+        throw new IncorpUpdateAPIFailure(ex)
       case ex: Exception =>
         Logger.error("[IncorporationCheckAPIConnector] [incorpUpdates]" + ex)
-        throw new SubmissionAPIFailure
+        throw new IncorpUpdateAPIFailure(ex)
     }
   }
 }

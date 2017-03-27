@@ -35,17 +35,6 @@ object IncorpUpdate {
     )
   )
 
-  implicit val incorpReads : Reads[IncorpUpdate] = (
-    ( __ \ "_id" ).read[String] and
-      ( __ \ "transaction_status" ).read[String] and
-      ( __ \ "company_number" ).readNullable[String] and
-      ( __ \ "incorporated_on" ).readNullable[DateTime] and
-      ( __ \ "timepoint" ).read[String] and
-      ( __ \ "transaction_status_description" ).readNullable[String]
-    )(IncorpUpdate.apply _)
-
-  //TODO check DB structure
-
   val mongoFormat = (
     ( __ \ "_id" ).format[String] and
       ( __ \ "transaction_status" ).format[String] and

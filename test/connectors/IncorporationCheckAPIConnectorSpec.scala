@@ -19,73 +19,85 @@ package connectors
 import java.util.UUID
 
 import Helpers.SCRSSpec
-import config.WSHttp
-import models.{IncorpUpdate, IncorpUpdatesResponse}
+import models.IncorpUpdate
 import org.joda.time.DateTime
-import org.mockito.{ArgumentCaptor, Matchers}
-import org.scalatest.mock.MockitoSugar
-import uk.gov.hmrc.play.http.ws.WSHttp
-import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 import org.mockito.Mockito._
+import org.mockito.{ArgumentCaptor, Matchers}
+import play.api.libs.json.Json
 import uk.gov.hmrc.play.http._
+import uk.gov.hmrc.play.http.ws.{WSHttp, WSProxy}
+import utils.{FeatureSwitch, SCRSFeatureSwitches}
 
 import scala.concurrent.Future
 
-// TODO - II-INCORP - Also needs (?might be better as?) an IT with wiremock
 class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
   val testProxyUrl = "testIIUrl"
   implicit val hc = HeaderCarrier()
 
   val mockWSHttp = mock[WSHttp]
+  val mockWSHttpProxy = mock[WSHttp with WSProxy]
 
   trait Setup {
     val connector = new IncorporationCheckAPIConnector {
-      val proxyUrl = testProxyUrl
-      val http = mockWSHttp
+      val cohoAPIStubUrl = "testIIUrl/internal/check-submission"
+      val cohoAPIUrl = "b"
+      val cohoApiAuthToken = "c"
+      val itemsToFetch = "1"
+      val httpNoProxy = mockWSHttp
+      val httpProxy = mockWSHttpProxy
+      val featureSwitch: SCRSFeatureSwitches = new SCRSFeatureSwitches {
+        override val KEY_TX_API = "x"
+        override val KEY_INCORP_UPDATE = "y"
+        override val transactionalAPI = FeatureSwitch(KEY_TX_API, false)
+        override val scheduler = FeatureSwitch(KEY_INCORP_UPDATE, false)
+      }
     }
   }
 
-  val validSubmissionResponse = IncorpUpdatesResponse(
-    Seq(
-      IncorpUpdate(
-        "transactionId",
-        "status",
-        Some("crn"),
-        Some(new DateTime(2016, 8, 10, 0, 0)),
-        "100000011")
-    ),
-    "testNextLink")
+  val validSubmissionResponseJson = Json.parse(
+    """{
+      |"items":[
+      | {
+      |   "company_number":"9999999999",
+      |   "transaction_status":"accepted",
+      |   "transaction_type":"incorporation",
+      |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
+      |   "transaction_id":"7894578956784",
+      |   "incorporated_on":"2016-08-10",
+      |   "timepoint":"123456789"
+      | }
+      |],
+      |"links":{
+      | "next":"https://ewf.companieshouse.gov.uk/submissions?timepoint=123456789"
+      |}
+      |}""".stripMargin)
 
-  "IncorporationCheckAPIConnector" should {
-    "use the correct http" in {
-      IncorporationCheckAPIConnector.http shouldBe WSHttp
-    }
-    "use the correct proxyUrl" in {
-      IncorporationCheckAPIConnector.proxyUrl shouldBe "http://localhost:9986"
-    }
-  }
+  val validSubmissionResponseItems = Seq(
+    IncorpUpdate(
+      "7894578956784",
+      "accepted",
+      Some("9999999999"),
+      Some(new DateTime(2016, 8, 10, 0, 0)),
+      "123456789")
+  )
 
-  "checkSubmission" should {
+  "checkForIncorpUpdate" should {
 
     val testTimepoint = UUID.randomUUID().toString
 
     "return a submission status response when no timepoint is provided" in new Setup {
-      val testTimepoint = UUID.randomUUID().toString
+      val url = s"$testProxyUrl/internal/check-submission?items_per_page=1"
 
-      when(mockWSHttp.GET[IncorpUpdatesResponse](Matchers.anyString())(Matchers.any(), Matchers.any()))
-        .thenReturn(Future.successful(validSubmissionResponse))
+      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      await(connector.checkSubmission()) shouldBe validSubmissionResponse
-    }
+      when(mockWSHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+        .thenReturn(Future.successful(HttpResponse(200, Some(validSubmissionResponseJson))))
 
-    "return a submission status response when a timepoint is provided" in new Setup {
-      val testTimepoint = UUID.randomUUID().toString
+      val result = await(connector.checkForIncorpUpdate())
+      result shouldBe validSubmissionResponseItems
 
-      when(mockWSHttp.GET[IncorpUpdatesResponse](Matchers.anyString())(Matchers.any(), Matchers.any()))
-        .thenReturn(Future.successful(validSubmissionResponse))
-
-      await(connector.checkSubmission(Some(testTimepoint))) shouldBe validSubmissionResponse
+      urlCaptor.getValue shouldBe url
     }
 
     "verify a timepoint is appended as a query string to the url when one is supplied" in new Setup {
@@ -93,23 +105,11 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockWSHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
-        .thenReturn(Future.successful(validSubmissionResponse))
+      when(mockWSHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+        .thenReturn(Future.successful(HttpResponse(200, Some(validSubmissionResponseJson))))
 
-      await(connector.checkSubmission(Some(testTimepoint)))
-
-      urlCaptor.getValue shouldBe url
-    }
-
-    "verify nothing is appended as a query string if a timepoint is not supplied" in new Setup {
-      val url = s"$testProxyUrl/internal/check-submission?items_per_page=1"
-
-      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
-
-      when(mockWSHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
-        .thenReturn(Future.successful(validSubmissionResponse))
-
-      await(connector.checkSubmission(None))
+      val result = await(connector.checkForIncorpUpdate(Some(testTimepoint)))
+      result shouldBe validSubmissionResponseItems
 
       urlCaptor.getValue shouldBe url
     }
@@ -122,7 +122,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       when(mockWSHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(new BadRequestException("400")))
 
-      intercept[SubmissionAPIFailure](await(connector.checkSubmission(None)))
+      intercept[IncorpUpdateAPIFailure](await(connector.checkForIncorpUpdate(None)))
 
       urlCaptor.getValue shouldBe url
     }
@@ -135,7 +135,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       when(mockWSHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(new NotFoundException("404")))
 
-      intercept[SubmissionAPIFailure](await(connector.checkSubmission(None)))
+      intercept[IncorpUpdateAPIFailure](await(connector.checkForIncorpUpdate(None)))
 
       urlCaptor.getValue shouldBe url
     }
@@ -148,7 +148,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       when(mockWSHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(Upstream4xxResponse("429", 429, 429)))
 
-      intercept[SubmissionAPIFailure](await(connector.checkSubmission(None)))
+      intercept[IncorpUpdateAPIFailure](await(connector.checkForIncorpUpdate(None)))
 
       urlCaptor.getValue shouldBe url
     }
@@ -161,7 +161,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       when(mockWSHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(Upstream5xxResponse("502", 502, 502)))
 
-      intercept[SubmissionAPIFailure](await(connector.checkSubmission(None)))
+      intercept[IncorpUpdateAPIFailure](await(connector.checkForIncorpUpdate(None)))
 
       urlCaptor.getValue shouldBe url
     }
@@ -174,7 +174,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       when(mockWSHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(new NoSuchElementException))
 
-      intercept[SubmissionAPIFailure](await(connector.checkSubmission(None)))
+      intercept[IncorpUpdateAPIFailure](await(connector.checkForIncorpUpdate(None)))
 
       urlCaptor.getValue shouldBe url
     }

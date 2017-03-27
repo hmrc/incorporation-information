@@ -18,12 +18,29 @@ package helpers
 import org.scalatest._
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatestplus.play.OneServerPerSuite
+import play.api.Application
+import play.api.libs.ws.WSClient
 import uk.gov.hmrc.play.test.UnitSpec
+import utils.{FeatureSwitch, SCRSFeatureSwitches}
 
 trait IntegrationSpecBase extends UnitSpec
   with GivenWhenThen
   with OneServerPerSuite with ScalaFutures with IntegrationPatience with Matchers
   with WiremockHelper with BeforeAndAfterEach with BeforeAndAfterAll {
+
+  def ws(implicit app: Application) = app.injector.instanceOf[WSClient]
+
+  def setupFeatures(submissionCheck: Boolean = false, transactionalAPI: Boolean = false) = {
+    def enableFeature(fs: FeatureSwitch, enabled: Boolean) = {
+      enabled match {
+        case true => FeatureSwitch.enable(fs)
+        case _ => FeatureSwitch.disable(fs)
+      }
+    }
+
+    enableFeature(SCRSFeatureSwitches.scheduler, submissionCheck)
+    enableFeature(SCRSFeatureSwitches.transactionalAPI, transactionalAPI)
+  }
 
   override def beforeEach() = {
     resetWiremock()
