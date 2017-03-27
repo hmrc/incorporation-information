@@ -22,6 +22,7 @@ import models.Subscription
 import org.mockito.Mockito._
 import repositories.{SubscriptionsRepository, UpsertResult}
 import reactivemongo.api.commands.WriteError
+import repositories.{SubscriptionsRepository, UpsertResult}
 import services.SubscriptionService
 
 import scala.concurrent.ExecutionContext.Implicits.global

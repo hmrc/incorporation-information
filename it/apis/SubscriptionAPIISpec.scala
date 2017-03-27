@@ -20,9 +20,8 @@ import helpers.IntegrationSpecBase
 import models.Subscription
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
-import repositories.SubscriptionsMongo
 import play.api.libs.json.Json
-import play.api.libs.ws.WS
+import repositories.SubscriptionsMongo
 
 import scala.concurrent.ExecutionContext.Implicits.global
 

@@ -18,8 +18,7 @@ package repositories
 
 import javax.inject.Singleton
 
-import models.Subscription
-import models.IncorpUpdate
+import models.{IncorpUpdate, Subscription}
 import play.modules.reactivemongo.MongoDbConnection
 import reactivemongo.api.DB
 import reactivemongo.api.commands._

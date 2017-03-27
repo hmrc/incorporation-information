@@ -16,7 +16,6 @@
 
 package jobs
 
-
 import javax.inject.{Inject, Singleton}
 
 import org.joda.time.Duration

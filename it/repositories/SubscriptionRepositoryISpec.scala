@@ -17,9 +17,8 @@
 package repositories
 
 import helpers.SCRSMongoSpec
-import models.Subscription
-
 import repositories.{SubscriptionsMongoRepository, SuccessfulSub, UpsertResult}
+import models.Subscription
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import play.modules.reactivemongo.MongoDbConnection
 
