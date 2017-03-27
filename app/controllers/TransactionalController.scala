@@ -18,8 +18,6 @@ package controllers
 
 import javax.inject.Inject
 
-import com.google.inject.ImplementedBy
-import connectors.{FailedTransactionalAPIResponse, SuccessfulTransactionalAPIResponse}
 import play.api.mvc.Action
 import services.TransactionalService
 import uk.gov.hmrc.play.microservice.controller.BaseController
@@ -28,7 +26,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class TransactionalControllerImpl @Inject()(val service: TransactionalService) extends TransactionalController
 
-@ImplementedBy(classOf[TransactionalControllerImpl])
 trait TransactionalController extends BaseController {
 
   protected val service: TransactionalService

@@ -16,21 +16,18 @@
 
 package controllers
 
-import com.google.inject.ImplementedBy
-import mongo.SuccessfulSub
 import play.api.mvc.Action
+import repositories.SuccessfulSub
 import services.SubscriptionService
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
 
-class SubscriptionControllerImpl
-  extends SubscriptionController {
+class SubscriptionControllerImpl extends SubscriptionController {
   override protected val service = SubscriptionService
 }
 
-@ImplementedBy(classOf[SubscriptionControllerImpl])
 trait SubscriptionController extends BaseController {
 
   protected val service: SubscriptionService
@@ -42,7 +39,4 @@ trait SubscriptionController extends BaseController {
         case _ => InternalServerError
       }
   }
-
-
-
 }

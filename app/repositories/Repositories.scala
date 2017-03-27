@@ -13,30 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package itutil
 
-import org.scalatest._
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatestplus.play.OneServerPerSuite
-import uk.gov.hmrc.play.test.UnitSpec
+package repositories
 
-trait IntegrationSpecBase extends UnitSpec
-  with OneServerPerSuite with ScalaFutures with IntegrationPatience with Matchers
-  with WiremockHelper with BeforeAndAfterEach with BeforeAndAfterAll {
+import play.modules.reactivemongo.MongoDbConnection
+import uk.gov.hmrc.lock.LockRepository
 
-  override def beforeEach() = {
-    resetWiremock()
-  }
+/**
+  * Created by jackie on 20/03/17.
+  */
+object Repositories {
 
-  override def beforeAll() = {
-    super.beforeAll()
-    startWiremock()
-  }
+  private implicit val mongo = new MongoDbConnection {}.db
 
-  override def afterAll() = {
-    stopWiremock()
-    super.afterAll()
-  }
+  // TODO - DI
+  lazy val msRepository = new SubscriptionsMongoRepository(mongo)
+
+  lazy val lockRepository = new LockRepository()
+
 }
-
-

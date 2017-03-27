@@ -42,14 +42,9 @@ class TransactionalAPIISpec extends IntegrationSpecBase {
                 | }
                 |}""".stripMargin
 
+    // TODO - re-check against expecations
     "return a 200 and Json from the companies house API stub" in {
-      stubFor(get(urlMatching(destinationUrl))
-        .willReturn(
-          aResponse().
-            withStatus(200).
-            withBody(body)
-        )
-      )
+      stubGet(destinationUrl, 200, body)
 
       val clientUrl = s"/incorporation-information/$transactionId/company-profile"
 
@@ -59,12 +54,7 @@ class TransactionalAPIISpec extends IntegrationSpecBase {
     }
 
     "return a 404 if a Json body cannot be returned for the given transaction Id" in {
-      stubFor(get(urlMatching(destinationUrl))
-        .willReturn(
-          aResponse().
-            withStatus(404)
-        )
-      )
+      stubGet(destinationUrl, 404, "")
 
       val clientUrl = s"/incorporation-information/$transactionId/company-profile"
 

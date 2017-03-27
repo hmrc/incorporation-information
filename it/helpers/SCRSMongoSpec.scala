@@ -23,7 +23,7 @@ import uk.gov.hmrc.mongo.MongoSpecSupport
 import uk.gov.hmrc.play.test.{WithFakeApplication, UnitSpec}
 import play.api.inject.{DefaultApplicationLifecycle, ApplicationLifecycle}
 
-class SCRSMongoSpec extends UnitSpec with MongoSpecSupport with BeforeAndAfterEach with ScalaFutures with Eventually with WithFakeApplication {
+trait SCRSMongoSpec extends UnitSpec with MongoSpecSupport with BeforeAndAfterEach with ScalaFutures with Eventually with WithFakeApplication {
 
   lazy val applicationLifeCycle = new DefaultApplicationLifecycle
   val reactiveMongoComponent = new ReactiveMongoComponentImpl(fakeApplication, applicationLifeCycle)

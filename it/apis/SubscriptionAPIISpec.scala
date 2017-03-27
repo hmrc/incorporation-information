@@ -16,28 +16,23 @@
 
 package apis
 
-import itutil.{IntegrationSpecBase, WiremockHelper}
-import model.Subscription
-import mongo.SubscriptionsMongo
-import play.api.Play
+import helpers.IntegrationSpecBase
+import models.Subscription
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.ws.WS
+import repositories.SubscriptionsMongo
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class SubscriptionAPIISpec extends
-  IntegrationSpecBase {
+class SubscriptionAPIISpec extends IntegrationSpecBase {
 
-  val mockHost = WiremockHelper.wiremockHost
-  val mockPort = WiremockHelper.wiremockPort
-  val mockUrl = s"http://$mockHost:$mockPort"
+  val mockUrl = s"http://$wiremockHost:$wiremockPort"
 
   val additionalConfiguration = Map(
-    "auditing.consumer.baseUri.host" -> s"$mockHost",
-    "auditing.consumer.baseUri.port" -> s"$mockPort",
-    "Test.auditing.consumer.baseUri.host" -> s"$mockHost",
-    "Test.auditing.consumer.baseUri.port" -> s"$mockPort"
+    "auditing.consumer.baseUri.host" -> s"$wiremockHost",
+    "auditing.consumer.baseUri.port" -> s"$wiremockPort",
+    "Test.auditing.consumer.baseUri.host" -> s"$wiremockHost",
+    "Test.auditing.consumer.baseUri.port" -> s"$wiremockPort"
   )
 
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
@@ -45,7 +40,7 @@ class SubscriptionAPIISpec extends
     .build
 
   private def client(path: String) =
-    WS.url(s"http://localhost:$port/incorporation-information/$path").
+    ws.url(s"http://localhost:$port/incorporation-information/$path").
       withFollowRedirects(false)
 
 
@@ -96,6 +91,5 @@ class SubscriptionAPIISpec extends
 
     }
   }
-
 }
 

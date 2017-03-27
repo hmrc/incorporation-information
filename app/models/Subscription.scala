@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package model
+package models
 
 import play.api.libs.json.Json
-
 
 case class Subscription(
     transactionId : String,

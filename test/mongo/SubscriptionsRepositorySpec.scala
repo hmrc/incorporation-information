@@ -18,12 +18,12 @@ package mongo
 
 import Helpers.SCRSSpec
 import controllers.SubscriptionController
-import model.Subscription
+import models.Subscription
 import org.mockito.Mockito._
+import repositories.{FailedSub, SubscriptionsRepository, SuccessfulSub}
 import services.SubscriptionService
 
 import scala.concurrent.ExecutionContext.Implicits.global
-
 import scala.concurrent.Future
 
 /**

@@ -23,10 +23,15 @@ import uk.gov.hmrc.play.config.inject.ServicesConfig
 
 class MicroserviceConfigImpl @Inject()(val config: ServicesConfig) extends MicroserviceConfig
 
-@ImplementedBy(classOf[MicroserviceConfigImpl])
 trait MicroserviceConfig {
   protected val config: ServicesConfig
 
   lazy val incorpFrontendStubUrl = config.baseUrl("incorp-frontend-stubs")
   lazy val companiesHouseUrl = config.baseUrl("companies-house")
+
+  lazy val incorpUpdateStubUrl = config.getConfString("incorp-update-api.stub-url", throw new Exception("incorp-update-api.stub-url not found"))
+  lazy val incorpUpdateCohoAPIUrl = config.getConfString("incorp-update-api.url", throw new Exception("incorp-update-api.url not found"))
+  lazy val incorpUpdateCohoApiAuthToken = config.getConfString("incorp-update-api.token", throw new Exception("incorp-update-api.token not found"))
+
+  lazy val incorpUpdateItemsToFetch = config.getConfString("incorp-update-api.itemsToFetch", throw new Exception("incorp-update-api.itemsToFetch not found"))
 }

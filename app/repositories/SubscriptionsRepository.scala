@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-package mongo
+package repositories
 
-import javax.inject.{Inject, Singleton}
+import javax.inject.Singleton
 
-import model.Subscription
-import play.modules.reactivemongo.{MongoDbConnection, ReactiveMongoComponent}
+import models.Subscription
+import play.modules.reactivemongo.MongoDbConnection
 import reactivemongo.api.DB
 import reactivemongo.api.commands._
 import reactivemongo.api.indexes.{Index, IndexType}
 import reactivemongo.bson.{BSONDocument, BSONObjectID}
-import uk.gov.hmrc.mongo.{ReactiveRepository, Repository}
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
+import uk.gov.hmrc.mongo.{ReactiveRepository, Repository}
 
 import scala.collection.Seq
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 
 //object SubscriptionsRepository extends MongoDbConnection {
@@ -87,9 +87,9 @@ class SubscriptionsMongoRepository(mongo: () => DB)
     collection.find(query).one[Subscription]
   }
 
+
   def wipeTestData(): Future[WriteResult] = {
     removeAll(WriteConcern.Acknowledged)
   }
 
 }
-

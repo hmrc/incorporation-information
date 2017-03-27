@@ -78,17 +78,20 @@ object FeatureSwitch {
 }
 
 object SCRSFeatureSwitches extends SCRSFeatureSwitches {
-  val TransactionalAPI = "transactionalAPI"
+  val KEY_TX_API = "transactionalAPI"
+  val KEY_INCORP_UPDATE = "incorpUpdate"
 }
 
 trait SCRSFeatureSwitches {
 
-  val TransactionalAPI: String
+  val KEY_TX_API: String
+  val KEY_INCORP_UPDATE: String
 
-  def transactionalAPI = FeatureSwitch.getProperty(TransactionalAPI)
+  def transactionalAPI = FeatureSwitch.getProperty(KEY_TX_API)
+  def scheduler = FeatureSwitch.getProperty(KEY_INCORP_UPDATE)
 
   def apply(name: String): Option[FeatureSwitch] = name match {
-    case TransactionalAPI => Some(transactionalAPI)
+    case KEY_TX_API => Some(transactionalAPI)
     case _ => None
   }
 }

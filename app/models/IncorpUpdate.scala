@@ -29,13 +29,13 @@ case class IncorpUpdate(transactionId : String,
                         statusDescription : Option[String] = None)
 
 object IncorpUpdate {
-//  private val dateReads = Reads[DateTime]( js =>
-//    js.validate[String].map[DateTime](
-//      DateTime.parse(_, DateTimeFormat.forPattern("yyyy-MM-dd"))
-//    )
-//  )
+  private val dateReads = Reads[DateTime]( js =>
+    js.validate[String].map[DateTime](
+      DateTime.parse(_, DateTimeFormat.forPattern("yyyy-MM-dd"))
+    )
+  )
 
-  val repoFormat = (
+  val mongoFormat = (
     ( __ \ "_id" ).format[String] and
       ( __ \ "transaction_status" ).format[String] and
       ( __ \ "company_number" ).formatNullable[String] and
@@ -43,6 +43,7 @@ object IncorpUpdate {
       ( __ \ "timepoint" ).format[String] and
       ( __ \ "transaction_status_description" ).formatNullable[String]
     )(IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
+
 
   val apiFormat = (
     ( __ \ "transaction_id" ).format[String] and

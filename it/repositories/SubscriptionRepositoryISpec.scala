@@ -16,19 +16,15 @@
 
 package repositories
 
-import model.Subscription
-import mongo.{SubscriptionsMongoRepository, SuccessfulSub}
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
+import helpers.SCRSMongoSpec
+import models.Subscription
 import play.modules.reactivemongo.MongoDbConnection
-import uk.gov.hmrc.mongo.MongoSpecSupport
-import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class SubscriptionRepositoryISpec extends UnitSpec with MongoSpecSupport with BeforeAndAfterEach with BeforeAndAfterAll with WithFakeApplication {
+class SubscriptionRepositoryISpec extends SCRSMongoSpec {
 
   val testValid = construct()
-
 
   def construct() =
     Subscription(
@@ -37,8 +33,7 @@ class SubscriptionRepositoryISpec extends UnitSpec with MongoSpecSupport with Be
       "CT"
     )
 
-
-  class Setup extends MongoDbConnection{
+  class Setup extends MongoDbConnection {
     val repository = new SubscriptionsMongoRepository(db)
     await(repository.drop)
     await(repository.ensureIndexes)

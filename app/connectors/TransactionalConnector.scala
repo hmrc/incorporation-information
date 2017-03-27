@@ -18,19 +18,20 @@ package connectors
 
 import javax.inject.Inject
 
-import com.google.inject.ImplementedBy
 import config.{MicroserviceConfig, WSHttp, WSHttpProxy}
 import play.api.Logger
 import play.api.libs.json.JsValue
-import uk.gov.hmrc.play.http.{HttpException, NotFoundException, HeaderCarrier, HttpGet}
 import uk.gov.hmrc.play.http.ws.WSProxy
+import uk.gov.hmrc.play.http.{HeaderCarrier, HttpException, HttpGet, NotFoundException}
 import utils.SCRSFeatureSwitches
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 sealed trait TransactionalAPIResponse
+
 case class SuccessfulTransactionalAPIResponse(js: JsValue) extends TransactionalAPIResponse
+
 case object FailedTransactionalAPIResponse extends TransactionalAPIResponse
 
 class TransactionalConnectorImpl @Inject()(config: MicroserviceConfig) extends TransactionalConnector {
@@ -41,11 +42,12 @@ class TransactionalConnectorImpl @Inject()(config: MicroserviceConfig) extends T
   lazy val httpNoProxy = WSHttp
 }
 
-@ImplementedBy(classOf[TransactionalConnectorImpl])
 trait TransactionalConnector {
 
   protected def httpProxy: HttpGet with WSProxy
+
   protected def httpNoProxy: HttpGet
+
   protected val featureSwitch: SCRSFeatureSwitches
   protected val stubUrl: String
   protected val cohoUrl: String
