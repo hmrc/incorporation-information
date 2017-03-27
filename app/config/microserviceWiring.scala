@@ -37,8 +37,8 @@ object MicroserviceAuthConnector extends AuthConnector with ServicesConfig {
 }
 
 object WSHttpProxy extends WSHttp with WSProxy with RunMode with HttpAuditing with ServicesConfig {
-  override val appName = getString("appName")
-  override val wsProxyServer = WSProxyConfiguration(s"proxy")
-  override val hooks = Seq(AuditingHook)
-  override val auditConnector = MicroserviceAuditConnector
+  override lazy val appName = getString("appName")
+  override lazy val wsProxyServer = WSProxyConfiguration(s"proxy")
+  override lazy val hooks = Seq(AuditingHook)
+  override lazy val auditConnector = MicroserviceAuditConnector
 }

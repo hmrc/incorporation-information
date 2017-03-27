@@ -52,7 +52,7 @@ object IncorpUpdatesResponse {
 }
 
 @Singleton
-class IncorporationCheckAPIConnectorImpl @Inject()(config: MicroserviceConfig) extends IncorporationCheckAPIConnector with ServicesConfig {
+class IncorporationCheckAPIConnectorImpl @Inject()(config: MicroserviceConfig) extends IncorporationCheckAPIConnector {
   val cohoAPIStubUrl = config.incorpUpdateStubUrl
   val cohoAPIUrl = config.incorpUpdateCohoAPIUrl
   val cohoApiAuthToken = config.incorpUpdateCohoApiAuthToken
