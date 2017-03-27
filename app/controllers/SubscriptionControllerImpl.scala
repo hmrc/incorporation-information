@@ -38,23 +38,17 @@ trait SubscriptionController extends BaseController {
   def checkSubscription(transactionId: String, regime: String, subscriber: String) = Action.async(parse.json) {
     implicit request =>
       withJsonBody[JsObject] { js =>
-        val callbackUrl = (js \ "callbackUrl").as[String]
+        val callbackUrl = (js \ "SCRSIncorpSubscription" \ "callbackUrl").as[String]
         service.checkForSubscription(transactionId, regime, subscriber, callbackUrl).map {
-          case IncorpExists(update) => Ok(Json.toJson(update)(IncorpUpdate.writes(callbackUrl)))
-          case SuccessfulSub => Accepted("You have successfully added a subscription")
-          case FailedSub => InternalServerError
-            val callbackUrl = (js \ "SCRSIncorpSubscription" \ "callbackUrl").as[String]
-            service.checkForSubscription(transactionId, regime, subscriber, callbackUrl).map {
-              case IncorpExists(update) => {
-                Ok(Json.toJson(update)(IncorpUpdate.writes(callbackUrl, transactionId)))
-              }
-              case SuccessfulSub => {
-                Accepted("You have successfully added a subscription")
-              }
-              case FailedSub => {
-                InternalServerError
-              }
-            }
+          case IncorpExists(update) => {
+            Ok(Json.toJson(update)(IncorpUpdate.writes(callbackUrl, transactionId)))
+          }
+          case SuccessfulSub => {
+            Accepted("You have successfully added a subscription")
+          }
+          case FailedSub => {
+            InternalServerError
+          }
         }
       }
 

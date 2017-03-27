@@ -74,11 +74,3 @@ trait IncorpUpdatesJob extends ExclusiveScheduledJob with JobConfig {
   //$COVERAGE-ON$
 }
 
-//$COVERAGE-OFF$
-object IncorpUpdatesJob extends IncorpUpdatesJob {
-  val name = "incorp-updates-job"
-  lazy val incorpUpdateService = IncorpUpdateService
-
-  //$COVERAGE-ON$
-}
-//$COVERAGE-ON$

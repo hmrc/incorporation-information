@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 HM Revenue & Customs
+ * Copyright 2017 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -136,9 +136,9 @@ class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
 
     "find a document" in new Setup {
       count shouldBe 0
-      await(repository.insert(incorpUpdate))
+      await(incorpRepo.storeIncorpUpdates(Seq(incorpUpdate)))
 
-      val res = repository.getIncorpUpdate(transactionId)
+      val res = incorpRepo.getIncorpUpdate(transactionId)
       await(res) shouldBe Some(incorpUpdate)
     }
   }

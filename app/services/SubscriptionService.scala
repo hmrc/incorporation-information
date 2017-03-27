@@ -40,11 +40,6 @@ trait SubscriptionService {
 
 
   def checkForSubscription(transactionId: String, regime: String, subscriber: String, callBackUrl: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
-    checkForIncorpUpdate(transactionId) flatMap {
-      case Some(incorpUpdate) => {
-        Future.successful(IncorpExists(incorpUpdate))}
-      case None => {
-        addSubscription(transactionId, regime, subscriber, callBackUrl)
      checkForIncorpUpdate(transactionId) flatMap {
       case Some(incorpUpdate) => {
          Future.successful(IncorpExists(incorpUpdate))}
@@ -62,7 +57,6 @@ trait SubscriptionService {
         Logger.error(s"[SubscriptionService] [addSubscription] Encountered when attempting to add a subscription - ${errs.toString()}")
         FailedSub
     }
-    subRepo.insertSub(sub)
   }
 
   private[services] def checkForIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]] = {
