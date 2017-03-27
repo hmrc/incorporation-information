@@ -16,7 +16,8 @@
 
 package controllers
 
-import models.{IncorpUpdate, Subscription}
+
+import models.IncorpUpdate
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.Action
 import repositories.{FailedSub, SuccessfulSub, IncorpExists}
@@ -24,7 +25,6 @@ import services.SubscriptionService
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 
 
 class SubscriptionControllerImpl extends SubscriptionController {
