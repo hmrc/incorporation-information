@@ -18,6 +18,7 @@ package services
 
 import models.{IncorpUpdate, Subscription}
 import play.api.Logger
+import reactivemongo.bson.BSONDocument
 import repositories._
 import uk.gov.hmrc.play.http.HeaderCarrier
 
@@ -49,6 +50,11 @@ trait SubscriptionService {
     }
   }
 
+  def getSubscription(transactionId: String, regime: String, Subscriber: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
+    val query =
+    subRepo.find()
+  }
+
   def addSubscription(transactionId: String, regime: String, subscriber: String, callbackUrl: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
     val sub = Subscription(transactionId, regime, subscriber, callbackUrl)
     subRepo.insertSub(sub) map {
@@ -61,6 +67,14 @@ trait SubscriptionService {
 
   private[services] def checkForIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]] = {
     incorpRepo.getIncorpUpdate(transactionId)
+  }
+
+  def deleteSubscription(transactionId: String, regime: String, subscriber: String): Future[SubscriptionStatus] = {
+    subRepo.deleteSub(transactionId, regime, subscriber) map {
+      case DeletedSub => Logger.info(s"[SubscriptionService] [deleteSubscription] Subscription with transactionId: $transactionId, and regime: $regime, and subscriber: $subscriber")
+        DeletedSub
+      case _ => FailedSub
+    }
   }
 }
 

@@ -19,6 +19,7 @@ package repositories
 import javax.inject.Singleton
 
 import models.{IncorpUpdate, Subscription}
+import play.api.Logger
 import play.modules.reactivemongo.MongoDbConnection
 import reactivemongo.api.DB
 import reactivemongo.api.commands._
@@ -46,6 +47,8 @@ class SubscriptionsMongo extends MongoDbConnection with ReactiveMongoFormats {
 trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
   def insertSub(sub: Subscription) : Future[UpsertResult]
 
+  def deleteSub(transactionId: String, regime: String, subscriber: String): Future[SubscriptionStatus]
+
   def getSubscription(transactionId: String) : Future[Option[Subscription]]
 
   def wipeTestData() : Future[WriteResult]
@@ -55,6 +58,7 @@ trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
 sealed trait SubscriptionStatus
 case object SuccessfulSub extends SubscriptionStatus
 case object FailedSub extends SubscriptionStatus
+case object DeletedSub extends SubscriptionStatus
 case class IncorpExists(update: IncorpUpdate) extends SubscriptionStatus
 
 
@@ -94,10 +98,24 @@ class SubscriptionsMongoRepository(mongo: () => DB)
     }
   }
 
-  def getSubscription(transactionId: String): Future[Option[Subscription]] = {
-    val query = BSONDocument("transactionId" -> transactionId)
+  def deleteSub(transactionId: String, regime: String, subscriber: String): Future[SubscriptionStatus] = {
+    val selector = BSONDocument("transactionId" -> transactionId, "regime" -> regime, "subscriber" -> subscriber)
+    collection.remove(selector) map {
+      case DefaultWriteResult(true, 1, _, _, _, _) => DeletedSub
+      case DefaultWriteResult(true, 0, _, _, _, _) => {
+        Logger.warn(s"[SubscriptionsRepository] [deleteSub] Didn't delete the subscription with TransId: $transactionId, and regime: $regime, and subscriber: $subscriber")
+        FailedSub
+      }
+    }
+  }
+
+
+  def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] = {
+    val query = BSONDocument("transactionId" -> transactionId, "regime" -> regime, "subscriber" -> subscriber)
     collection.find(query).one[Subscription]
   }
+
+
 
 
   def wipeTestData(): Future[WriteResult] = {

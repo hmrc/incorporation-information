@@ -53,4 +53,15 @@ trait SubscriptionController extends BaseController {
       }
 
   }
+
+
+  def removeSubscription(transactionId: String, regime: String, subscriber: String) = Action {
+    implicit request =>
+        service.checkForSubscription(transactionId, regime, subscriber).map {
+          res => match {
+            case xists => Ok(service.deleteSubscription(transactionId, regime, subscriber))
+            case _ => Accepted("The subscription does not exist")
+          }
+        }
+  }
 }
