@@ -33,6 +33,4 @@ object Repositories {
 
   lazy val incorpUpdateRepository = new IncorpUpdateMongoRepository(mongo, IncorpUpdate.mongoFormat)
 
-  //lazy val timepointRepository = new TimepointMongoRepository
-
 }
