@@ -21,6 +21,8 @@ import models.Subscription
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import repositories.SubscriptionsMongo
+import play.api.libs.json.Json
+import play.api.libs.ws.WS
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -61,8 +63,28 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
   val transactionId = "123abc"
   val regime = "CT100"
   val subscriber = "abc123"
-  val url = "www.url.com"
+  val url = "www.test.com"
   val sub = Subscription(transactionId, regime, subscriber, url)
+
+  val json = Json.parse(
+    """
+      |{
+      |  "SCRSIncorpSubscription": {
+      |    "callbackUrl": "www.test.com"
+      |  }
+      |}
+    """.stripMargin
+  )
+
+  val jsonUpdate = Json.parse(
+    """
+      |{
+      |  "SCRSIncorpSubscription": {
+      |    "callbackUrl": "www.testUpdate.com"
+      |  }
+      |}
+    """.stripMargin
+  )
 
   "setupSubscription" should {
 
@@ -76,21 +98,22 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
 
       setupSimpleAuthMocks()
 
-      val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").post("").futureValue
+      val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").post(json).futureValue
       response.status shouldBe 202
 
     }
 
-    "return a 500 HTTP response" in new Setup {
+    "return a 202 HTTP response when an existing subscription is updated" in new Setup {
       setupSimpleAuthMocks()
 
       await(repository.insertSub(sub))
 
-      val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").post("").futureValue
-      response.status shouldBe 500
-      response.body should include("E11000 duplicate key error")
+      val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").post(jsonUpdate).futureValue
+      response.status shouldBe 202
 
     }
+
+
   }
 }
 

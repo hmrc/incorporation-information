@@ -71,19 +71,27 @@ class SubscriptionsMongoRepository(mongo: () => DB)
     )
   )
 
-  def insertSub(sub: Subscription) : Future[SubscriptionStatus] = {
+  def insertSub(sub: Subscription) : Future[UpsertResult] = {
 
     val selector = BSONDocument("transactionId" -> sub.transactionId, "regime" -> sub.regime, "subscriber" -> sub.subscriber)
 
     collection.update(selector, sub, upsert = true) map {
       res =>
-        res.n match {
-          case 1 => SuccessfulSub
-          case _ => {
-            logger.error("[MongoSubscriptionsRepository] [insertSub] the subscription was not inserted")
-            FailedSub
-          }
-        }
+
+        UpsertResult(res.nModified, res.upserted.size, res.writeErrors)
+//
+//        res.n match {
+//          case 1 => {
+//            val a = res.upserted
+//            val b = res.nModified
+//            logger.info(s"[MongoSubscriptionsRepository] [insertSub] $a was upserted and $b was updated")
+//            SuccessfulSub
+//          }
+//          case _ => {
+//            logger.error("[MongoSubscriptionsRepository] [insertSub] the subscription was not inserted")
+//            FailedSub
+//          }
+//        }
     }
   }
 
@@ -98,3 +106,5 @@ class SubscriptionsMongoRepository(mongo: () => DB)
   }
 
 }
+
+case class UpsertResult(modified: Int, inserted: Int, errors: Seq[WriteError])

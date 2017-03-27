@@ -72,7 +72,14 @@ trait IncorpUpdatesJob extends ExclusiveScheduledJob with JobConfig {
       case false => Future.successful(Result(s"Feature is turned off"))
     }
   }
-
   //$COVERAGE-ON$
 }
 
+//$COVERAGE-OFF$
+object IncorpUpdatesJob extends IncorpUpdatesJob {
+  val name = "incorp-updates-job"
+  lazy val incorpUpdateService = IncorpUpdateService
+
+  //$COVERAGE-ON$
+}
+//$COVERAGE-ON$

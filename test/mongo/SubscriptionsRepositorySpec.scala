@@ -20,7 +20,8 @@ import Helpers.SCRSSpec
 import controllers.SubscriptionController
 import models.Subscription
 import org.mockito.Mockito._
-import repositories.{FailedSub, SubscriptionsRepository, SuccessfulSub}
+import repositories.{SubscriptionsRepository, UpsertResult}
+import reactivemongo.api.commands.WriteError
 import services.SubscriptionService
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -42,8 +43,8 @@ class SubscriptionsRepositorySpec extends SCRSSpec {
   val regime = "CT"
   val subscriber = "test"
   val sub = Subscription("transID", "CT", "test", "url")
-  val success = SuccessfulSub
-  val failed = FailedSub
+  val success = UpsertResult(1,0,Seq())
+  val failed = UpsertResult(0,0,Seq(WriteError(0, 11000, "Error the subscription has not been saved")))
 
   "insertSub" should {
     "return a SuccessfulSub when a subscription has been successfully inserted" in new Setup {

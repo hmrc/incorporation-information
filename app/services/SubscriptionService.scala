@@ -20,6 +20,7 @@ import models.Subscription
 import repositories._
 import models.IncorpUpdate
 import play.api.Logger
+import repositories.IncorpUpdateRepository
 import uk.gov.hmrc.play.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext.Implicits.global

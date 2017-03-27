@@ -1,5 +1,5 @@
 /*
-* Copyright 2016 HM Revenue & Customs
+* Copyright 2017 HM Revenue & Customs
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -18,6 +18,9 @@ package repositories
 
 import helpers.SCRSMongoSpec
 import models.Subscription
+
+import repositories.{SubscriptionsMongoRepository, SuccessfulSub, UpsertResult}
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import play.modules.reactivemongo.MongoDbConnection
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -34,11 +37,25 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
       "url"
     )
 
+  def sub(num: Int) = (1 to num).map(n => Subscription(
+    s"transId$n",
+    s"regime$n",
+    s"sub$n",
+    s"url$n"
+  ))
+
   def sub() = Subscription(
     "transId1",
     "test",
     "CT",
     "url"
+  )
+
+  def subUpdate() = Subscription(
+    "transId1",
+    "test",
+    "CT",
+    "newUrl"
   )
 
 
@@ -69,9 +86,11 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
 
   "insertSub" should {
 
-    "return a WriteResult" in new Setup {
+    "return an Upsert Result" in new Setup {
       val result = await(repository.insertSub(testValid))
-      result shouldBe SuccessfulSub
+      val expected = UpsertResult(0,1,Seq())
+      result shouldBe expected
+
     }
 
     "update an existing sub that matches the selector" in new Setup {
@@ -80,7 +99,17 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
 
       val result = await(repository.insertSub(sub))
       count shouldBe 1
-      result shouldBe SuccessfulSub
+      result shouldBe UpsertResult(1,0,Seq())
+    }
+
+
+    "update the callback url when an already existing Subscription is updated with a new call back url" in new Setup {
+      val firstResponse = await(repository.insertSub(sub))
+      val secondResponse = await(repository.insertSub(subUpdate()))
+
+      firstResponse shouldBe UpsertResult(0,1,Seq())
+      secondResponse shouldBe UpsertResult(1,0,Seq())
+
     }
 
   }
