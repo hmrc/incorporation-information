@@ -20,7 +20,7 @@ package controllers
 import models.IncorpUpdate
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.Action
-import repositories.{FailedSub, SuccessfulSub, IncorpExists}
+import repositories.{DeletedSub, FailedSub, IncorpExists, SuccessfulSub}
 import services.SubscriptionService
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
@@ -55,12 +55,13 @@ trait SubscriptionController extends BaseController {
   }
 
 
-  def removeSubscription(transactionId: String, regime: String, subscriber: String) = Action {
+  def removeSubscription(transactionId: String, regime: String, subscriber: String) = Action.async {
     implicit request =>
-        service.checkForSubscription(transactionId, regime, subscriber).map {
-          res => match {
-            case xists => Ok(service.deleteSubscription(transactionId, regime, subscriber))
-            case _ => Accepted("The subscription does not exist")
+        service.deleteSubscription(transactionId, regime, subscriber).map {
+           {
+            case DeletedSub => Ok("subscription has been deleted")
+            case FailedSub => Accepted("The subscription does not exist")
+            case _ => InternalServerError
           }
         }
   }

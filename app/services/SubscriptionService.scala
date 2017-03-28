@@ -49,11 +49,11 @@ trait SubscriptionService {
       }
     }
   }
-
-  def getSubscription(transactionId: String, regime: String, Subscriber: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
-    val query =
-    subRepo.find()
-  }
+// DG
+//  def getSubscription(transactionId: String, regime: String, Subscriber: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
+//    val query =
+//    subRepo.find()
+//  }
 
   def addSubscription(transactionId: String, regime: String, subscriber: String, callbackUrl: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
     val sub = Subscription(transactionId, regime, subscriber, callbackUrl)

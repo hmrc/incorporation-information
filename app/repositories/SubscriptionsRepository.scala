@@ -49,7 +49,7 @@ trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
 
   def deleteSub(transactionId: String, regime: String, subscriber: String): Future[SubscriptionStatus]
 
-  def getSubscription(transactionId: String) : Future[Option[Subscription]]
+//  def getSubscription(transactionId: String) : Future[Option[Subscription]]  DG
 
   def wipeTestData() : Future[WriteResult]
 }

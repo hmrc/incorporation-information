@@ -4,6 +4,7 @@ GET        /:transactionId/company-profile                             @controll
 GET        /:transactionId/officer-list                                @controllers.TransactionalController.fetchOfficerList(transactionId)
 
 POST       /subscribe/:transId/regime/:regime/subscriber/:sub          @controllers.SubscriptionController.checkSubscription(transId, regime, sub)
+POST       /unsubscribe/:transId/regime/:regime/subscriber/:sub        @controllers.SubscriptionController.removeSubscription(transId, regime, sub)
 
 
 

@@ -48,6 +48,13 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
     "url"
   )
 
+  def secondSub() = Subscription(
+    "transId1",
+    "test",
+    "PAYE",
+    "url"
+  )
+
   def subUpdate() = Subscription(
     "transId1",
     "test",
@@ -76,7 +83,7 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
       await(repository.count) shouldBe 0
       await(repository.insertSub(testValid))
       await(repository.count) shouldBe 1
-      val result = await(repository.getSubscription("transId1"))
+      val result = await(repository.getSubscription("transId1","test","CT"))
       result.head.subscriber shouldBe "CT"
     }
   }
@@ -110,6 +117,22 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
     }
 
   }
+
+    "deletesub" should {
+      "only delete a single submission" in new Setup{
+        await(repository.count) shouldBe 0
+        await(repository.insertSub(sub))
+        await(repository.insertSub(secondSub))
+        await(repository.count) shouldBe 2
+        await(repository.deleteSub("transId1","test","CT"))
+        await(repository.count) shouldBe 1
+
+        val result = await(repository.getSubscription("transId1","test","PAYE"))
+        result.head.subscriber shouldBe "PAYE"
+      }
+    }
+
+
 
   "wipeTestData" should {
     "remove all test data from submissions status" in new Setup {
