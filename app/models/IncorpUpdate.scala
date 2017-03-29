@@ -53,4 +53,33 @@ object IncorpUpdate {
       ( __ \ "timepoint" ).format[String] and
       ( __ \ "transaction_status_description" ).formatNullable[String]
     )(IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
+
+
+  def writes(callBackUrl: String, transactionId: String): Writes[IncorpUpdate] = new Writes[IncorpUpdate] {
+
+    def writes(u: IncorpUpdate) = {
+      Json.obj(
+        "SCRSIncorpStatus" -> Json.obj(
+          "IncorpSubscriptionKey" -> Json.obj(
+            "subscriber" -> "SCRS",
+            "discriminator" -> "PAYE",
+            "transactionId" -> transactionId
+          ),
+          "SCRSIncorpSubscription" -> Json.obj(
+            "callbackUrl" -> callBackUrl
+          ),
+            "IncorpStatusEvent" -> Json.obj(
+              "status" -> u.status,
+              "timestamp" -> "2017-12-21T10:13:09.429Z"//todo: create timestamp here?
+            ).++(
+              u.statusDescription.fold[JsObject](Json.obj())(s => Json.obj("description" -> s))
+            ).++(
+              u.crn.fold[JsObject](Json.obj())(s => Json.obj("crn" -> s))
+            ).++(
+              u.incorpDate.fold[JsObject](Json.obj())(s => Json.obj("incorporationDate" -> s))
+            )
+          )
+      )
+    }
+  }
 }

@@ -22,6 +22,7 @@ import connectors.IncorporationCheckAPIConnector
 import models.IncorpUpdate
 import play.api.Logger
 import repositories._
+import repositories.{IncorpUpdateRepository, InsertResult, TimepointRepository}
 import uk.gov.hmrc.play.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext.Implicits.global

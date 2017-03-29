@@ -16,7 +16,6 @@
 
 package jobs
 
-
 import javax.inject.{Inject, Singleton}
 
 import org.joda.time.Duration
@@ -72,7 +71,6 @@ trait IncorpUpdatesJob extends ExclusiveScheduledJob with JobConfig {
       case false => Future.successful(Result(s"Feature is turned off"))
     }
   }
-
   //$COVERAGE-ON$
 }
 

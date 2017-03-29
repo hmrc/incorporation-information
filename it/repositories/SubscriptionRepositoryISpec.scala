@@ -1,5 +1,5 @@
 /*
-* Copyright 2016 HM Revenue & Customs
+* Copyright 2017 HM Revenue & Customs
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -24,19 +24,52 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class SubscriptionRepositoryISpec extends SCRSMongoSpec {
 
-  val testValid = construct()
+  val testValid = sub()
 
   def construct() =
     Subscription(
       "transId1",
       "test",
-      "CT"
+      "CT",
+      "url"
     )
+
+  def sub(num: Int) = (1 to num).map(n => Subscription(
+    s"transId$n",
+    s"regime$n",
+    s"sub$n",
+    s"url$n"
+  ))
+
+  def sub() = Subscription(
+    "transId1",
+    "test",
+    "CT",
+    "url"
+  )
+
+  def secondSub() = Subscription(
+    "transId1",
+    "test",
+    "PAYE",
+    "url"
+  )
+
+  def subUpdate() = Subscription(
+    "transId1",
+    "test",
+    "CT",
+    "newUrl"
+  )
+
 
   class Setup extends MongoDbConnection {
     val repository = new SubscriptionsMongoRepository(db)
     await(repository.drop)
     await(repository.ensureIndexes)
+
+    def insert(sub: Subscription) = await(repository.insert(sub))
+    def count = await(repository.count)
   }
 
   override def afterAll() = new Setup {
@@ -50,18 +83,66 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
       await(repository.count) shouldBe 0
       await(repository.insertSub(testValid))
       await(repository.count) shouldBe 1
-      val result = await(repository.getSubscription("transId1"))
+      val result = await(repository.getSubscription("transId1","test","CT"))
       result.head.subscriber shouldBe "CT"
     }
   }
 
   "insertSub" should {
-    "return a WriteResult" in new Setup {
+
+    "return an Upsert Result" in new Setup {
       val result = await(repository.insertSub(testValid))
-      result shouldBe SuccessfulSub
+      val expected = UpsertResult(0,1,Seq())
+      result shouldBe expected
+
+    }
+
+    "update an existing sub that matches the selector" in new Setup {
+      insert(sub)
+      count shouldBe 1
+
+      val result = await(repository.insertSub(sub))
+      count shouldBe 1
+      result shouldBe UpsertResult(1,0,Seq())
+    }
+
+
+    "update the callback url when an already existing Subscription is updated with a new call back url" in new Setup {
+      val firstResponse = await(repository.insertSub(sub))
+      val secondResponse = await(repository.insertSub(subUpdate()))
+
+      firstResponse shouldBe UpsertResult(0,1,Seq())
+      secondResponse shouldBe UpsertResult(1,0,Seq())
+
     }
 
   }
+
+    "deletesub" should {
+      "only delete a single subscription" in new Setup{
+        await(repository.count) shouldBe 0
+        await(repository.insertSub(sub))
+        await(repository.insertSub(secondSub))
+        await(repository.count) shouldBe 2
+        await(repository.deleteSub("transId1","test","CT"))
+        await(repository.count) shouldBe 1
+
+        val result = await(repository.getSubscription("transId1","test","PAYE"))
+        result.head.subscriber shouldBe "PAYE"
+      }
+
+      "not delete a subscription when the subscription does not exist" in new Setup{
+        await(repository.count) shouldBe 0
+        await(repository.insertSub(sub))
+        await(repository.insertSub(secondSub))
+        await(repository.count) shouldBe 2
+        await(repository.deleteSub("transId1","test","CTabc"))
+        await(repository.count) shouldBe 2
+
+      }
+    }
+
+
 
   "wipeTestData" should {
     "remove all test data from submissions status" in new Setup {

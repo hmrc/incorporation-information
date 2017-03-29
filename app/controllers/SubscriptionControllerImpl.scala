@@ -16,8 +16,11 @@
 
 package controllers
 
+
+import models.IncorpUpdate
+import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.Action
-import repositories.SuccessfulSub
+import repositories.{DeletedSub, FailedSub, IncorpExists, SuccessfulSub}
 import services.SubscriptionService
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
@@ -32,11 +35,34 @@ trait SubscriptionController extends BaseController {
 
   protected val service: SubscriptionService
 
-  def setupSubscription(transactionId: String, regime: String, subscriber: String) = Action.async {
+  def checkSubscription(transactionId: String, regime: String, subscriber: String) = Action.async(parse.json) {
     implicit request =>
-      service.addSubscription(transactionId, regime, subscriber).map {
-        case SuccessfulSub => Accepted("You have successfully added a subscription")
-        case _ => InternalServerError
+      withJsonBody[JsObject] { js =>
+        val callbackUrl = (js \ "SCRSIncorpSubscription" \ "callbackUrl").as[String]
+        service.checkForSubscription(transactionId, regime, subscriber, callbackUrl).map {
+          case IncorpExists(update) => {
+            Ok(Json.toJson(update)(IncorpUpdate.writes(callbackUrl, transactionId)))
+          }
+          case SuccessfulSub => {
+            Accepted("You have successfully added a subscription")
+          }
+          case FailedSub => {
+            InternalServerError
+          }
+        }
       }
+
+  }
+
+
+  def removeSubscription(transactionId: String, regime: String, subscriber: String) = Action.async {
+    implicit request =>
+        service.deleteSubscription(transactionId, regime, subscriber).map {
+           {
+            case DeletedSub => Ok("subscription has been deleted")
+            case FailedSub => NotFound("The subscription does not exist")
+            case _ => InternalServerError
+          }
+        }
   }
 }

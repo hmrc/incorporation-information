@@ -50,7 +50,7 @@ trait TimepointRepository extends Repository[TimePoint, BSONObjectID] {
 }
 
 class TimepointMongoRepository(mongo: () => DB)
-  extends ReactiveRepository[TimePoint, BSONObjectID]("state-data", mongo, TimePoint.formats, ReactiveMongoFormats.objectIdFormats)
+  extends ReactiveRepository[TimePoint, BSONObjectID]("time-points", mongo, TimePoint.formats, ReactiveMongoFormats.objectIdFormats)
     with TimepointRepository {
 
   private val selector = BSONDocument("_id" -> "CH-INCORPSTATUS-TIMEPOINT")

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 HM Revenue & Customs
+ * Copyright 2017 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -126,6 +126,20 @@ class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
       response.errors.head.errmsg should include("""failed validation""")
 
       count shouldBe num - expectedNumErrors
+    }
+  }
+
+  "getIncorpUpdate" should {
+
+    val incorpUpdate = docs(1).head
+    val transactionId = incorpUpdate.transactionId
+
+    "find a document" in new Setup {
+      count shouldBe 0
+      await(incorpRepo.storeIncorpUpdates(Seq(incorpUpdate)))
+
+      val res = incorpRepo.getIncorpUpdate(transactionId)
+      await(res) shouldBe Some(incorpUpdate)
     }
   }
 }

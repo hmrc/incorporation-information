@@ -21,8 +21,8 @@ import play.api.libs.json.Json
 case class Subscription(
     transactionId : String,
     regime: String,
-    subscriber: String
-                       )
+    subscriber: String,
+    callbackUrl: String)
 
 object Subscription {
   implicit val format = Json.format[Subscription]

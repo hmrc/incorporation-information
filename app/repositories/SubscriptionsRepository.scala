@@ -18,7 +18,8 @@ package repositories
 
 import javax.inject.Singleton
 
-import models.Subscription
+import models.{IncorpUpdate, Subscription}
+import play.api.Logger
 import play.modules.reactivemongo.MongoDbConnection
 import reactivemongo.api.DB
 import reactivemongo.api.commands._
@@ -44,9 +45,11 @@ class SubscriptionsMongo extends MongoDbConnection with ReactiveMongoFormats {
 }
 
 trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
-  def insertSub(sub: Subscription) : Future[SubscriptionStatus]
+  def insertSub(sub: Subscription) : Future[UpsertResult]
 
-  def getSubscription(transactionId: String) : Future[Option[Subscription]]
+  def deleteSub(transactionId: String, regime: String, subscriber: String): Future[SubscriptionStatus]
+
+//  def getSubscription(transactionId: String) : Future[Option[Subscription]]  DG
 
   def wipeTestData() : Future[WriteResult]
 }
@@ -55,6 +58,8 @@ trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
 sealed trait SubscriptionStatus
 case object SuccessfulSub extends SubscriptionStatus
 case object FailedSub extends SubscriptionStatus
+case object DeletedSub extends SubscriptionStatus
+case class IncorpExists(update: IncorpUpdate) extends SubscriptionStatus
 
 
 class SubscriptionsMongoRepository(mongo: () => DB)
@@ -69,23 +74,48 @@ class SubscriptionsMongoRepository(mongo: () => DB)
     )
   )
 
-  def insertSub(sub: Subscription) : Future[SubscriptionStatus] = {
-    collection.insert(sub) map {
-      wr =>
-        wr.n match {
-          case 1 => SuccessfulSub
-          case _ => {
-            logger.error("[MongoSubscriptionsRepository] [insertSub] the subscription was not inserted")
-            FailedSub
-          }
-        }
+  def insertSub(sub: Subscription) : Future[UpsertResult] = {
+
+    val selector = BSONDocument("transactionId" -> sub.transactionId, "regime" -> sub.regime, "subscriber" -> sub.subscriber)
+
+    collection.update(selector, sub, upsert = true) map {
+      res =>
+
+        UpsertResult(res.nModified, res.upserted.size, res.writeErrors)
+//
+//        res.n match {
+//          case 1 => {
+//            val a = res.upserted
+//            val b = res.nModified
+//            logger.info(s"[MongoSubscriptionsRepository] [insertSub] $a was upserted and $b was updated")
+//            SuccessfulSub
+//          }
+//          case _ => {
+//            logger.error("[MongoSubscriptionsRepository] [insertSub] the subscription was not inserted")
+//            FailedSub
+//          }
+//        }
     }
   }
 
-  def getSubscription(transactionId: String): Future[Option[Subscription]] = {
-    val query = BSONDocument("transactionId" -> transactionId)
+  def deleteSub(transactionId: String, regime: String, subscriber: String): Future[SubscriptionStatus] = {
+    val selector = BSONDocument("transactionId" -> transactionId, "regime" -> regime, "subscriber" -> subscriber)
+    collection.remove(selector) map {
+      case DefaultWriteResult(true, 1, _, _, _, _) => DeletedSub
+      case DefaultWriteResult(true, 0, _, _, _, _) => {
+        Logger.warn(s"[SubscriptionsRepository] [deleteSub] Didn't delete the subscription with TransId: $transactionId, and regime: $regime, and subscriber: $subscriber")
+        FailedSub
+      }
+    }
+  }
+
+
+  def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] = {
+    val query = BSONDocument("transactionId" -> transactionId, "regime" -> regime, "subscriber" -> subscriber)
     collection.find(query).one[Subscription]
   }
+
+
 
 
   def wipeTestData(): Future[WriteResult] = {
@@ -93,3 +123,5 @@ class SubscriptionsMongoRepository(mongo: () => DB)
   }
 
 }
+
+case class UpsertResult(modified: Int, inserted: Int, errors: Seq[WriteError])
