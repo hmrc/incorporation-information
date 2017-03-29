@@ -18,7 +18,6 @@ package services
 
 import models.{IncorpUpdate, Subscription}
 import play.api.Logger
-import reactivemongo.bson.BSONDocument
 import repositories._
 import uk.gov.hmrc.play.http.HeaderCarrier
 
@@ -49,18 +48,13 @@ trait SubscriptionService {
       }
     }
   }
-// DG
-//  def getSubscription(transactionId: String, regime: String, Subscriber: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
-//    val query =
-//    subRepo.find()
-//  }
 
   def addSubscription(transactionId: String, regime: String, subscriber: String, callbackUrl: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
     val sub = Subscription(transactionId, regime, subscriber, callbackUrl)
     subRepo.insertSub(sub) map {
       case UpsertResult(_, _, Seq()) => SuccessfulSub
       case UpsertResult(_, _, errs) if errs.nonEmpty =>
-        Logger.error(s"[SubscriptionService] [addSubscription] Encountered when attempting to add a subscription - ${errs.toString()}")
+        Logger.error(s"[SubscriptionService] [addSubscription] Error encountered when attempting to add a subscription - ${errs.toString()}")
         FailedSub
     }
   }
@@ -71,7 +65,8 @@ trait SubscriptionService {
 
   def deleteSubscription(transactionId: String, regime: String, subscriber: String): Future[SubscriptionStatus] = {
     subRepo.deleteSub(transactionId, regime, subscriber) map {
-      case DeletedSub => Logger.info(s"[SubscriptionService] [deleteSubscription] Subscription with transactionId: $transactionId, and regime: $regime, and subscriber: $subscriber")
+      case DeletedSub => Logger.info(s"[SubscriptionService] [deleteSubscription] Subscription with transactionId: $transactionId, " +
+        s"and regime: $regime, and subscriber: $subscriber was deleted")
         DeletedSub
       case _ => FailedSub
     }

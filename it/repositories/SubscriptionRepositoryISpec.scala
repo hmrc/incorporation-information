@@ -119,7 +119,7 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
   }
 
     "deletesub" should {
-      "only delete a single submission" in new Setup{
+      "only delete a single subscription" in new Setup{
         await(repository.count) shouldBe 0
         await(repository.insertSub(sub))
         await(repository.insertSub(secondSub))
@@ -129,6 +129,16 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
 
         val result = await(repository.getSubscription("transId1","test","PAYE"))
         result.head.subscriber shouldBe "PAYE"
+      }
+
+      "not delete a subscription when the subscription does not exist" in new Setup{
+        await(repository.count) shouldBe 0
+        await(repository.insertSub(sub))
+        await(repository.insertSub(secondSub))
+        await(repository.count) shouldBe 2
+        await(repository.deleteSub("transId1","test","CTabc"))
+        await(repository.count) shouldBe 2
+
       }
     }
 

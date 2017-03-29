@@ -16,6 +16,8 @@
 
 package controllers
 
+import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
 import Helpers.SCRSSpec
 import models.IncorpUpdate
 import org.joda.time.DateTime
@@ -25,6 +27,7 @@ import org.mockito.Mockito._
 import org.mockito.Matchers.{any, eq => eqTo}
 import org.mockito.internal.matchers.Any
 import play.api.test.FakeRequest
+import play.api.test.Helpers._
 import play.api.libs.json.Json
 import repositories.{DeletedSub, IncorpExists, SuccessfulSub}
 
@@ -33,6 +36,9 @@ import scala.concurrent.Future
 
 
 class SubscriptionControllerImplSpec extends SCRSSpec {
+
+  implicit val system = ActorSystem("II")
+  implicit val materializer = ActorMaterializer()
 
 
     val mockService = mock[SubscriptionService]
@@ -51,15 +57,23 @@ class SubscriptionControllerImplSpec extends SCRSSpec {
 
     "check Subscription" should {
 
-//      val json = Json.parse("""{"test":"json"}""")
+     val json = Json.parse(
+       """
+         |{
+         |  "SCRSIncorpSubscription": {
+         |    "callbackUrl": "www.test.com"
+         |  }
+         |}
+       """.stripMargin)
 
-      "return a 200 when new subscription is created" in new Setup {
+      "return a 202 when new subscription is created" in new Setup {
         when(mockService.checkForSubscription(transactionId,regime,subscriber,"Callback URL"))
           .thenReturn(Future.successful(IncorpExists(testIncorpUpdate)))
 
-        val result = controller.checkSubscription(transactionId,regime,subscriber)(FakeRequest())
-//        status(result) shouldBe OK
-//        jsonBodyOf(await(result)) shouldBe json
+        val response = FakeRequest().withBody(json)
+
+        val result = call(controller.checkSubscription(transactionId,regime,subscriber), response)
+        status(result) shouldBe 202
       }
    }
 
@@ -68,9 +82,10 @@ class SubscriptionControllerImplSpec extends SCRSSpec {
       when(mockService.deleteSubscription(Matchers.eq(transactionId),Matchers.eq(regime),Matchers.eq(subscriber)))
         .thenReturn(Future.successful(DeletedSub))
 
-      val result = controller.removeSubscription(transactionId,regime,subscriber)
-//      status(result) shouldBe Ok("subscription has been deleted")
+      val response = FakeRequest()
 
+      val result = call(controller.removeSubscription(transactionId,regime,subscriber), response)
+      status(result) shouldBe 200
     }
   }
 
