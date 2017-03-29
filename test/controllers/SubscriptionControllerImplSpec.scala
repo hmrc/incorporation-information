@@ -20,19 +20,18 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import Helpers.SCRSSpec
 import models.IncorpUpdate
-import org.joda.time.DateTime
 import org.mockito.Matchers
 import services.SubscriptionService
 import org.mockito.Mockito._
 import org.mockito.Matchers.{any, eq => eqTo}
-import org.mockito.internal.matchers.Any
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import play.api.libs.json.Json
-import repositories.{DeletedSub, IncorpExists, SuccessfulSub}
+import repositories.{DeletedSub, FailedSub, IncorpExists, SuccessfulSub}
 
 import scala.concurrent.Future
 
+import scala.concurrent.ExecutionContext.Implicits.global
 
 
 class SubscriptionControllerImplSpec extends SCRSSpec {
@@ -44,8 +43,8 @@ class SubscriptionControllerImplSpec extends SCRSSpec {
     val mockService = mock[SubscriptionService]
 
     class Setup {
-      val controller = new SubscriptionControllerImpl {
-
+      val controller = new SubscriptionController {
+        override val service = mockService
       }
     }
 
@@ -66,9 +65,20 @@ class SubscriptionControllerImplSpec extends SCRSSpec {
          |}
        """.stripMargin)
 
-      "return a 202 when new subscription is created" in new Setup {
-        when(mockService.checkForSubscription(transactionId,regime,subscriber,"Callback URL"))
-          .thenReturn(Future.successful(IncorpExists(testIncorpUpdate)))
+      "return a 200(Ok) when an incorp update is returned for an existing subscription" in new Setup {
+        when(mockService.checkForSubscription(any(),any(),any(),any())(any()))
+          .thenReturn(Future(IncorpExists(testIncorpUpdate)))
+
+        val response = FakeRequest().withBody(json)
+
+        val result = call(controller.checkSubscription(transactionId,regime,subscriber), response)
+        result.map(res => res == testIncorpUpdate)
+        status(result) shouldBe 200
+      }
+
+      "return a 202(Accepted) when a new subscription is created" in new Setup {
+        when(mockService.checkForSubscription(any(),any(),any(),any())(any()))
+          .thenReturn(Future.successful(SuccessfulSub))
 
         val response = FakeRequest().withBody(json)
 
@@ -76,6 +86,7 @@ class SubscriptionControllerImplSpec extends SCRSSpec {
         status(result) shouldBe 202
       }
    }
+
 
   "Remove subscription" should {
     "return a 200 when a subscription is deleted" in new Setup {
@@ -86,6 +97,16 @@ class SubscriptionControllerImplSpec extends SCRSSpec {
 
       val result = call(controller.removeSubscription(transactionId,regime,subscriber), response)
       status(result) shouldBe 200
+    }
+
+    "return a 404 when a subscription cannot be found" in new Setup {
+      when(mockService.deleteSubscription(Matchers.eq(transactionId),Matchers.eq(regime),Matchers.eq(subscriber)))
+        .thenReturn(Future.successful(FailedSub))
+
+      val response = FakeRequest()
+
+      val result = call(controller.removeSubscription(transactionId,regime,subscriber), response)
+      status(result) shouldBe 404
     }
   }
 

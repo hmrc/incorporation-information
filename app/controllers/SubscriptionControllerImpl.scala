@@ -60,7 +60,7 @@ trait SubscriptionController extends BaseController {
         service.deleteSubscription(transactionId, regime, subscriber).map {
            {
             case DeletedSub => Ok("subscription has been deleted")
-            case FailedSub => Accepted("The subscription does not exist")
+            case FailedSub => NotFound("The subscription does not exist")
             case _ => InternalServerError
           }
         }
