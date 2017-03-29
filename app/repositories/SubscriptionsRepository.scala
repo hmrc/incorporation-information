@@ -49,7 +49,7 @@ trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
 
   def deleteSub(transactionId: String, regime: String, subscriber: String): Future[SubscriptionStatus]
 
-//  def getSubscription(transactionId: String) : Future[Option[Subscription]]  DG
+  def getSubscription(transactionId: String, regime: String, subscriber: String) : Future[Option[Subscription]]
 
   def wipeTestData() : Future[WriteResult]
 }
@@ -112,8 +112,12 @@ class SubscriptionsMongoRepository(mongo: () => DB)
 
   def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] = {
     val query = BSONDocument("transactionId" -> transactionId, "regime" -> regime, "subscriber" -> subscriber)
-    collection.find(query).one[Subscription]
-  }
+    collection.find(query).one[Subscription] map { sub => {
+      case Some(Subscription(_, _, _, _)) => Future(sub.get)
+      case _ => Future(None)
+      }
+    }
+  } ///need to fix this!!!!!!!!
 
 
 

@@ -71,5 +71,9 @@ trait SubscriptionService {
       case _ => FailedSub
     }
   }
+
+  def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] = {
+    subRepo.getSubscription(transactionId, regime, subscriber)
+  }
 }
 
