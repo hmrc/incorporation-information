@@ -19,6 +19,7 @@ package config
 import com.google.inject.AbstractModule
 import com.google.inject.name.Names
 import connectors.{IncorporationCheckAPIConnector, IncorporationCheckAPIConnectorImpl, TransactionalConnector, TransactionalConnectorImpl}
+import controllers.test.{FeatureSwitchControllerImpl, FeatureSwitchController}
 import controllers.{SubscriptionController, SubscriptionControllerImpl, TransactionalController, TransactionalControllerImpl}
 import jobs.IncorpUpdatesJobImpl
 import services.{IncorpUpdateService, IncorpUpdateServiceImpl, TransactionalService, TransactionalServiceImpl}
@@ -35,6 +36,7 @@ class Module extends AbstractModule {
     // controllers
     bind(classOf[SubscriptionController]).to(classOf[SubscriptionControllerImpl])
     bind(classOf[TransactionalController]).to(classOf[TransactionalControllerImpl])
+    bind(classOf[FeatureSwitchController]).to(classOf[FeatureSwitchControllerImpl])
 
     // connectors
     bind(classOf[IncorporationCheckAPIConnector]).to(classOf[IncorporationCheckAPIConnectorImpl])
