@@ -104,4 +104,21 @@ class SubscriptionServiceSpec extends SCRSSpec {
   }
 
 
+  "getSubscription" should {
+    "return a Subscription when a Subscription exists" in new Setup {
+      when(mockSubRepo.getSubscription(transId, regime, subscriber)).thenReturn(Future(Some(sub)))
+
+      val result = service.getSubscription(transId, regime, subscriber)
+      result.map(res => res == sub)
+    }
+
+    "return None when a Subscription does not exist" in new Setup {
+      when(mockSubRepo.getSubscription(transId, regime, subscriber)).thenReturn(Future(None))
+
+      val result = service.getSubscription(transId, regime, subscriber)
+      result.map(res => res == None)
+    }
+  }
+
+
 }

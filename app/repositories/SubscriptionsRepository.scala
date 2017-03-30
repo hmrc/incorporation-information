@@ -75,26 +75,10 @@ class SubscriptionsMongoRepository(mongo: () => DB)
   )
 
   def insertSub(sub: Subscription) : Future[UpsertResult] = {
-
     val selector = BSONDocument("transactionId" -> sub.transactionId, "regime" -> sub.regime, "subscriber" -> sub.subscriber)
-
     collection.update(selector, sub, upsert = true) map {
       res =>
-
         UpsertResult(res.nModified, res.upserted.size, res.writeErrors)
-//
-//        res.n match {
-//          case 1 => {
-//            val a = res.upserted
-//            val b = res.nModified
-//            logger.info(s"[MongoSubscriptionsRepository] [insertSub] $a was upserted and $b was updated")
-//            SuccessfulSub
-//          }
-//          case _ => {
-//            logger.error("[MongoSubscriptionsRepository] [insertSub] the subscription was not inserted")
-//            FailedSub
-//          }
-//        }
     }
   }
 
@@ -109,17 +93,10 @@ class SubscriptionsMongoRepository(mongo: () => DB)
     }
   }
 
-
   def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] = {
     val query = BSONDocument("transactionId" -> transactionId, "regime" -> regime, "subscriber" -> subscriber)
-    collection.find(query).one[Subscription] map { sub => {
-      case Some(Subscription(_, _, _, _)) => Future(sub.get)
-      case _ => Future(None)
-      }
-    }
-  } ///need to fix this!!!!!!!!
-
-
+    collection.find(query).one[Subscription]
+  }
 
 
   def wipeTestData(): Future[WriteResult] = {

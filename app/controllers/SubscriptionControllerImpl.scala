@@ -67,7 +67,7 @@ trait SubscriptionController extends BaseController {
   def getSubscription(transactionId: String, regime: String, subscriber: String) = Action.async {
     implicit request =>
       service.getSubscription(transactionId, regime, subscriber).map {
-          case Some(sub) => Ok("the subscription has been found")
+          case Some(sub) => Ok(Json.toJson(sub))
           case _ => NotFound("The subscription does not exist")
       }
   }

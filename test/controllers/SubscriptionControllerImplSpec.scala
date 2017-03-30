@@ -19,7 +19,7 @@ package controllers
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import Helpers.SCRSSpec
-import models.IncorpUpdate
+import models.{IncorpUpdate, Subscription}
 import org.mockito.Matchers
 import services.SubscriptionService
 import org.mockito.Mockito._
@@ -30,7 +30,6 @@ import play.api.libs.json.Json
 import repositories.{DeletedSub, FailedSub, IncorpExists, SuccessfulSub}
 
 import scala.concurrent.Future
-
 import scala.concurrent.ExecutionContext.Implicits.global
 
 
@@ -53,6 +52,7 @@ class SubscriptionControllerImplSpec extends SCRSSpec {
     val regime = "CT"
     val subscriber = "subscriber1"
     val testIncorpUpdate = IncorpUpdate(transactionId,"held",Some("123456789"),None,"20170327093004787",None)
+    val sub = Subscription(transactionId, regime, subscriber, "www.test.com")
 
     "check Subscription" should {
 
@@ -106,6 +106,29 @@ class SubscriptionControllerImplSpec extends SCRSSpec {
       val response = FakeRequest()
 
       val result = call(controller.removeSubscription(transactionId,regime,subscriber), response)
+      status(result) shouldBe 404
+    }
+  }
+
+  "getSubscription" should {
+    "return a 200 when a subscription is found" in new Setup {
+      when(mockService.getSubscription(Matchers.eq(transactionId),Matchers.eq(regime),Matchers.eq(subscriber)))
+        .thenReturn(Future.successful(Some(sub)))
+
+      val response = FakeRequest()
+
+      val result = call(controller.getSubscription(transactionId,regime,subscriber), response)
+      status(result) shouldBe 200
+      result.map(res => jsonBodyOf(res) shouldBe Json.toJson(sub))
+    }
+
+    "return a 404 when a subscription is found" in new Setup {
+      when(mockService.getSubscription(Matchers.eq(transactionId),Matchers.eq(regime),Matchers.eq(subscriber)))
+        .thenReturn(Future.successful(None))
+
+      val response = FakeRequest()
+
+      val result = call(controller.getSubscription(transactionId,regime,subscriber), response)
       status(result) shouldBe 404
     }
   }

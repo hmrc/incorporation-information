@@ -5,6 +5,10 @@ GET        /:transactionId/officer-list                                @controll
 
 POST       /subscribe/:transId/regime/:regime/subscriber/:sub          @controllers.SubscriptionController.checkSubscription(transId, regime, sub)
 DELETE     /subscribe/:transId/regime/:regime/subscriber/:sub          @controllers.SubscriptionController.removeSubscription(transId, regime, sub)
+GET        /subscribe/:transId/regime/:regime/subscriber/:sub          @controllers.SubscriptionController.getSubscription(transId, regime, sub)
+
+
+
 
 
 
