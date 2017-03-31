@@ -16,13 +16,12 @@
 
 package models
 
-import java.time.chrono.Chronology
-
-import org.joda.time.DateTime
-import org.joda.time.chrono.ISOChronology
+import org.joda.time.{DateTimeZone, DateTime}
 import org.joda.time.format.DateTimeFormat
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
+
+import scala.language.implicitConversions
 
 case class IncorpUpdate(transactionId : String,
                         status : String,
@@ -66,7 +65,20 @@ object IncorpUpdate {
       (__ \ "transaction_status_description").formatNullable[String]
     ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
 }
-case class IncorpStatusEvent()
+
+case class IncorpStatusEvent(status: String, crn: Option[String], incorporationDate: Option[DateTime], description: Option[String], timestamp: DateTime)
+
+object IncorpStatusEvent {
+  val writes = (
+    (__ \ "transaction_id").format[String] and
+      (__ \ "status").format[String] and
+      (__ \ "crn").formatNullable[String] and
+      (__ \ "incorporationDate").formatNullable[DateTime] and
+      (__ \ "timepoint").format[String] and
+      (__ \ "transaction_status_description").formatNullable[String]
+    ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
+}
+
 case class IncorpUpdateResponse(regime: String, subscriber: String, callbackUrl: String, incorpUpdate: IncorpUpdate)
 
 object IncorpUpdateResponse {
@@ -84,9 +96,13 @@ object IncorpUpdateResponse {
           "SCRSIncorpSubscription" -> Json.obj(
             "callbackUrl" -> u.callbackUrl
           ),
-          "IncorpStatusEvent" -> Json.toJson(u.incorpUpdate)(IncorpUpdate.responseFormat).as[JsObject]
+          "IncorpStatusEvent" -> Json.toJson(toIncorpStatusEvent(u.incorpUpdate))(IncorpUpdate.responseFormat).as[JsObject]
         )
       )
+    }
+
+    private def toIncorpStatusEvent(u: IncorpUpdate): IncorpStatusEvent = {
+      IncorpStatusEvent(u.status, u.crn, u.incorpDate, u.statusDescription, DateTime.now(DateTimeZone.UTC))
     }
   }
 }
