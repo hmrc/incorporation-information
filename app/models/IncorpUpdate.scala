@@ -70,13 +70,12 @@ case class IncorpStatusEvent(status: String, crn: Option[String], incorporationD
 
 object IncorpStatusEvent {
   val writes = (
-    (__ \ "transaction_id").format[String] and
-      (__ \ "status").format[String] and
+    (__ \ "status").format[String] and
       (__ \ "crn").formatNullable[String] and
       (__ \ "incorporationDate").formatNullable[DateTime] and
-      (__ \ "timepoint").format[String] and
-      (__ \ "transaction_status_description").formatNullable[String]
-    ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
+      (__ \ "description").formatNullable[String] and
+      (__ \ "timestamp").format[DateTime]
+    ) (IncorpStatusEvent.apply, unlift(IncorpStatusEvent.unapply))
 }
 
 case class IncorpUpdateResponse(regime: String, subscriber: String, callbackUrl: String, incorpUpdate: IncorpUpdate)
@@ -96,13 +95,15 @@ object IncorpUpdateResponse {
           "SCRSIncorpSubscription" -> Json.obj(
             "callbackUrl" -> u.callbackUrl
           ),
-          "IncorpStatusEvent" -> Json.toJson(toIncorpStatusEvent(u.incorpUpdate))(IncorpUpdate.responseFormat).as[JsObject]
+          "IncorpStatusEvent" -> Json.toJson(toIncorpStatusEvent(u.incorpUpdate))(IncorpStatusEvent.writes).as[JsObject]
         )
       )
     }
 
     private def toIncorpStatusEvent(u: IncorpUpdate): IncorpStatusEvent = {
-      IncorpStatusEvent(u.status, u.crn, u.incorpDate, u.statusDescription, DateTime.now(DateTimeZone.UTC))
+      IncorpStatusEvent(u.status, u.crn, u.incorpDate, u.statusDescription, now)
     }
+
+    def now: DateTime = DateTime.now(DateTimeZone.UTC)
   }
 }

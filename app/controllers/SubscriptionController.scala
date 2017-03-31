@@ -16,9 +16,9 @@
 
 package controllers
 
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
-import models.{IncorpUpdateResponse, IncorpUpdate}
+import models.{IncorpUpdate, IncorpUpdateResponse}
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.Action
 import repositories.{DeletedSub, FailedSub, IncorpExists, SuccessfulSub}
@@ -27,7 +27,7 @@ import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-
+@Singleton
 class SubscriptionControllerImpl @Inject()(val service: SubscriptionService) extends SubscriptionController
 
 trait SubscriptionController extends BaseController {

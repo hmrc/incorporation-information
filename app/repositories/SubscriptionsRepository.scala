@@ -61,6 +61,7 @@ case object FailedSub extends SubscriptionStatus
 case object DeletedSub extends SubscriptionStatus
 case class IncorpExists(update: IncorpUpdate) extends SubscriptionStatus
 
+case class UpsertResult(modified: Int, inserted: Int, errors: Seq[WriteError])
 
 class SubscriptionsMongoRepository(mongo: () => DB)
   extends ReactiveRepository[Subscription, BSONObjectID]("subscriptions", mongo, Subscription.format, ReactiveMongoFormats.objectIdFormats)
@@ -82,14 +83,17 @@ class SubscriptionsMongoRepository(mongo: () => DB)
     }
   }
 
+
   def deleteSub(transactionId: String, regime: String, subscriber: String): Future[SubscriptionStatus] = {
     val selector = BSONDocument("transactionId" -> transactionId, "regime" -> regime, "subscriber" -> subscriber)
     collection.remove(selector) map {
       case DefaultWriteResult(true, 1, _, _, _, _) => DeletedSub
-      case DefaultWriteResult(true, 0, _, _, _, _) => {
-        Logger.warn(s"[SubscriptionsRepository] [deleteSub] Didn't delete the subscription with TransId: $transactionId, and regime: $regime, and subscriber: $subscriber")
+      case DefaultWriteResult(true, 0, _, _, _, errmsg) => {
+        Logger.warn(s"[SubscriptionsRepository] [deleteSub] Didn't delete the subscription with TransId: $transactionId, and regime: $regime, and subscriber: $subscriber." +
+          s"Error message: $errmsg")
         FailedSub
       }
+      case _ => FailedSub
     }
   }
 
@@ -105,4 +109,4 @@ class SubscriptionsMongoRepository(mongo: () => DB)
 
 }
 
-case class UpsertResult(modified: Int, inserted: Int, errors: Seq[WriteError])
+

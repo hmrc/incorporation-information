@@ -67,9 +67,9 @@ trait SubscriptionService {
     }
   }
 
-//  def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] = {
-//    subRepo.getSubscription(transactionId, regime, subscriber)
-//  }
+  def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] = {
+    subRepo.getSubscription(transactionId, regime, subscriber)
+  }
 
 
 }
