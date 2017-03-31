@@ -18,7 +18,7 @@ package controllers
 
 import javax.inject.Inject
 
-import models.IncorpUpdate
+import models.{IncorpUpdateResponse, IncorpUpdate}
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.Action
 import repositories.{DeletedSub, FailedSub, IncorpExists, SuccessfulSub}
@@ -39,7 +39,9 @@ trait SubscriptionController extends BaseController {
       withJsonBody[JsObject] { js =>
         val callbackUrl = (js \ "SCRSIncorpSubscription" \ "callbackUrl").as[String]
         service.checkForSubscription(transactionId, regime, subscriber, callbackUrl).map {
-          case IncorpExists(update) => Ok(Json.toJson(update)(IncorpUpdate.writes(callbackUrl, transactionId, subscriber, regime)))
+          case IncorpExists(update) =>
+            val response = toResponse(regime, subscriber, callbackUrl, update)
+            Ok(Json.toJson(response)(IncorpUpdateResponse.writes))
           case SuccessfulSub => Accepted("You have successfully added a subscription")
           case _ => InternalServerError
         }
@@ -63,5 +65,9 @@ trait SubscriptionController extends BaseController {
           case Some(sub) => Ok(Json.toJson(sub))
           case _ => NotFound("The subscription does not exist")
       }
+  }
+
+  private[controllers] def toResponse(regime: String, sub: String, url: String, update: IncorpUpdate): IncorpUpdateResponse = {
+    IncorpUpdateResponse(regime, sub, url, update)
   }
 }

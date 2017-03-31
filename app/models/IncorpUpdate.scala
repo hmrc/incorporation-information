@@ -32,56 +32,60 @@ case class IncorpUpdate(transactionId : String,
                         statusDescription : Option[String] = None)
 
 object IncorpUpdate {
-  private val dateReads = Reads[DateTime]( js =>
+  private val dateReads = Reads[DateTime](js =>
     js.validate[String].map[DateTime](
       DateTime.parse(_, DateTimeFormat.forPattern("yyyy-MM-dd"))
     )
   )
 
   val mongoFormat = (
-    ( __ \ "_id" ).format[String] and
-      ( __ \ "transaction_status" ).format[String] and
-      ( __ \ "company_number" ).formatNullable[String] and
-      ( __ \ "incorporated_on" ).formatNullable[DateTime] and
-      ( __ \ "timepoint" ).format[String] and
-      ( __ \ "transaction_status_description" ).formatNullable[String]
-    )(IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
+    (__ \ "_id").format[String] and
+      (__ \ "transaction_status").format[String] and
+      (__ \ "company_number").formatNullable[String] and
+      (__ \ "incorporated_on").formatNullable[DateTime] and
+      (__ \ "timepoint").format[String] and
+      (__ \ "transaction_status_description").formatNullable[String]
+    ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
 
 
-  val apiFormat = (
-    ( __ \ "transaction_id" ).format[String] and
-      ( __ \ "transaction_status" ).format[String] and
-      ( __ \ "company_number" ).formatNullable[String] and
-      ( __ \ "incorporated_on" ).formatNullable[DateTime] and
-      ( __ \ "timepoint" ).format[String] and
-      ( __ \ "transaction_status_description" ).formatNullable[String]
-    )(IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
+  val cohoFormat = (
+    (__ \ "transaction_id").format[String] and
+      (__ \ "transaction_status").format[String] and
+      (__ \ "company_number").formatNullable[String] and
+      (__ \ "incorporated_on").formatNullable[DateTime] and
+      (__ \ "timepoint").format[String] and
+      (__ \ "transaction_status_description").formatNullable[String]
+    ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
 
+  val responseFormat = (
+    (__ \ "transaction_id").format[String] and
+      (__ \ "status").format[String] and
+      (__ \ "crn").formatNullable[String] and
+      (__ \ "incorporationDate").formatNullable[DateTime] and
+      (__ \ "timepoint").format[String] and
+      (__ \ "transaction_status_description").formatNullable[String]
+    ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
+}
+case class IncorpStatusEvent()
+case class IncorpUpdateResponse(regime: String, subscriber: String, callbackUrl: String, incorpUpdate: IncorpUpdate)
 
-  def writes(callBackUrl: String, transactionId: String, subscriber: String, regime: String): Writes[IncorpUpdate] = new Writes[IncorpUpdate] {
+object IncorpUpdateResponse {
 
-    def writes(u: IncorpUpdate) = {
+  def writes: Writes[IncorpUpdateResponse] = new Writes[IncorpUpdateResponse] {
+
+    def writes(u: IncorpUpdateResponse) = {
       Json.obj(
         "SCRSIncorpStatus" -> Json.obj(
           "IncorpSubscriptionKey" -> Json.obj(
-            "subscriber" -> subscriber,
-            "discriminator" -> regime,
-            "transactionId" -> transactionId
+            "subscriber" -> u.subscriber,
+            "discriminator" -> u.regime,
+            "transactionId" -> u.incorpUpdate.transactionId
           ),
           "SCRSIncorpSubscription" -> Json.obj(
-            "callbackUrl" -> callBackUrl
+            "callbackUrl" -> u.callbackUrl
           ),
-            "IncorpStatusEvent" -> Json.obj(
-              "status" -> u.status,
-              "timestamp" -> DateTime.now(ISOChronology.getInstance().withUTC())
-            ).++(
-              u.statusDescription.fold[JsObject](Json.obj())(s => Json.obj("description" -> s))
-            ).++(
-              u.crn.fold[JsObject](Json.obj())(s => Json.obj("crn" -> s))
-            ).++(
-              u.incorpDate.fold[JsObject](Json.obj())(s => Json.obj("incorporationDate" -> s))
-            )
-          )
+          "IncorpStatusEvent" -> Json.toJson(u.incorpUpdate)(IncorpUpdate.responseFormat).as[JsObject]
+        )
       )
     }
   }

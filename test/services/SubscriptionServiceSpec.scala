@@ -20,6 +20,7 @@ import Helpers.SCRSSpec
 import models.{IncorpUpdate, Subscription}
 import repositories._
 import org.mockito.Mockito._
+import org.mockito.Matchers.{eq => eqTo, _}
 import reactivemongo.api.commands.WriteError
 
 import scala.concurrent.Future
@@ -30,14 +31,18 @@ import scala.concurrent.ExecutionContext.Implicits.global
   */
 class SubscriptionServiceSpec extends SCRSSpec {
 
-  val mockSubRepo = mock[SubscriptionsRepository]
-  val mockIncorpRepo = mock[IncorpUpdateRepository]
+  val mockSubRepo = mock[SubscriptionsMongoRepository]
+  val mockIncorpRepo = mock[IncorpUpdateMongoRepository]
 
   trait Setup {
 
     val service = new SubscriptionService {
-      override val subRepo = mockSubRepo
-      override val incorpRepo = mockIncorpRepo
+      override val subRepo = new SubscriptionsMongo {
+        override val repo = mockSubRepo
+      }
+      override val incorpRepo = new IncorpUpdateMongo(reactiveMongoComponent){
+        override val repo = mockIncorpRepo
+      }
     }
   }
 
@@ -50,19 +55,20 @@ class SubscriptionServiceSpec extends SCRSSpec {
 
 
   "checkForSubscription" should {
-    "return an incorp update for a subscription that exists" in new Setup {
-      when(service.checkForIncorpUpdate(transId)).thenReturn(Future(Some(incorpUpdate)))
 
-      val result = service.checkForIncorpUpdate(transId)
+    "return an incorp update for a subscription that exists" in new Setup {
+      when(mockIncorpRepo.getIncorpUpdate(eqTo(transId))).thenReturn(Future.successful(Some(incorpUpdate)))
+
+      val result = await(service.checkForIncorpUpdate(transId))
       result.get shouldBe incorpUpdate
     }
 
 
     "return a None result for when an added subscription that does not yet exist" in new Setup {
-      when(service.checkForIncorpUpdate(transId)).thenReturn(Future(None))
+      when(mockIncorpRepo.getIncorpUpdate(eqTo(transId))).thenReturn(Future(None))
 
-      val result = service.checkForIncorpUpdate(transId)
-      result.map(res => res == None)
+      val result = await(service.checkForIncorpUpdate(transId))
+      result shouldBe None
     }
   }
 

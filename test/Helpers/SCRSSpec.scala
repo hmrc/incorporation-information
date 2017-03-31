@@ -17,6 +17,7 @@
 package Helpers
 
 import org.scalatest.mock.MockitoSugar
+import play.modules.reactivemongo.ReactiveMongoComponent
 import uk.gov.hmrc.play.http.HeaderCarrier
 import uk.gov.hmrc.play.test.{WithFakeApplication, UnitSpec}
 
@@ -24,4 +25,6 @@ trait SCRSSpec extends UnitSpec with MockitoSugar with WithFakeApplication {
 
   implicit val defaultHc = HeaderCarrier()
   implicit val mat = fakeApplication.materializer
+
+  lazy val reactiveMongoComponent = fakeApplication.injector.instanceOf[ReactiveMongoComponent]
 }

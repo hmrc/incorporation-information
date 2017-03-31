@@ -47,7 +47,7 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
 
   class Setup {
     val mongo = new SubscriptionsMongo
-    val repository = mongo.store
+    val repository = mongo.repo
   }
 
   override def beforeEach() = new Setup {

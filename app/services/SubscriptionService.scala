@@ -27,12 +27,12 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 
-class SubscriptionServiceImpl @Inject()(val subRepo: SubscriptionsRepository, val incorpRepo: IncorpUpdateRepository) extends SubscriptionService
+class SubscriptionServiceImpl @Inject()(val subRepo: SubscriptionsMongo, val incorpRepo: IncorpUpdateMongo) extends SubscriptionService
 
 trait SubscriptionService {
 
-  protected val subRepo: SubscriptionsRepository
-  protected val incorpRepo: IncorpUpdateRepository
+  protected val subRepo: SubscriptionsMongo
+  protected val incorpRepo: IncorpUpdateMongo
 
 
   def checkForSubscription(transactionId: String, regime: String, subscriber: String, callBackUrl: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
@@ -44,7 +44,7 @@ trait SubscriptionService {
 
   def addSubscription(transactionId: String, regime: String, subscriber: String, callbackUrl: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
     val sub = Subscription(transactionId, regime, subscriber, callbackUrl)
-    subRepo.insertSub(sub) map {
+    subRepo.repo.insertSub(sub) map {
       case UpsertResult(a, b, Seq()) =>
         Logger.info(s"[MongoSubscriptionsRepository] [insertSub] $a was updated and $b was upserted for transactionId: $transactionId")
         SuccessfulSub
@@ -55,11 +55,11 @@ trait SubscriptionService {
   }
 
   private[services] def checkForIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]] = {
-    incorpRepo.getIncorpUpdate(transactionId)
+    incorpRepo.repo.getIncorpUpdate(transactionId)
   }
 
   def deleteSubscription(transactionId: String, regime: String, subscriber: String): Future[SubscriptionStatus] = {
-    subRepo.deleteSub(transactionId, regime, subscriber) map {
+    subRepo.repo.deleteSub(transactionId, regime, subscriber) map {
       case DeletedSub => Logger.info(s"[SubscriptionService] [deleteSubscription] Subscription with transactionId: $transactionId, " +
         s"and regime: $regime, and subscriber: $subscriber was deleted")
         DeletedSub
@@ -67,9 +67,9 @@ trait SubscriptionService {
     }
   }
 
-  def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] = {
-    subRepo.getSubscription(transactionId, regime, subscriber)
-  }
+//  def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] = {
+//    subRepo.getSubscription(transactionId, regime, subscriber)
+//  }
 
 
 }

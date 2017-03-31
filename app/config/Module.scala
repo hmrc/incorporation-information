@@ -22,6 +22,7 @@ import connectors.{IncorporationCheckAPIConnector, IncorporationCheckAPIConnecto
 import controllers.test.{FeatureSwitchControllerImpl, FeatureSwitchController}
 import controllers.{SubscriptionController, SubscriptionControllerImpl, TransactionalController, TransactionalControllerImpl}
 import jobs.IncorpUpdatesJobImpl
+import repositories._
 import services._
 import uk.gov.hmrc.play.config.inject.{DefaultServicesConfig, ServicesConfig}
 import uk.gov.hmrc.play.scheduling.ScheduledJob
@@ -46,9 +47,6 @@ class Module extends AbstractModule {
     bind(classOf[IncorpUpdateService]).to(classOf[IncorpUpdateServiceImpl])
     bind(classOf[TransactionalService]).to(classOf[TransactionalServiceImpl])
     bind(classOf[SubscriptionService]).to(classOf[SubscriptionServiceImpl])
-
-    // repositories
-// TODO ?
 
     // jobs
     bind(classOf[ScheduledJob]).annotatedWith(Names.named("incorp-update-job")).to(classOf[IncorpUpdatesJobImpl])

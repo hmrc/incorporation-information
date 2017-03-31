@@ -41,7 +41,7 @@ import scala.concurrent.Future
 
 @Singleton
 class SubscriptionsMongo extends MongoDbConnection with ReactiveMongoFormats {
-  val store = new SubscriptionsMongoRepository(db)
+  val repo = new SubscriptionsMongoRepository(db)
 }
 
 trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {

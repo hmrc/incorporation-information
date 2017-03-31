@@ -42,7 +42,7 @@ object IncorpUpdatesResponse {
     js.validate[String].map[DateTime](DateTime.parse(_, DateTimeFormat.forPattern("yyyy-MM-dd")))
   )
 
-  implicit val updateFmt = IncorpUpdate.apiFormat
+  implicit val updateFmt = IncorpUpdate.cohoFormat
 
   implicit val reads : Reads[IncorpUpdatesResponse] = (
     ( __ \ "items" ).read[Seq[IncorpUpdate]] and
