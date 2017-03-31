@@ -104,9 +104,9 @@ class IncorpUpdateSpec extends UnitSpec {
 
     "return json including a valid timestamp" in {
       val incorpUpdate = IncorpUpdate(transactionId, "rejected", None, None, "tp", Some("description"))
-      val json = Json.toJson(IncorpUpdateResponse(regime, subscriber, callbackUrl, incorpUpdate))(IncorpUpdateResponse.writes).as[JsObject]
 
       val before = DateTime.now(DateTimeZone.UTC).getMillis
+      val json = Json.toJson(IncorpUpdateResponse(regime, subscriber, callbackUrl, incorpUpdate))(IncorpUpdateResponse.writes).as[JsObject]
       val timestamp = (json \ "SCRSIncorpStatus" \ "IncorpStatusEvent" \ "timestamp").as[Long]
       val after = DateTime.now(DateTimeZone.UTC).getMillis
 

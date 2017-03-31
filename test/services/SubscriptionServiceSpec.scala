@@ -79,7 +79,7 @@ class SubscriptionServiceSpec extends SCRSSpec {
       when(mockSubRepo.insertSub(sub)).thenReturn(Future(ur))
 
       val result = await(service.addSubscription(transId, regime, subscriber, url))
-      result.map(res => res == SuccessfulSub)
+      result shouldBe SuccessfulSub
     }
 
     "return a FailedSub when a new subscription fails to be added" in new Setup {
@@ -88,7 +88,7 @@ class SubscriptionServiceSpec extends SCRSSpec {
       when(mockSubRepo.insertSub(sub)).thenReturn(Future(ur))
 
       val result = await(service.addSubscription(transId, regime, subscriber, url))
-      result.map(res => res == FailedSub)
+      result shouldBe FailedSub
     }
   }
 
@@ -97,15 +97,15 @@ class SubscriptionServiceSpec extends SCRSSpec {
     "return a DeletedSub when an existing subscription is deleted" in new Setup {
       when(mockSubRepo.deleteSub(transId, regime, subscriber)).thenReturn(Future(DeletedSub))
 
-      val result = service.deleteSubscription(transId, regime, subscriber)
-      result.map(res => res == DeletedSub)
+      val result = await(service.deleteSubscription(transId, regime, subscriber))
+      result shouldBe DeletedSub
     }
 
     "return a FailedSub when an existing subscription has failed to be deleted" in new Setup {
       when(mockSubRepo.deleteSub(transId, regime, subscriber)).thenReturn(Future(FailedSub))
 
-      val result = service.deleteSubscription(transId, regime, subscriber)
-      result.map(res => res == FailedSub)
+      val result = await(service.deleteSubscription(transId, regime, subscriber))
+      result shouldBe FailedSub
     }
   }
 

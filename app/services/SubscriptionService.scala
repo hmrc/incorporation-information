@@ -63,7 +63,7 @@ trait SubscriptionService {
       case DeletedSub => Logger.info(s"[SubscriptionService] [deleteSubscription] Subscription with transactionId: $transactionId, " +
         s"and regime: $regime, and subscriber: $subscriber was deleted")
         DeletedSub
-      case _ => FailedSub
+      case FailedSub => FailedSub
     }
   }
 

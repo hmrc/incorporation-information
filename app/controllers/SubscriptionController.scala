@@ -42,7 +42,7 @@ trait SubscriptionController extends BaseController {
           case IncorpExists(update) =>
             val response = toResponse(regime, subscriber, callbackUrl, update)
             Ok(Json.toJson(response)(IncorpUpdateResponse.writes))
-          case SuccessfulSub => Accepted("You have successfully added a subscription")
+          case SuccessfulSub => Accepted
           case _ => InternalServerError
         }
       }
@@ -53,8 +53,8 @@ trait SubscriptionController extends BaseController {
   def removeSubscription(transactionId: String, regime: String, subscriber: String) = Action.async {
     implicit request =>
         service.deleteSubscription(transactionId, regime, subscriber).map {
-            case DeletedSub => Ok("subscription has been deleted")
-            case FailedSub => NotFound("The subscription does not exist")
+            case DeletedSub => Ok
+            case FailedSub => NotFound
             case _ => InternalServerError
         }
   }
