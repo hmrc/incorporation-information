@@ -16,7 +16,10 @@
 
 package models
 
+import java.time.chrono.Chronology
+
 import org.joda.time.DateTime
+import org.joda.time.chrono.ISOChronology
 import org.joda.time.format.DateTimeFormat
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
@@ -55,14 +58,14 @@ object IncorpUpdate {
     )(IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
 
 
-  def writes(callBackUrl: String, transactionId: String): Writes[IncorpUpdate] = new Writes[IncorpUpdate] {
+  def writes(callBackUrl: String, transactionId: String, subscriber: String, regime: String): Writes[IncorpUpdate] = new Writes[IncorpUpdate] {
 
     def writes(u: IncorpUpdate) = {
       Json.obj(
         "SCRSIncorpStatus" -> Json.obj(
           "IncorpSubscriptionKey" -> Json.obj(
-            "subscriber" -> "SCRS",
-            "discriminator" -> "PAYE",
+            "subscriber" -> subscriber,
+            "discriminator" -> regime,
             "transactionId" -> transactionId
           ),
           "SCRSIncorpSubscription" -> Json.obj(
@@ -70,7 +73,7 @@ object IncorpUpdate {
           ),
             "IncorpStatusEvent" -> Json.obj(
               "status" -> u.status,
-              "timestamp" -> "2017-12-21T10:13:09.429Z"//todo: create timestamp here?
+              "timestamp" -> DateTime.now(ISOChronology.getInstance().withUTC())
             ).++(
               u.statusDescription.fold[JsObject](Json.obj())(s => Json.obj("description" -> s))
             ).++(

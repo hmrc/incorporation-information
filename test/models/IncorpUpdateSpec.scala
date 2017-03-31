@@ -29,6 +29,8 @@ class IncorpUpdateSpec extends UnitSpec {
   "writes" should {
 
     val transactionId = "trans12345"
+    val subscriber = "SCRS"
+    val regime = "CT"
 
     "return json when an accepted incorporation is provided" in {
       val crn = "crn12345"
@@ -52,7 +54,7 @@ class IncorpUpdateSpec extends UnitSpec {
            |"timestamp":"2017-12-21T10:13:09.429Z"}}}
       """.stripMargin)
 
-      val response = Json.toJson(IncorpUpdate("transID", "accepted", Some(crn), Some(incDate), "tp", None))(IncorpUpdate.writes("www.url.com", transactionId))
+      val response = Json.toJson(IncorpUpdate("transID", "accepted", Some(crn), Some(incDate), "tp", None))(IncorpUpdate.writes("www.url.com", transactionId, subscriber, regime))
       response shouldBe json
     }
 
@@ -74,7 +76,7 @@ class IncorpUpdateSpec extends UnitSpec {
            |"timestamp":"2017-12-21T10:13:09.429Z"}}}
       """.stripMargin)
 
-      val response = Json.toJson(IncorpUpdate("transID", "rejected", None, None, "tp", Some("description")))(IncorpUpdate.writes("www.url.com", transactionId))
+      val response = Json.toJson(IncorpUpdate("transID", "rejected", None, None, "tp", Some("description")))(IncorpUpdate.writes("www.url.com", transactionId, subscriber, regime))
       response shouldBe json
     }
 

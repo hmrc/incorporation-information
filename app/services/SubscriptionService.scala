@@ -16,6 +16,8 @@
 
 package services
 
+import javax.inject.Inject
+
 import models.{IncorpUpdate, Subscription}
 import play.api.Logger
 import repositories._
@@ -25,13 +27,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 
-object SubscriptionService
-extends SubscriptionService {
-
-  override protected val subRepo = Repositories.smRepository
-  override protected val incorpRepo = Repositories.incorpUpdateRepository
-
-}
+class SubscriptionServiceImpl @Inject()(val subRepo: SubscriptionsRepository, val incorpRepo: IncorpUpdateRepository) extends SubscriptionService
 
 trait SubscriptionService {
 
@@ -41,11 +37,8 @@ trait SubscriptionService {
 
   def checkForSubscription(transactionId: String, regime: String, subscriber: String, callBackUrl: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
      checkForIncorpUpdate(transactionId) flatMap {
-      case Some(incorpUpdate) => {
-         Future.successful(IncorpExists(incorpUpdate))}
-      case None => {
-         addSubscription(transactionId, regime, subscriber, callBackUrl)
-      }
+      case Some(incorpUpdate) => Future.successful(IncorpExists(incorpUpdate))
+      case None => addSubscription(transactionId, regime, subscriber, callBackUrl)
     }
   }
 

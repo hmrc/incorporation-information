@@ -16,8 +16,9 @@
 
 package controllers
 
+import javax.inject.Inject
 
-import models.{IncorpUpdate, Subscription}
+import models.IncorpUpdate
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.Action
 import repositories.{DeletedSub, FailedSub, IncorpExists, SuccessfulSub}
@@ -27,9 +28,7 @@ import uk.gov.hmrc.play.microservice.controller.BaseController
 import scala.concurrent.ExecutionContext.Implicits.global
 
 
-class SubscriptionControllerImpl extends SubscriptionController {
-  override protected val service = SubscriptionService
-}
+class SubscriptionControllerImpl @Inject()(val service: SubscriptionService) extends SubscriptionController
 
 trait SubscriptionController extends BaseController {
 
@@ -40,15 +39,9 @@ trait SubscriptionController extends BaseController {
       withJsonBody[JsObject] { js =>
         val callbackUrl = (js \ "SCRSIncorpSubscription" \ "callbackUrl").as[String]
         service.checkForSubscription(transactionId, regime, subscriber, callbackUrl).map {
-          case IncorpExists(update) => {
-            Ok(Json.toJson(update)(IncorpUpdate.writes(callbackUrl, transactionId)))
-          }
-          case SuccessfulSub => {
-            Accepted("You have successfully added a subscription")
-          }
-          case FailedSub => {
-            InternalServerError
-          }
+          case IncorpExists(update) => Ok(Json.toJson(update)(IncorpUpdate.writes(callbackUrl, transactionId, subscriber, regime)))
+          case SuccessfulSub => Accepted("You have successfully added a subscription")
+          case _ => InternalServerError
         }
       }
 
