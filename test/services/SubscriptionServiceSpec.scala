@@ -37,7 +37,7 @@ class SubscriptionServiceSpec extends SCRSSpec {
   trait Setup {
 
     val service = new SubscriptionService {
-      override val subRepo = new SubscriptionsMongo {
+      override val subRepo = new SubscriptionsMongo(reactiveMongoComponent) {
         override val repo = mockSubRepo
       }
       override val incorpRepo = new IncorpUpdateMongo(reactiveMongoComponent){

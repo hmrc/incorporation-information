@@ -16,10 +16,10 @@
 
 package repositories
 
-import javax.inject.Singleton
+import javax.inject.{Inject, Singleton}
 
 import models.{IncorpUpdate, Subscription}
-import play.modules.reactivemongo.MongoDbConnection
+import play.modules.reactivemongo.{ReactiveMongoComponent, MongoDbConnection}
 import reactivemongo.api.DB
 import reactivemongo.api.commands._
 import reactivemongo.api.indexes.{Index, IndexType}
@@ -33,8 +33,8 @@ import scala.concurrent.Future
 
 
 @Singleton
-class SubscriptionsMongo extends MongoDbConnection with ReactiveMongoFormats {
-  val repo = new SubscriptionsMongoRepository(db)
+class SubscriptionsMongo @Inject()(mongo: ReactiveMongoComponent) extends ReactiveMongoFormats {
+  val repo = new SubscriptionsMongoRepository(mongo.mongoConnector.db)
 }
 
 trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {

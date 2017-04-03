@@ -49,7 +49,7 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
 
 
   class Setup {
-    val mongo = new SubscriptionsMongo
+    val mongo = new SubscriptionsMongo(reactiveMongoComponent)
     val incRepo = new IncorpUpdateMongo(reactiveMongoComponent).repo
     val repository = mongo.repo
 
