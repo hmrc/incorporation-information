@@ -92,15 +92,6 @@ class SubscriptionsMongoRepository(mongo: () => DB)
   def deleteSub(transactionId: String, regime: String, subscriber: String): Future[WriteResult] = {
     val selector = BSONDocument("transactionId" -> transactionId, "regime" -> regime, "subscriber" -> subscriber)
      collection.remove(selector)
-    // map {
-//      case DefaultWriteResult(true, 1, _, _, _, _) => DeletedSub
-//      case DefaultWriteResult(true, 0, _, _, _, errmsg) => {
-//        Logger.warn(s"[SubscriptionsRepository] [deleteSub] Didn't delete the subscription with TransId: $transactionId, and regime: $regime, and subscriber: $subscriber." +
-//          s"Error message: $errmsg")
-//        FailedSub
-//      }
-//      case _ => FailedSub
-//    }
   }
 
   def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] = {
