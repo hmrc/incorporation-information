@@ -18,8 +18,8 @@ package controllers
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import Helpers.SCRSSpec
 import models.{IncorpUpdate, Subscription}
+import Helpers.{JSONhelpers, SCRSSpec}
 import org.joda.time.DateTime
 import org.mockito.Matchers
 import services.SubscriptionService
@@ -27,14 +27,14 @@ import org.mockito.Mockito._
 import org.mockito.Matchers.{any, eq => eqTo}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import play.api.libs.json.Json
-import repositories.{DeletedSub, FailedSub, IncorpExists, SuccessfulSub}
+import play.api.libs.json.{JsObject, Json}
+import repositories._
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
 
-class SubscriptionControllerImplSpec extends SCRSSpec {
+class SubscriptionControllerImplSpec extends SCRSSpec with JSONhelpers {
 
   implicit val system = ActorSystem("II")
   implicit val materializer = ActorMaterializer()
@@ -59,6 +59,15 @@ class SubscriptionControllerImplSpec extends SCRSSpec {
   val testIncorpUpdate = IncorpUpdate(transactionId, status, Some(crn), Some(incDate), "20170327093004787", None)
 
     "check Subscription" should {
+
+      val requestBody = Json.parse(
+        s"""
+           |{
+           | "SCRSIncorpSubscription":{
+           |   "callbackUrl":"$callbackUrl"
+           | }
+           |}
+          """.stripMargin)
 
      val json = Json.parse(
        s"""
@@ -85,30 +94,26 @@ class SubscriptionControllerImplSpec extends SCRSSpec {
         when(mockService.checkForSubscription(any(),any(),any(),any())(any()))
           .thenReturn(Future(IncorpExists(testIncorpUpdate)))
 
-        val requestBody = Json.parse(
-          s"""
-            |{
-            | "SCRSIncorpSubscription":{
-            |   "callbackUrl":"$callbackUrl"
-            | }
-            |}
-          """.stripMargin)
         val response = FakeRequest().withBody(requestBody)
 
         val fResult = call(controller.checkSubscription(transactionId,regime,subscriber), response)
         val result = await(fResult)
 
+        val (generatedTS, jsonNoTS) = extractTimestamp(jsonBodyOf(result).as[JsObject])
+
         status(result) shouldBe 200
-        jsonBodyOf(result) shouldBe json
+        jsonNoTS shouldBe json
       }
 
       "return a 202(Accepted) when a new subscription is created" in new Setup {
         when(mockService.checkForSubscription(any(),any(),any(),any())(any()))
           .thenReturn(Future.successful(SuccessfulSub))
 
-        val response = FakeRequest().withBody(json)
+        val response = FakeRequest().withBody(requestBody)
 
-        val result = call(controller.checkSubscription(transactionId,regime,subscriber), response)
+        val fResult = call(controller.checkSubscription(transactionId,regime,subscriber), response)
+        val result = await(fResult)
+
         status(result) shouldBe 202
       }
    }
@@ -127,7 +132,7 @@ class SubscriptionControllerImplSpec extends SCRSSpec {
 
     "return a 404 when a subscription cannot be found" in new Setup {
       when(mockService.deleteSubscription(Matchers.eq(transactionId),Matchers.eq(regime),Matchers.eq(subscriber)))
-        .thenReturn(Future.successful(FailedSub))
+        .thenReturn(Future.successful(NotDeletedSub))
 
       val response = FakeRequest()
 

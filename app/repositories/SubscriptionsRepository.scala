@@ -45,21 +45,21 @@ class SubscriptionsMongo extends MongoDbConnection with ReactiveMongoFormats {
 }
 
 trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
-  def insertSub(sub: Subscription) : Future[UpsertResult]
+  def insertSub(sub: Subscription): Future[UpsertResult]
 
-  def deleteSub(transactionId: String, regime: String, subscriber: String): Future[SubscriptionStatus]
+  def deleteSub(transactionId: String, regime: String, subscriber: String): Future[WriteResult]
 
   def getSubscription(transactionId: String, regime: String, subscriber: String) : Future[Option[Subscription]]
 
-  def wipeTestData() : Future[WriteResult]
+  def wipeTestData(): Future[WriteResult]
 }
 
 
 sealed trait SubscriptionStatus
 case object SuccessfulSub extends SubscriptionStatus
 case object FailedSub extends SubscriptionStatus
-//case object DeletedSub extends SubscriptionStatus
 case class IncorpExists(update: IncorpUpdate) extends SubscriptionStatus
+case class SubExists(update: IncorpUpdate) extends SubscriptionStatus
 
 
 sealed trait UnsubscribeStatus

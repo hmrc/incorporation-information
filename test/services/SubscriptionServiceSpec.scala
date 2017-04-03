@@ -21,7 +21,7 @@ import models.{IncorpUpdate, Subscription}
 import repositories._
 import org.mockito.Mockito._
 import org.mockito.Matchers.{eq => eqTo, _}
-import reactivemongo.api.commands.WriteError
+import reactivemongo.api.commands.{DefaultWriteResult, WriteError}
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -95,17 +95,19 @@ class SubscriptionServiceSpec extends SCRSSpec {
 
   "deleteSubscription" should {
     "return a DeletedSub when an existing subscription is deleted" in new Setup {
-      when(mockSubRepo.deleteSub(transId, regime, subscriber)).thenReturn(Future(DeletedSub))
+      val writeResult = DefaultWriteResult(true, 1, Seq(), None, None, None).flatten
+      when(mockSubRepo.deleteSub(transId, regime, subscriber)).thenReturn(Future(writeResult))
 
       val result = await(service.deleteSubscription(transId, regime, subscriber))
       result shouldBe DeletedSub
     }
 
-    "return a FailedSub when an existing subscription has failed to be deleted" in new Setup {
-      when(mockSubRepo.deleteSub(transId, regime, subscriber)).thenReturn(Future(FailedSub))
+    "return a NotDeletedSub when an existing subscription has failed to be deleted" in new Setup {
+      val writeResult = DefaultWriteResult(false, 1, Seq(), None, None, None).flatten
+      when(mockSubRepo.deleteSub(transId, regime, subscriber)).thenReturn(Future(writeResult))
 
       val result = await(service.deleteSubscription(transId, regime, subscriber))
-      result shouldBe FailedSub
+      result shouldBe NotDeletedSub
     }
   }
 

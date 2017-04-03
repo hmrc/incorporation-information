@@ -31,8 +31,8 @@ class Module extends AbstractModule {
 
   override def configure(): Unit = {
 
-    bind(classOf[ServicesConfig]).to(classOf[DefaultServicesConfig])
-    bind(classOf[MicroserviceConfig]).to(classOf[MicroserviceConfigImpl])
+    bind(classOf[ServicesConfig]).to(classOf[DefaultServicesConfig]).asEagerSingleton()
+    bind(classOf[MicroserviceConfig]).to(classOf[MicroserviceConfigImpl]).asEagerSingleton()
 
     // controllers
     bind(classOf[SubscriptionController]).to(classOf[SubscriptionControllerImpl])

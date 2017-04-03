@@ -17,11 +17,12 @@
 package apis
 
 import helpers.IntegrationSpecBase
-import models.Subscription
+import models.{IncorpUpdate, Subscription}
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.Json
-import repositories.SubscriptionsMongo
+import play.modules.reactivemongo.ReactiveMongoComponent
+import repositories.{IncorpUpdateMongo, SubscriptionsMongo}
+import play.api.libs.json.{JsObject, Json, __}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -44,19 +45,36 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
     ws.url(s"http://localhost:$port/incorporation-information/$path").
       withFollowRedirects(false)
 
+  lazy val reactiveMongoComponent = app.injector.instanceOf[ReactiveMongoComponent]
+
 
   class Setup {
     val mongo = new SubscriptionsMongo
+    val incRepo = new IncorpUpdateMongo(reactiveMongoComponent).repo
     val repository = mongo.repo
+
+    def insert(sub: Subscription) = await(repository.insert(sub))
+    def insert(update: IncorpUpdate) = await(incRepo.insert(update))
+    def subCount = await(repository.count)
+    def incCount = await(incRepo.count)
   }
 
   override def beforeEach() = new Setup {
     await(repository.drop)
     await(repository.ensureIndexes)
+    await(incRepo.drop)
+    await(incRepo.ensureIndexes)
   }
 
   override def afterEach() = new Setup {
     await(repository.drop)
+    await(incRepo.drop)
+  }
+
+  def extractTimestamp(json: JsObject): (Long, JsObject) = {
+    val generatedTS = (json \ "SCRSIncorpStatus" \ "IncorpStatusEvent" \ "timestamp").as[Long]
+    val t = (__ \ "SCRSIncorpStatus" \ "IncorpStatusEvent" \ "timestamp").json.prune
+    (generatedTS, (json transform t).get)
   }
 
   val transactionId = "123abc"
@@ -100,17 +118,42 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
       response.status shouldBe 202
     }
 
-    "return a 202 HTTP response when an existing subscription is updated" in new Setup {
-      setupSimpleAuthMocks()
+    "return a 200 HTTP response when an existing IncorpUpdate is fetched" in new Setup {
+      val expectedJson = Json.parse(
+        """
+          |{
+          |  "SCRSIncorpStatus":{
+          |    "IncorpSubscriptionKey":{
+          |      "subscriber":"abc123",
+          |      "discriminator":"CT100",
+          |      "transactionId":"123abc"
+          |    },
+          |    "SCRSIncorpSubscription":{
+          |      "callbackUrl":"www.testUpdate.com"
+          |    },
+          |    "IncorpStatusEvent":{
+          |      "status":"rejected",
+          |      "description":"description"
+          |    }
+          |  }
+          |}
+        """.stripMargin)
 
-      await(repository.insertSub(sub))
+      val incorpUpdate = IncorpUpdate(transactionId, "rejected", None, None, "tp", Some("description"))
+
+      setupSimpleAuthMocks()
+      insert(incorpUpdate)
+      incCount shouldBe 1
 
       val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").post(jsonUpdate).futureValue
-      response.status shouldBe 202
+      response.status shouldBe 200
+
+      val (_, jsonNoTs) = extractTimestamp(response.json.as[JsObject])
+      jsonNoTs shouldBe expectedJson
+
     }
 
   }
-
 
   "getSubscription" should {
 

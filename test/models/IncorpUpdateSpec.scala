@@ -19,11 +19,12 @@ package models
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.json.{JsLookupResult, JsObject, Json, __}
 import uk.gov.hmrc.play.test.UnitSpec
+import Helpers.JSONhelpers
 
 /**
   * Created by jackie on 23/03/17.
   */
-class IncorpUpdateSpec extends UnitSpec {
+class IncorpUpdateSpec extends UnitSpec with JSONhelpers {
 
   "writes" should {
 
@@ -70,11 +71,7 @@ class IncorpUpdateSpec extends UnitSpec {
       jsonNoTS shouldBe json
     }
 
-    def extractTimestamp(json: JsObject): (Long, JsObject) = {
-      val generatedTS = (json \ "SCRSIncorpStatus" \ "IncorpStatusEvent" \ "timestamp").as[Long]
-      val t = (__ \ "SCRSIncorpStatus" \ "IncorpStatusEvent" \ "timestamp").json.prune
-      (generatedTS, (json transform t).get)
-    }
+
 
     "return json when a rejected incorporation is provided" in {
       val json = Json.parse(
