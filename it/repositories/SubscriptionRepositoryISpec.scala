@@ -142,6 +142,23 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
       }
     }
 
+    "getSubscription" should {
+      "return a subscription if one exists with the given information" in new Setup {
+        await(repository.insertSub(sub))
+
+        val result = await(repository.getSubscription(sub.transactionId, sub.regime, sub.subscriber))
+        result.head.transactionId shouldBe sub.transactionId
+        result.head.regime shouldBe sub.regime
+        result.head.subscriber shouldBe sub.subscriber
+      }
+
+      "return None if no subscription exists with the given information" in new Setup {
+        await(repository.count) shouldBe 0
+
+        val result = await(repository.getSubscription(sub.transactionId, sub.regime, sub.subscriber))
+        result shouldBe None
+      }
+    }
 
 
   "wipeTestData" should {

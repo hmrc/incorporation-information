@@ -17,7 +17,7 @@
 package controllers
 
 
-import models.IncorpUpdate
+import models.{IncorpUpdate, Subscription}
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.Action
 import repositories.{DeletedSub, FailedSub, IncorpExists, SuccessfulSub}
@@ -58,11 +58,17 @@ trait SubscriptionController extends BaseController {
   def removeSubscription(transactionId: String, regime: String, subscriber: String) = Action.async {
     implicit request =>
         service.deleteSubscription(transactionId, regime, subscriber).map {
-           {
             case DeletedSub => Ok("subscription has been deleted")
             case FailedSub => NotFound("The subscription does not exist")
             case _ => InternalServerError
-          }
         }
+  }
+
+  def getSubscription(transactionId: String, regime: String, subscriber: String) = Action.async {
+    implicit request =>
+      service.getSubscription(transactionId, regime, subscriber).map {
+          case Some(sub) => Ok(Json.toJson(sub))
+          case _ => NotFound("The subscription does not exist")
+      }
   }
 }

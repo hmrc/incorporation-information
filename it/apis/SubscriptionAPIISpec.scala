@@ -94,12 +94,10 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
     }
 
     "return a 202 HTTP response" in new Setup {
-
       setupSimpleAuthMocks()
 
       val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").post(json).futureValue
       response.status shouldBe 202
-
     }
 
     "return a 202 HTTP response when an existing subscription is updated" in new Setup {
@@ -109,10 +107,26 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
 
       val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").post(jsonUpdate).futureValue
       response.status shouldBe 202
-
     }
 
-
   }
+
+
+  "getSubscription" should {
+
+    "return a 200 HTTP response when a subscription with the given info exists" in new Setup {
+      await(repository.insertSub(sub))
+
+      val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").get.futureValue
+      response.status shouldBe 200
+    }
+
+    "return a 404 HTTP response when a subscription with the given info does not exist" in new Setup {
+
+      val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").get.futureValue
+      response.status shouldBe 404
+    }
+  }
+
 }
 

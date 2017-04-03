@@ -52,7 +52,9 @@ trait SubscriptionService {
   def addSubscription(transactionId: String, regime: String, subscriber: String, callbackUrl: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
     val sub = Subscription(transactionId, regime, subscriber, callbackUrl)
     subRepo.insertSub(sub) map {
-      case UpsertResult(_, _, Seq()) => SuccessfulSub
+      case UpsertResult(a, b, Seq()) =>
+        Logger.info(s"[MongoSubscriptionsRepository] [insertSub] $a was updated and $b was upserted for transactionId: $transactionId")
+        SuccessfulSub
       case UpsertResult(_, _, errs) if errs.nonEmpty =>
         Logger.error(s"[SubscriptionService] [addSubscription] Error encountered when attempting to add a subscription - ${errs.toString()}")
         FailedSub
@@ -71,5 +73,11 @@ trait SubscriptionService {
       case _ => FailedSub
     }
   }
+
+  def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] = {
+    subRepo.getSubscription(transactionId, regime, subscriber)
+  }
+
+
 }
 
