@@ -18,4 +18,5 @@ package constants
 
 object CollectionNames {
   lazy val INCORP_INFO = "incorporation-information"
+  lazy val QUEUE = "incorp-update-queue"
 }
