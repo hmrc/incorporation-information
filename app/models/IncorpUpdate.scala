@@ -46,6 +46,15 @@ object IncorpUpdate {
       (__ \ "transaction_status_description").formatNullable[String]
     ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
 
+  val queueFormat = (
+    (__ \ "transaction_id").format[String] and
+      (__ \ "transaction_status").format[String] and
+      (__ \ "company_number").formatNullable[String] and
+      (__ \ "incorporated_on").formatNullable[DateTime] and
+      (__ \ "timepoint").format[String] and
+      (__ \ "transaction_status_description").formatNullable[String]
+    ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
+
 
   val cohoFormat = (
     (__ \ "transaction_id").format[String] and
@@ -106,4 +115,14 @@ object IncorpUpdateResponse {
 
     def now: DateTime = DateTime.now(DateTimeZone.UTC)
   }
+}
+
+case class QueuedIncorpUpdate(queueStatus: String, timestamp: DateTime, incorpUpdate: IncorpUpdate)
+
+object QueuedIncorpUpdate {
+  val format = (
+    (__ \ "queue_status").format[String] and
+      (__ \ "timestamp").format[DateTime] and
+      (__ \ "incorp_update").format[IncorpUpdate](IncorpUpdate.queueFormat)
+  ) (QueuedIncorpUpdate.apply, unlift(QueuedIncorpUpdate.unapply))
 }
