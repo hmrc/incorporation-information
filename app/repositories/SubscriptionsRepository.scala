@@ -19,7 +19,6 @@ package repositories
 import javax.inject.Singleton
 
 import models.{IncorpUpdate, Subscription}
-import play.api.Logger
 import play.modules.reactivemongo.MongoDbConnection
 import reactivemongo.api.DB
 import reactivemongo.api.commands._
@@ -32,12 +31,6 @@ import scala.collection.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-
-//object SubscriptionsRepository extends MongoDbConnection {
-//  private lazy val repository = new MongoSubscriptionsRepository
-//
-//  def apply() : SubscriptionsRepository = repository
-//}
 
 @Singleton
 class SubscriptionsMongo extends MongoDbConnection with ReactiveMongoFormats {
