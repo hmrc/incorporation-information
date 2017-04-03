@@ -20,6 +20,7 @@ import javax.inject.Inject
 
 import models.{IncorpUpdate, Subscription}
 import play.api.Logger
+import reactivemongo.api.commands.DefaultWriteResult
 import repositories._
 import uk.gov.hmrc.play.http.HeaderCarrier
 
@@ -58,12 +59,15 @@ trait SubscriptionService {
     incorpRepo.repo.getIncorpUpdate(transactionId)
   }
 
-  def deleteSubscription(transactionId: String, regime: String, subscriber: String): Future[SubscriptionStatus] = {
+  def deleteSubscription(transactionId: String, regime: String, subscriber: String): Future[UnsubscribeStatus] = {
     subRepo.repo.deleteSub(transactionId, regime, subscriber) map {
-      case DeletedSub => Logger.info(s"[SubscriptionService] [deleteSubscription] Subscription with transactionId: $transactionId, " +
+      case DefaultWriteResult(true, 1, _, _, _, _) => Logger.info(s"[SubscriptionService] [deleteSubscription] Subscription with transactionId: $transactionId, " +
         s"and regime: $regime, and subscriber: $subscriber was deleted")
         DeletedSub
-      case FailedSub => FailedSub
+      case e@_ =>
+        Logger.warn(s"[SubscriptionsRepository] [deleteSub] Didn't delete the subscription with TransId: $transactionId, and regime: $regime, and subscriber: $subscriber." +
+          s"Error message: $e")
+        NotDeletedSub
     }
   }
 

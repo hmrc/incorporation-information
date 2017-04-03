@@ -21,7 +21,7 @@ import javax.inject.{Inject, Singleton}
 import models.{IncorpUpdate, IncorpUpdateResponse}
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.Action
-import repositories.{DeletedSub, FailedSub, IncorpExists, SuccessfulSub}
+import repositories._
 import services.SubscriptionService
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
@@ -52,10 +52,10 @@ trait SubscriptionController extends BaseController {
 
   def removeSubscription(transactionId: String, regime: String, subscriber: String) = Action.async {
     implicit request =>
-        service.deleteSubscription(transactionId, regime, subscriber).map {
-            case DeletedSub => Ok
-            case FailedSub => NotFound
-            case _ => InternalServerError
+      service.deleteSubscription(transactionId, regime, subscriber).map {
+        case DeletedSub => Ok
+        case NotDeletedSub => NotFound
+        case _ => InternalServerError
         }
   }
 

@@ -58,8 +58,13 @@ trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
 sealed trait SubscriptionStatus
 case object SuccessfulSub extends SubscriptionStatus
 case object FailedSub extends SubscriptionStatus
-case object DeletedSub extends SubscriptionStatus
+//case object DeletedSub extends SubscriptionStatus
 case class IncorpExists(update: IncorpUpdate) extends SubscriptionStatus
+
+
+sealed trait UnsubscribeStatus
+case object DeletedSub extends UnsubscribeStatus
+case object NotDeletedSub extends UnsubscribeStatus
 
 case class UpsertResult(modified: Int, inserted: Int, errors: Seq[WriteError])
 
@@ -84,17 +89,18 @@ class SubscriptionsMongoRepository(mongo: () => DB)
   }
 
 
-  def deleteSub(transactionId: String, regime: String, subscriber: String): Future[SubscriptionStatus] = {
+  def deleteSub(transactionId: String, regime: String, subscriber: String): Future[WriteResult] = {
     val selector = BSONDocument("transactionId" -> transactionId, "regime" -> regime, "subscriber" -> subscriber)
-    collection.remove(selector) map {
-      case DefaultWriteResult(true, 1, _, _, _, _) => DeletedSub
-      case DefaultWriteResult(true, 0, _, _, _, errmsg) => {
-        Logger.warn(s"[SubscriptionsRepository] [deleteSub] Didn't delete the subscription with TransId: $transactionId, and regime: $regime, and subscriber: $subscriber." +
-          s"Error message: $errmsg")
-        FailedSub
-      }
-      case _ => FailedSub
-    }
+     collection.remove(selector)
+    // map {
+//      case DefaultWriteResult(true, 1, _, _, _, _) => DeletedSub
+//      case DefaultWriteResult(true, 0, _, _, _, errmsg) => {
+//        Logger.warn(s"[SubscriptionsRepository] [deleteSub] Didn't delete the subscription with TransId: $transactionId, and regime: $regime, and subscriber: $subscriber." +
+//          s"Error message: $errmsg")
+//        FailedSub
+//      }
+//      case _ => FailedSub
+//    }
   }
 
   def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] = {
