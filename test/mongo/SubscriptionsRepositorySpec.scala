@@ -65,21 +65,21 @@ class SubscriptionsRepositorySpec extends SCRSSpec {
   }
 
 
-  "deleteSub" should {
-    "return a DeletedSub when a subscription has been deleted" in new Setup {
-      when(mockRepo.deleteSub(transId, regime, subscriber)).thenReturn(Future(DeletedSub))
-
-      val result = mockRepo.deleteSub(transId, regime, subscriber)
-      result.map(res => res == SuccessfulSub)
-    }
-
-    "return a FailedSub when a subscription has not been successfully deleted" in new Setup {
-      when(mockRepo.deleteSub(transId, regime, subscriber)).thenReturn(Future(FailedSub))
-
-      val result = mockRepo.deleteSub(transId, regime, subscriber)
-      result.map(res => res == FailedSub)
-    }
-  }
+//  "deleteSub" should {
+//    "return a DeletedSub when a subscription has been deleted" in new Setup {
+//      when(mockRepo.deleteSub(transId, regime, subscriber)).thenReturn(Future(DeletedSub))
+//
+//      val result = mockRepo.deleteSub(transId, regime, subscriber)
+//      result.map(res => res == SuccessfulSub)
+//    }
+//
+//    "return a FailedSub when a subscription has not been successfully deleted" in new Setup {
+//      when(mockRepo.deleteSub(transId, regime, subscriber)).thenReturn(Future(FailedSub))
+//
+//      val result = mockRepo.deleteSub(transId, regime, subscriber)
+//      result.map(res => res == FailedSub)
+//    }
+//  }
 
   "getSubscription" should {
     "return a Subscription when a subscription exists" in new Setup {
