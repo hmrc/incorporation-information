@@ -1,0 +1,3 @@
+# test-only specific routes
+
+GET        /feature-switch/:featureName/:state                         @controllers.test.FeatureSwitchController.switch(featureName, state)

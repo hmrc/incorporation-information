@@ -20,7 +20,8 @@ import Helpers.SCRSSpec
 import models.{IncorpUpdate, Subscription}
 import repositories._
 import org.mockito.Mockito._
-import reactivemongo.api.commands.WriteError
+import org.mockito.Matchers.{eq => eqTo, _}
+import reactivemongo.api.commands.{DefaultWriteResult, WriteError}
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -30,14 +31,18 @@ import scala.concurrent.ExecutionContext.Implicits.global
   */
 class SubscriptionServiceSpec extends SCRSSpec {
 
-  val mockSubRepo = mock[SubscriptionsRepository]
-  val mockIncorpRepo = mock[IncorpUpdateRepository]
+  val mockSubRepo = mock[SubscriptionsMongoRepository]
+  val mockIncorpRepo = mock[IncorpUpdateMongoRepository]
 
   trait Setup {
 
     val service = new SubscriptionService {
-      override val subRepo = mockSubRepo
-      override val incorpRepo = mockIncorpRepo
+      override val subRepo = new SubscriptionsMongo {
+        override val repo = mockSubRepo
+      }
+      override val incorpRepo = new IncorpUpdateMongo(reactiveMongoComponent){
+        override val repo = mockIncorpRepo
+      }
     }
   }
 
@@ -50,19 +55,20 @@ class SubscriptionServiceSpec extends SCRSSpec {
 
 
   "checkForSubscription" should {
-    "return an incorp update for a subscription that exists" in new Setup {
-      when(service.checkForIncorpUpdate(transId)).thenReturn(Future(Some(incorpUpdate)))
 
-      val result = service.checkForIncorpUpdate(transId)
+    "return an incorp update for a subscription that exists" in new Setup {
+      when(mockIncorpRepo.getIncorpUpdate(eqTo(transId))).thenReturn(Future.successful(Some(incorpUpdate)))
+
+      val result = await(service.checkForIncorpUpdate(transId))
       result.get shouldBe incorpUpdate
     }
 
 
     "return a None result for when an added subscription that does not yet exist" in new Setup {
-      when(service.checkForIncorpUpdate(transId)).thenReturn(Future(None))
+      when(mockIncorpRepo.getIncorpUpdate(eqTo(transId))).thenReturn(Future(None))
 
-      val result = service.checkForIncorpUpdate(transId)
-      result.map(res => res == None)
+      val result = await(service.checkForIncorpUpdate(transId))
+      result shouldBe None
     }
   }
 
@@ -73,7 +79,7 @@ class SubscriptionServiceSpec extends SCRSSpec {
       when(mockSubRepo.insertSub(sub)).thenReturn(Future(ur))
 
       val result = await(service.addSubscription(transId, regime, subscriber, url))
-      result.map(res => res == SuccessfulSub)
+      result shouldBe SuccessfulSub
     }
 
     "return a FailedSub when a new subscription fails to be added" in new Setup {
@@ -82,24 +88,26 @@ class SubscriptionServiceSpec extends SCRSSpec {
       when(mockSubRepo.insertSub(sub)).thenReturn(Future(ur))
 
       val result = await(service.addSubscription(transId, regime, subscriber, url))
-      result.map(res => res == FailedSub)
+      result shouldBe FailedSub
     }
   }
 
 
   "deleteSubscription" should {
     "return a DeletedSub when an existing subscription is deleted" in new Setup {
-      when(mockSubRepo.deleteSub(transId, regime, subscriber)).thenReturn(Future(DeletedSub))
+      val writeResult = DefaultWriteResult(true, 1, Seq(), None, None, None).flatten
+      when(mockSubRepo.deleteSub(transId, regime, subscriber)).thenReturn(Future(writeResult))
 
-      val result = service.deleteSubscription(transId, regime, subscriber)
-      result.map(res => res == DeletedSub)
+      val result = await(service.deleteSubscription(transId, regime, subscriber))
+      result shouldBe DeletedSub
     }
 
-    "return a FailedSub when an existing subscription has failed to be deleted" in new Setup {
-      when(mockSubRepo.deleteSub(transId, regime, subscriber)).thenReturn(Future(FailedSub))
+    "return a NotDeletedSub when an existing subscription has failed to be deleted" in new Setup {
+      val writeResult = DefaultWriteResult(false, 1, Seq(), None, None, None).flatten
+      when(mockSubRepo.deleteSub(transId, regime, subscriber)).thenReturn(Future(writeResult))
 
-      val result = service.deleteSubscription(transId, regime, subscriber)
-      result.map(res => res == FailedSub)
+      val result = await(service.deleteSubscription(transId, regime, subscriber))
+      result shouldBe NotDeletedSub
     }
   }
 

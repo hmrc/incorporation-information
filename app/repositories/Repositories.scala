@@ -27,10 +27,7 @@ object Repositories {
 
   private implicit val mongo = new MongoDbConnection {}.db
 
-  lazy val smRepository = new SubscriptionsMongoRepository(mongo)
-
   lazy val lockRepository = new LockRepository()
 
-  lazy val incorpUpdateRepository = new IncorpUpdateMongoRepository(mongo, IncorpUpdate.mongoFormat)
 
 }

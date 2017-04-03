@@ -92,6 +92,7 @@ trait SCRSFeatureSwitches {
 
   def apply(name: String): Option[FeatureSwitch] = name match {
     case KEY_TX_API => Some(transactionalAPI)
+    case KEY_INCORP_UPDATE => Some(scheduler)
     case _ => None
   }
 }

@@ -16,10 +16,12 @@
 
 package models
 
-import org.joda.time.DateTime
+import org.joda.time.{DateTimeZone, DateTime}
 import org.joda.time.format.DateTimeFormat
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
+
+import scala.language.implicitConversions
 
 case class IncorpUpdate(transactionId : String,
                         status : String,
@@ -29,57 +31,79 @@ case class IncorpUpdate(transactionId : String,
                         statusDescription : Option[String] = None)
 
 object IncorpUpdate {
-  private val dateReads = Reads[DateTime]( js =>
+  private val dateReads = Reads[DateTime](js =>
     js.validate[String].map[DateTime](
       DateTime.parse(_, DateTimeFormat.forPattern("yyyy-MM-dd"))
     )
   )
 
   val mongoFormat = (
-    ( __ \ "_id" ).format[String] and
-      ( __ \ "transaction_status" ).format[String] and
-      ( __ \ "company_number" ).formatNullable[String] and
-      ( __ \ "incorporated_on" ).formatNullable[DateTime] and
-      ( __ \ "timepoint" ).format[String] and
-      ( __ \ "transaction_status_description" ).formatNullable[String]
-    )(IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
+    (__ \ "_id").format[String] and
+      (__ \ "transaction_status").format[String] and
+      (__ \ "company_number").formatNullable[String] and
+      (__ \ "incorporated_on").formatNullable[DateTime] and
+      (__ \ "timepoint").format[String] and
+      (__ \ "transaction_status_description").formatNullable[String]
+    ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
 
 
-  val apiFormat = (
-    ( __ \ "transaction_id" ).format[String] and
-      ( __ \ "transaction_status" ).format[String] and
-      ( __ \ "company_number" ).formatNullable[String] and
-      ( __ \ "incorporated_on" ).formatNullable[DateTime] and
-      ( __ \ "timepoint" ).format[String] and
-      ( __ \ "transaction_status_description" ).formatNullable[String]
-    )(IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
+  val cohoFormat = (
+    (__ \ "transaction_id").format[String] and
+      (__ \ "transaction_status").format[String] and
+      (__ \ "company_number").formatNullable[String] and
+      (__ \ "incorporated_on").formatNullable[DateTime] and
+      (__ \ "timepoint").format[String] and
+      (__ \ "transaction_status_description").formatNullable[String]
+    ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
 
+  val responseFormat = (
+    (__ \ "transaction_id").format[String] and
+      (__ \ "status").format[String] and
+      (__ \ "crn").formatNullable[String] and
+      (__ \ "incorporationDate").formatNullable[DateTime] and
+      (__ \ "timepoint").format[String] and
+      (__ \ "transaction_status_description").formatNullable[String]
+    ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
+}
 
-  def writes(callBackUrl: String, transactionId: String): Writes[IncorpUpdate] = new Writes[IncorpUpdate] {
+case class IncorpStatusEvent(status: String, crn: Option[String], incorporationDate: Option[DateTime], description: Option[String], timestamp: DateTime)
 
-    def writes(u: IncorpUpdate) = {
+object IncorpStatusEvent {
+  val writes = (
+    (__ \ "status").format[String] and
+      (__ \ "crn").formatNullable[String] and
+      (__ \ "incorporationDate").formatNullable[DateTime] and
+      (__ \ "description").formatNullable[String] and
+      (__ \ "timestamp").format[DateTime]
+    ) (IncorpStatusEvent.apply, unlift(IncorpStatusEvent.unapply))
+}
+
+case class IncorpUpdateResponse(regime: String, subscriber: String, callbackUrl: String, incorpUpdate: IncorpUpdate)
+
+object IncorpUpdateResponse {
+
+  def writes: Writes[IncorpUpdateResponse] = new Writes[IncorpUpdateResponse] {
+
+    def writes(u: IncorpUpdateResponse) = {
       Json.obj(
         "SCRSIncorpStatus" -> Json.obj(
           "IncorpSubscriptionKey" -> Json.obj(
-            "subscriber" -> "SCRS",
-            "discriminator" -> "PAYE",
-            "transactionId" -> transactionId
+            "subscriber" -> u.subscriber,
+            "discriminator" -> u.regime,
+            "transactionId" -> u.incorpUpdate.transactionId
           ),
           "SCRSIncorpSubscription" -> Json.obj(
-            "callbackUrl" -> callBackUrl
+            "callbackUrl" -> u.callbackUrl
           ),
-            "IncorpStatusEvent" -> Json.obj(
-              "status" -> u.status,
-              "timestamp" -> "2017-12-21T10:13:09.429Z"//todo: create timestamp here?
-            ).++(
-              u.statusDescription.fold[JsObject](Json.obj())(s => Json.obj("description" -> s))
-            ).++(
-              u.crn.fold[JsObject](Json.obj())(s => Json.obj("crn" -> s))
-            ).++(
-              u.incorpDate.fold[JsObject](Json.obj())(s => Json.obj("incorporationDate" -> s))
-            )
-          )
+          "IncorpStatusEvent" -> Json.toJson(toIncorpStatusEvent(u.incorpUpdate))(IncorpStatusEvent.writes).as[JsObject]
+        )
       )
     }
+
+    private def toIncorpStatusEvent(u: IncorpUpdate): IncorpStatusEvent = {
+      IncorpStatusEvent(u.status, u.crn, u.incorpDate, u.statusDescription, now)
+    }
+
+    def now: DateTime = DateTime.now(DateTimeZone.UTC)
   }
 }

@@ -16,15 +16,17 @@
 
 package Helpers
 
-import org.scalatest.mock.MockitoSugar
-import play.modules.reactivemongo.ReactiveMongoComponent
-import uk.gov.hmrc.play.http.HeaderCarrier
-import uk.gov.hmrc.play.test.{WithFakeApplication, UnitSpec}
+import play.api.libs.json.{JsObject, _}
 
-trait SCRSSpec extends UnitSpec with MockitoSugar with WithFakeApplication {
+/**
+  * Created by jackie on 03/04/17.
+  */
+trait JSONhelpers {
 
-  implicit val defaultHc = HeaderCarrier()
-  implicit val mat = fakeApplication.materializer
+  def extractTimestamp(json: JsObject): (Long, JsObject) = {
+    val generatedTS = (json \ "SCRSIncorpStatus" \ "IncorpStatusEvent" \ "timestamp").as[Long]
+    val t = (__ \ "SCRSIncorpStatus" \ "IncorpStatusEvent" \ "timestamp").json.prune
+    (generatedTS, (json transform t).get)
+  }
 
-  lazy val reactiveMongoComponent = fakeApplication.injector.instanceOf[ReactiveMongoComponent]
 }

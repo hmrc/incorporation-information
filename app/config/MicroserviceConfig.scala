@@ -27,7 +27,7 @@ trait MicroserviceConfig {
   protected val config: ServicesConfig
 
   lazy val incorpFrontendStubUrl = config.baseUrl("incorp-frontend-stubs")
-  lazy val companiesHouseUrl = config.baseUrl("companies-house")
+  lazy val companiesHouseUrl = config.baseUrl("incorp-update-api")
 
   lazy val incorpUpdateStubUrl = config.getConfString("incorp-update-api.stub-url", throw new Exception("incorp-update-api.stub-url not found"))
   lazy val incorpUpdateCohoAPIUrl = config.getConfString("incorp-update-api.url", throw new Exception("incorp-update-api.url not found"))

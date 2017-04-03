@@ -16,20 +16,19 @@
 
 package controllers
 
+import javax.inject.{Inject, Singleton}
 
-import models.{IncorpUpdate, Subscription}
+import models.{IncorpUpdate, IncorpUpdateResponse}
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.Action
-import repositories.{DeletedSub, FailedSub, IncorpExists, SuccessfulSub}
+import repositories._
 import services.SubscriptionService
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-
-class SubscriptionControllerImpl extends SubscriptionController {
-  override protected val service = SubscriptionService
-}
+@Singleton
+class SubscriptionControllerImpl @Inject()(val service: SubscriptionService) extends SubscriptionController
 
 trait SubscriptionController extends BaseController {
 
@@ -40,15 +39,11 @@ trait SubscriptionController extends BaseController {
       withJsonBody[JsObject] { js =>
         val callbackUrl = (js \ "SCRSIncorpSubscription" \ "callbackUrl").as[String]
         service.checkForSubscription(transactionId, regime, subscriber, callbackUrl).map {
-          case IncorpExists(update) => {
-            Ok(Json.toJson(update)(IncorpUpdate.writes(callbackUrl, transactionId)))
-          }
-          case SuccessfulSub => {
-            Accepted("You have successfully added a subscription")
-          }
-          case FailedSub => {
-            InternalServerError
-          }
+          case IncorpExists(update) =>
+            val response = toResponse(regime, subscriber, callbackUrl, update)
+            Ok(Json.toJson(response)(IncorpUpdateResponse.writes))
+          case SuccessfulSub => Accepted
+          case _ => InternalServerError
         }
       }
 
@@ -57,10 +52,10 @@ trait SubscriptionController extends BaseController {
 
   def removeSubscription(transactionId: String, regime: String, subscriber: String) = Action.async {
     implicit request =>
-        service.deleteSubscription(transactionId, regime, subscriber).map {
-            case DeletedSub => Ok("subscription has been deleted")
-            case FailedSub => NotFound("The subscription does not exist")
-            case _ => InternalServerError
+      service.deleteSubscription(transactionId, regime, subscriber).map {
+        case DeletedSub => Ok
+        case NotDeletedSub => NotFound
+        case _ => InternalServerError
         }
   }
 
@@ -70,5 +65,9 @@ trait SubscriptionController extends BaseController {
           case Some(sub) => Ok(Json.toJson(sub))
           case _ => NotFound("The subscription does not exist")
       }
+  }
+
+  private[controllers] def toResponse(regime: String, sub: String, url: String, update: IncorpUpdate): IncorpUpdateResponse = {
+    IncorpUpdateResponse(regime, sub, url, update)
   }
 }

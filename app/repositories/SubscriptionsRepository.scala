@@ -41,26 +41,32 @@ import scala.concurrent.Future
 
 @Singleton
 class SubscriptionsMongo extends MongoDbConnection with ReactiveMongoFormats {
-  val store = new SubscriptionsMongoRepository(db)
+  val repo = new SubscriptionsMongoRepository(db)
 }
 
 trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
-  def insertSub(sub: Subscription) : Future[UpsertResult]
+  def insertSub(sub: Subscription): Future[UpsertResult]
 
-  def deleteSub(transactionId: String, regime: String, subscriber: String): Future[SubscriptionStatus]
+  def deleteSub(transactionId: String, regime: String, subscriber: String): Future[WriteResult]
 
   def getSubscription(transactionId: String, regime: String, subscriber: String) : Future[Option[Subscription]]
 
-  def wipeTestData() : Future[WriteResult]
+  def wipeTestData(): Future[WriteResult]
 }
 
 
 sealed trait SubscriptionStatus
 case object SuccessfulSub extends SubscriptionStatus
 case object FailedSub extends SubscriptionStatus
-case object DeletedSub extends SubscriptionStatus
 case class IncorpExists(update: IncorpUpdate) extends SubscriptionStatus
+case class SubExists(update: IncorpUpdate) extends SubscriptionStatus
 
+
+sealed trait UnsubscribeStatus
+case object DeletedSub extends UnsubscribeStatus
+case object NotDeletedSub extends UnsubscribeStatus
+
+case class UpsertResult(modified: Int, inserted: Int, errors: Seq[WriteError])
 
 class SubscriptionsMongoRepository(mongo: () => DB)
   extends ReactiveRepository[Subscription, BSONObjectID]("subscriptions", mongo, Subscription.format, ReactiveMongoFormats.objectIdFormats)
@@ -82,15 +88,10 @@ class SubscriptionsMongoRepository(mongo: () => DB)
     }
   }
 
-  def deleteSub(transactionId: String, regime: String, subscriber: String): Future[SubscriptionStatus] = {
+
+  def deleteSub(transactionId: String, regime: String, subscriber: String): Future[WriteResult] = {
     val selector = BSONDocument("transactionId" -> transactionId, "regime" -> regime, "subscriber" -> subscriber)
-    collection.remove(selector) map {
-      case DefaultWriteResult(true, 1, _, _, _, _) => DeletedSub
-      case DefaultWriteResult(true, 0, _, _, _, _) => {
-        Logger.warn(s"[SubscriptionsRepository] [deleteSub] Didn't delete the subscription with TransId: $transactionId, and regime: $regime, and subscriber: $subscriber")
-        FailedSub
-      }
-    }
+     collection.remove(selector)
   }
 
   def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] = {
@@ -105,4 +106,4 @@ class SubscriptionsMongoRepository(mongo: () => DB)
 
 }
 
-case class UpsertResult(modified: Int, inserted: Int, errors: Seq[WriteError])
+

@@ -16,8 +16,11 @@
 
 package services
 
+import javax.inject.Inject
+
 import models.{IncorpUpdate, Subscription}
 import play.api.Logger
+import reactivemongo.api.commands.DefaultWriteResult
 import repositories._
 import uk.gov.hmrc.play.http.HeaderCarrier
 
@@ -25,33 +28,24 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 
-object SubscriptionService
-extends SubscriptionService {
-
-  override protected val subRepo = Repositories.smRepository
-  override protected val incorpRepo = Repositories.incorpUpdateRepository
-
-}
+class SubscriptionServiceImpl @Inject()(val subRepo: SubscriptionsMongo, val incorpRepo: IncorpUpdateMongo) extends SubscriptionService
 
 trait SubscriptionService {
 
-  protected val subRepo: SubscriptionsRepository
-  protected val incorpRepo: IncorpUpdateRepository
+  protected val subRepo: SubscriptionsMongo
+  protected val incorpRepo: IncorpUpdateMongo
 
 
   def checkForSubscription(transactionId: String, regime: String, subscriber: String, callBackUrl: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
      checkForIncorpUpdate(transactionId) flatMap {
-      case Some(incorpUpdate) => {
-         Future.successful(IncorpExists(incorpUpdate))}
-      case None => {
-         addSubscription(transactionId, regime, subscriber, callBackUrl)
-      }
+      case Some(incorpUpdate) => Future.successful(IncorpExists(incorpUpdate))
+      case None => addSubscription(transactionId, regime, subscriber, callBackUrl)
     }
   }
 
   def addSubscription(transactionId: String, regime: String, subscriber: String, callbackUrl: String)(implicit hc: HeaderCarrier): Future[SubscriptionStatus] = {
     val sub = Subscription(transactionId, regime, subscriber, callbackUrl)
-    subRepo.insertSub(sub) map {
+    subRepo.repo.insertSub(sub) map {
       case UpsertResult(a, b, Seq()) =>
         Logger.info(s"[MongoSubscriptionsRepository] [insertSub] $a was updated and $b was upserted for transactionId: $transactionId")
         SuccessfulSub
@@ -62,20 +56,23 @@ trait SubscriptionService {
   }
 
   private[services] def checkForIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]] = {
-    incorpRepo.getIncorpUpdate(transactionId)
+    incorpRepo.repo.getIncorpUpdate(transactionId)
   }
 
-  def deleteSubscription(transactionId: String, regime: String, subscriber: String): Future[SubscriptionStatus] = {
-    subRepo.deleteSub(transactionId, regime, subscriber) map {
-      case DeletedSub => Logger.info(s"[SubscriptionService] [deleteSubscription] Subscription with transactionId: $transactionId, " +
+  def deleteSubscription(transactionId: String, regime: String, subscriber: String): Future[UnsubscribeStatus] = {
+    subRepo.repo.deleteSub(transactionId, regime, subscriber) map {
+      case DefaultWriteResult(true, 1, _, _, _, _) => Logger.info(s"[SubscriptionService] [deleteSubscription] Subscription with transactionId: $transactionId, " +
         s"and regime: $regime, and subscriber: $subscriber was deleted")
         DeletedSub
-      case _ => FailedSub
+      case e@_ =>
+        Logger.warn(s"[SubscriptionsRepository] [deleteSub] Didn't delete the subscription with TransId: $transactionId, and regime: $regime, and subscriber: $subscriber." +
+          s"Error message: $e")
+        NotDeletedSub
     }
   }
 
   def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] = {
-    subRepo.getSubscription(transactionId, regime, subscriber)
+    subRepo.repo.getSubscription(transactionId, regime, subscriber)
   }
 
 

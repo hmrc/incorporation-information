@@ -19,9 +19,11 @@ package config
 import com.google.inject.AbstractModule
 import com.google.inject.name.Names
 import connectors.{IncorporationCheckAPIConnector, IncorporationCheckAPIConnectorImpl, TransactionalConnector, TransactionalConnectorImpl}
+import controllers.test.{FeatureSwitchControllerImpl, FeatureSwitchController}
 import controllers.{SubscriptionController, SubscriptionControllerImpl, TransactionalController, TransactionalControllerImpl}
 import jobs.IncorpUpdatesJobImpl
-import services.{IncorpUpdateService, IncorpUpdateServiceImpl, TransactionalService, TransactionalServiceImpl}
+import repositories._
+import services._
 import uk.gov.hmrc.play.config.inject.{DefaultServicesConfig, ServicesConfig}
 import uk.gov.hmrc.play.scheduling.ScheduledJob
 
@@ -29,12 +31,13 @@ class Module extends AbstractModule {
 
   override def configure(): Unit = {
 
-    bind(classOf[ServicesConfig]).to(classOf[DefaultServicesConfig])
-    bind(classOf[MicroserviceConfig]).to(classOf[MicroserviceConfigImpl])
+    bind(classOf[ServicesConfig]).to(classOf[DefaultServicesConfig]).asEagerSingleton()
+    bind(classOf[MicroserviceConfig]).to(classOf[MicroserviceConfigImpl]).asEagerSingleton()
 
     // controllers
     bind(classOf[SubscriptionController]).to(classOf[SubscriptionControllerImpl])
     bind(classOf[TransactionalController]).to(classOf[TransactionalControllerImpl])
+    bind(classOf[FeatureSwitchController]).to(classOf[FeatureSwitchControllerImpl])
 
     // connectors
     bind(classOf[IncorporationCheckAPIConnector]).to(classOf[IncorporationCheckAPIConnectorImpl])
@@ -43,9 +46,7 @@ class Module extends AbstractModule {
     // services
     bind(classOf[IncorpUpdateService]).to(classOf[IncorpUpdateServiceImpl])
     bind(classOf[TransactionalService]).to(classOf[TransactionalServiceImpl])
-
-    // repositories
-// TODO ?
+    bind(classOf[SubscriptionService]).to(classOf[SubscriptionServiceImpl])
 
     // jobs
     bind(classOf[ScheduledJob]).annotatedWith(Names.named("incorp-update-job")).to(classOf[IncorpUpdatesJobImpl])

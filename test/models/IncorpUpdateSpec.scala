@@ -16,45 +16,62 @@
 
 package models
 
-import org.joda.time.DateTime
-import play.api.libs.json.{JsObject, Json}
+import org.joda.time.{DateTime, DateTimeZone}
+import play.api.libs.json.{JsLookupResult, JsObject, Json, __}
 import uk.gov.hmrc.play.test.UnitSpec
+import Helpers.JSONhelpers
 
 /**
   * Created by jackie on 23/03/17.
   */
-class IncorpUpdateSpec extends UnitSpec {
-
+class IncorpUpdateSpec extends UnitSpec with JSONhelpers {
 
   "writes" should {
 
     val transactionId = "trans12345"
+    val subscriber = "SCRS"
+    val regime = "CT"
+    val callbackUrl = "www.url.com"
+    val crn = "crn12345"
+    val incDate = DateTime.parse("2000-12-12")
+    val status = "accepted"
+    val time =  DateTime.now(DateTimeZone.UTC)
 
     "return json when an accepted incorporation is provided" in {
-      val crn = "crn12345"
-      val incDate = DateTime.parse("2000-12-12")
 
       val json = Json.parse(
         s"""
-           |{"SCRSIncorpStatus":{
-           |"IncorpSubscriptionKey":{
-           |"subscriber":"SCRS",
-           |"discriminator":"PAYE",
-           |"transactionId":"$transactionId"
-           |},
-           |"SCRSIncorpSubscription":{
-           |"callbackUrl":"www.url.com"
-           |},
-           |"IncorpStatusEvent":{
-           |"status":"accepted",
-           |"crn":"$crn",
-           |"incorporationDate":${incDate.getMillis},
-           |"timestamp":"2017-12-21T10:13:09.429Z"}}}
+           |{
+           |  "SCRSIncorpStatus":{
+           |    "IncorpSubscriptionKey":{
+           |      "subscriber":"$subscriber",
+           |      "discriminator":"$regime",
+           |      "transactionId":"$transactionId"
+           |    },
+           |    "SCRSIncorpSubscription":{
+           |      "callbackUrl":"$callbackUrl"
+           |    },
+           |    "IncorpStatusEvent":{
+           |      "status":"$status",
+           |      "crn":"$crn",
+           |      "incorporationDate":${incDate.getMillis}
+           |    }
+           |  }
+           |}
       """.stripMargin)
 
-      val response = Json.toJson(IncorpUpdate("transID", "accepted", Some(crn), Some(incDate), "tp", None))(IncorpUpdate.writes("www.url.com", transactionId))
-      response shouldBe json
+      val incorpUpdate = IncorpUpdate(transactionId, status, Some(crn), Some(incDate), "tp", None)
+      val response = Json.toJson(IncorpUpdateResponse(regime, subscriber, callbackUrl, incorpUpdate))(IncorpUpdateResponse.writes).as[JsObject]
+
+      val (generatedTS, jsonNoTS) = extractTimestamp(response)
+
+      // TODO - should be an ISO formatted timestamp
+      // check it's within a second
+      generatedTS shouldBe time.toDate.getTime +- 1000
+      jsonNoTS shouldBe json
     }
+
+
 
     "return json when a rejected incorporation is provided" in {
       val json = Json.parse(
@@ -62,7 +79,7 @@ class IncorpUpdateSpec extends UnitSpec {
            |{"SCRSIncorpStatus":{
            |"IncorpSubscriptionKey":{
            |"subscriber":"SCRS",
-           |"discriminator":"PAYE",
+           |"discriminator":"$regime",
            |"transactionId":"$transactionId"
            |},
            |"SCRSIncorpSubscription":{
@@ -70,13 +87,29 @@ class IncorpUpdateSpec extends UnitSpec {
            |},
            |"IncorpStatusEvent":{
            |"status":"rejected",
-           |"description":"description",
-           |"timestamp":"2017-12-21T10:13:09.429Z"}}}
+           |"description":"description"}}}
       """.stripMargin)
 
-      val response = Json.toJson(IncorpUpdate("transID", "rejected", None, None, "tp", Some("description")))(IncorpUpdate.writes("www.url.com", transactionId))
-      response shouldBe json
+      val incorpUpdate = IncorpUpdate(transactionId, "rejected", None, None, "tp", Some("description"))
+      val response = Json.toJson(IncorpUpdateResponse(regime, subscriber, callbackUrl, incorpUpdate))(IncorpUpdateResponse.writes).as[JsObject]
+
+      val (generatedTS, jsonNoTS) = extractTimestamp(response)
+
+      generatedTS shouldBe time.toDate.getTime +- 1000
+      jsonNoTS shouldBe json
     }
 
+    "return json including a valid timestamp" in {
+      val incorpUpdate = IncorpUpdate(transactionId, "rejected", None, None, "tp", Some("description"))
+
+      val before = DateTime.now(DateTimeZone.UTC).getMillis
+      val json = Json.toJson(IncorpUpdateResponse(regime, subscriber, callbackUrl, incorpUpdate))(IncorpUpdateResponse.writes).as[JsObject]
+      val timestamp = (json \ "SCRSIncorpStatus" \ "IncorpStatusEvent" \ "timestamp").as[Long]
+      val after = DateTime.now(DateTimeZone.UTC).getMillis
+
+      (before <= timestamp && after >= timestamp) shouldBe true
+    }
   }
+
+
 }
