@@ -16,7 +16,7 @@
 
 package controllers.test
 
-import javax.inject.{Named, Inject}
+import javax.inject.Inject
 
 import play.api.mvc.Action
 import uk.gov.hmrc.play.microservice.controller.BaseController
@@ -28,10 +28,16 @@ class ManualTriggerControllerImpl @Inject()(val incUpdatesJob: ExclusiveSchedule
 
 trait ManualTriggerController extends BaseController {
 
-  val incUpdatesJob: ExclusiveScheduledJob
+  protected val incUpdatesJob: ExclusiveScheduledJob
 
-  def triggerIncorpUpdateJob = Action.async {
+  private val INCORP_UPDATE = "incorp-update"
+
+  def triggerJob(jobName: String) = Action.async {
     implicit request =>
-      incUpdatesJob.executeInMutex map (res => Ok(res.message))
+      jobName match {
+        case INCORP_UPDATE => triggerIncorpUpdateJob
+      }
   }
+
+  private[controllers] def triggerIncorpUpdateJob = incUpdatesJob.executeInMutex map (res => Ok(res.message))
 }
