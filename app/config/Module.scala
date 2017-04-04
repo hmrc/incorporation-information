@@ -46,7 +46,7 @@ class Module extends AbstractModule {
     // services
     bind(classOf[IncorpUpdateService]).to(classOf[IncorpUpdateServiceImpl])
     bind(classOf[TransactionalService]).to(classOf[TransactionalServiceImpl])
-    bind(classOf[SubscriptionService]).to(classOf[SubscriptionServiceImpl])
+    bind(classOf[SubscriptionService]).to(classOf[SubscriptionServiceImpl]).asEagerSingleton()
 
     // jobs
     bind(classOf[ScheduledJob]).annotatedWith(Names.named("incorp-update-job")).to(classOf[IncorpUpdatesJobImpl])

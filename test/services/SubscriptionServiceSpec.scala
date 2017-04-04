@@ -31,18 +31,14 @@ import scala.concurrent.ExecutionContext.Implicits.global
   */
 class SubscriptionServiceSpec extends SCRSSpec {
 
-  val mockSubRepo = mock[SubscriptionsMongoRepository]
-  val mockIncorpRepo = mock[IncorpUpdateMongoRepository]
+  val mockSubRepo = mock[SubscriptionsRepository]
+  val mockIncorpRepo = mock[IncorpUpdateRepository]
 
   trait Setup {
 
     val service = new SubscriptionService {
-      override val subRepo = new SubscriptionsMongo(reactiveMongoComponent) {
-        override val repo = mockSubRepo
-      }
-      override val incorpRepo = new IncorpUpdateMongo(reactiveMongoComponent){
-        override val repo = mockIncorpRepo
-      }
+      override val subRepo = mockSubRepo
+      override val incorpRepo = mockIncorpRepo
     }
   }
 

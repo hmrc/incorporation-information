@@ -49,9 +49,8 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
 
 
   class Setup {
-    val mongo = new SubscriptionsMongo(reactiveMongoComponent)
-    val incRepo = new IncorpUpdateMongo(reactiveMongoComponent).repo
-    val repository = mongo.repo
+    val incRepo = app.injector.instanceOf[IncorpUpdateMongo].repo
+    val repository = app.injector.instanceOf[SubscriptionsMongo].repo
 
     def insert(sub: Subscription) = await(repository.insert(sub))
     def insert(update: IncorpUpdate) = await(incRepo.insert(update))
