@@ -21,6 +21,7 @@ import javax.inject.Inject
 import config.{MicroserviceConfig, WSHttp, WSHttpProxy}
 import play.api.Logger
 import play.api.libs.json.JsValue
+import uk.gov.hmrc.play.http.logging.Authorization
 import uk.gov.hmrc.play.http.ws.WSProxy
 import uk.gov.hmrc.play.http.{HeaderCarrier, HttpException, HttpGet, NotFoundException}
 import utils.SCRSFeatureSwitches
@@ -38,6 +39,7 @@ class TransactionalConnectorImpl @Inject()(config: MicroserviceConfig) extends T
   val featureSwitch = SCRSFeatureSwitches
   val stubUrl = config.incorpFrontendStubUrl
   val cohoUrl = config.companiesHouseUrl
+  val cohoApiAuthToken = config.incorpUpdateCohoApiAuthToken
   lazy val httpProxy = WSHttpProxy
   lazy val httpNoProxy = WSHttp
 }
@@ -51,12 +53,16 @@ trait TransactionalConnector {
   protected val featureSwitch: SCRSFeatureSwitches
   protected val stubUrl: String
   protected val cohoUrl: String
+  protected val cohoApiAuthToken: String
 
   def fetchTransactionalData(transactionID: String)(implicit hc: HeaderCarrier): Future[TransactionalAPIResponse] = {
-    val (http, url) = useProxy match {
-      case true => (httpProxy, s"$cohoUrl/submissionData/$transactionID")
-      case false => (httpNoProxy, s"$stubUrl/incorporation-frontend-stubs/fetch-data/$transactionID")
+    val (http, realHc, url) = useProxy match {
+      case true => (httpProxy, appendAPIAuthHeader(hc, cohoApiAuthToken), s"$cohoUrl/submissionData/$transactionID")
+      case false => (httpNoProxy, hc, s"$stubUrl/incorporation-frontend-stubs/fetch-data/$transactionID")
     }
+
+    //curl -vk -H 'Authorization: Bearer FutU3YcOky_LWCVEnsM3fYjFPxIvoe9ar-l0WBc9' "https://ewfgonzo.companieshouse.gov.uk/submissionData/000-033767"
+
     http.GET[JsValue](url) map {
       SuccessfulTransactionalAPIResponse
     } recover {
@@ -73,5 +79,9 @@ trait TransactionalConnector {
   }
 
   private[connectors] def useProxy: Boolean = featureSwitch.transactionalAPI.enabled
+
+  private[connectors] def appendAPIAuthHeader(hc: HeaderCarrier, token: String): HeaderCarrier = {
+    hc.copy(authorization = Some(Authorization(s"Bearer $token")))
+  }
 }
 

@@ -24,6 +24,7 @@ import uk.gov.hmrc.play.scheduling.ExclusiveScheduledJob
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
+//todo: find out how to inject ExclusiveScheduledJob
 class ManualTriggerControllerImpl @Inject()(val incUpdatesJob: ExclusiveScheduledJob) extends ManualTriggerController
 
 trait ManualTriggerController extends BaseController {
