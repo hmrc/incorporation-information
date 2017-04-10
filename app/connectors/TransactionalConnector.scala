@@ -61,6 +61,8 @@ trait TransactionalConnector {
       case false => (httpNoProxy, hc, s"$stubUrl/incorporation-frontend-stubs/fetch-data/$transactionID")
     }
 
+    Logger.info(s"[TransactionalConnector] [fetchTransactionalData] - url : $url - auth token : ${realHc.authorization}")
+
     //curl -vk -H 'Authorization: Bearer FutU3YcOky_LWCVEnsM3fYjFPxIvoe9ar-l0WBc9' "https://ewfgonzo.companieshouse.gov.uk/submissionData/000-033767"
 
     http.GET[JsValue](url) map {

@@ -18,6 +18,7 @@ package controllers.test
 
 import javax.inject.Inject
 
+import play.api.Logger
 import play.api.mvc.Action
 import uk.gov.hmrc.play.microservice.controller.BaseController
 import utils.{SCRSFeatureSwitches, FeatureSwitch}
@@ -40,8 +41,12 @@ trait FeatureSwitchController extends BaseController {
       }
 
       SCRSFeatureSwitches(featureName) match {
-        case Some(_) => Future.successful(Ok(feature.toString))
-        case None => Future.successful(BadRequest)
+        case Some(f) =>
+          Logger.info(s"[FeatureSwitch] Feature switch for $featureName is ${if(f.enabled) "enabled" else "disabled"}")
+          Future.successful(Ok(feature.toString))
+        case None =>
+          Logger.info(s"[FeatureSwitch] No feature switch with the name $featureName could not be found")
+          Future.successful(BadRequest)
       }
   }
 }
