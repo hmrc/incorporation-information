@@ -20,7 +20,7 @@ import javax.inject.Inject
 
 import config.{MicroserviceConfig, WSHttp, WSHttpProxy}
 import play.api.Logger
-import play.api.libs.json.JsValue
+import play.api.libs.json.{Json, JsValue}
 import uk.gov.hmrc.play.http.logging.Authorization
 import uk.gov.hmrc.play.http.ws.WSProxy
 import uk.gov.hmrc.play.http._
@@ -65,8 +65,9 @@ trait TransactionalConnector {
 
     //curl -vk -H 'Authorization: Bearer FutU3YcOky_LWCVEnsM3fYjFPxIvoe9ar-l0WBc9' "https://ewfgonzo.companieshouse.gov.uk/submissionData/000-033767"
 
-    http.GET[JsValue](url)(implicitly[HttpReads[JsValue]], realHc) map {
-      SuccessfulTransactionalAPIResponse
+    http.GET[JsValue](url)(implicitly[HttpReads[JsValue]], realHc) map { res =>
+      Logger.warn("json - " + res)
+      SuccessfulTransactionalAPIResponse(res)
     } recover {
       case ex: NotFoundException =>
         Logger.info(s"[TransactionalConnector] [fetchTransactionalData] - Could not find incorporation data for transaction ID - $transactionID")
