@@ -23,7 +23,7 @@ import play.api.Logger
 import play.api.libs.json.JsValue
 import uk.gov.hmrc.play.http.logging.Authorization
 import uk.gov.hmrc.play.http.ws.WSProxy
-import uk.gov.hmrc.play.http.{HeaderCarrier, HttpException, HttpGet, NotFoundException}
+import uk.gov.hmrc.play.http._
 import utils.SCRSFeatureSwitches
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -65,7 +65,7 @@ trait TransactionalConnector {
 
     //curl -vk -H 'Authorization: Bearer FutU3YcOky_LWCVEnsM3fYjFPxIvoe9ar-l0WBc9' "https://ewfgonzo.companieshouse.gov.uk/submissionData/000-033767"
 
-    http.GET[JsValue](url) map {
+    http.GET[JsValue](url)(implicitly[HttpReads[JsValue]], realHc) map {
       SuccessfulTransactionalAPIResponse
     } recover {
       case ex: NotFoundException =>
