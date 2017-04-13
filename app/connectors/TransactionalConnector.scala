@@ -61,9 +61,8 @@ trait TransactionalConnector {
       case false => (httpNoProxy, hc, s"$stubUrl/incorporation-frontend-stubs/fetch-data/$transactionID")
     }
 
-    Logger.info(s"[TransactionalConnector] [fetchTransactionalData] - url : $url - auth token : ${realHc.authorization}")
-
-    //curl -vk -H 'Authorization: Bearer FutU3YcOky_LWCVEnsM3fYjFPxIvoe9ar-l0WBc9' "https://ewfgonzo.companieshouse.gov.uk/submissionData/000-033767"
+    //todo: change from warn when logger starts logging info in env's
+    Logger.warn("[TransactionalConnector] [fetchTransactionalData] - url : $url - auth token : ${realHc.authorization}")
 
     http.GET[JsValue](url)(implicitly[HttpReads[JsValue]], realHc) map { res =>
       Logger.warn("json - " + res)
