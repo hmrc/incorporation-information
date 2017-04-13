@@ -36,9 +36,9 @@ trait JobConfig extends ServicesConfig {
 
   lazy val interval = {
     val dur = ScalaDuration.create(getConfString(INTERVAL,
-      //$COVERAGE-OFF$
+
       throw new RuntimeException(s"Could not find config $INTERVAL")))
-    //$COVERAGE-ON$
+
     FiniteDuration(dur.length, dur.unit)
   }
 

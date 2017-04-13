@@ -18,10 +18,10 @@ package config
 
 import com.google.inject.AbstractModule
 import com.google.inject.name.Names
-import connectors.{IncorporationCheckAPIConnector, IncorporationCheckAPIConnectorImpl, TransactionalConnector, TransactionalConnectorImpl}
-import controllers.test.{FeatureSwitchControllerImpl, FeatureSwitchController}
+import connectors._
+import controllers.test.{FeatureSwitchController, FeatureSwitchControllerImpl}
 import controllers.{SubscriptionController, SubscriptionControllerImpl, TransactionalController, TransactionalControllerImpl}
-import jobs.IncorpUpdatesJobImpl
+import jobs.{FireSubscriptionsJobImpl, IncorpUpdatesJobImpl}
 import repositories._
 import services._
 import uk.gov.hmrc.play.config.inject.{DefaultServicesConfig, ServicesConfig}
@@ -42,13 +42,16 @@ class Module extends AbstractModule {
     // connectors
     bind(classOf[IncorporationCheckAPIConnector]).to(classOf[IncorporationCheckAPIConnectorImpl])
     bind(classOf[TransactionalConnector]).to(classOf[TransactionalConnectorImpl])
+    bind(classOf[FiringSubscriptionsConnector]).to(classOf[FiringSubscriptionsConnectorImpl])
 
     // services
     bind(classOf[IncorpUpdateService]).to(classOf[IncorpUpdateServiceImpl])
     bind(classOf[TransactionalService]).to(classOf[TransactionalServiceImpl])
     bind(classOf[SubscriptionService]).to(classOf[SubscriptionServiceImpl])
+    bind(classOf[SubscriptionFiringService]).to(classOf[SubscriptionFiringServiceImpl])
 
     // jobs
     bind(classOf[ScheduledJob]).annotatedWith(Names.named("incorp-update-job")).to(classOf[IncorpUpdatesJobImpl])
+    bind(classOf[ScheduledJob]).annotatedWith(Names.named("fire-subs-job")).to(classOf[FireSubscriptionsJobImpl])
   }
 }

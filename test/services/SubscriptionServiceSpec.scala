@@ -26,9 +26,7 @@ import reactivemongo.api.commands.{DefaultWriteResult, WriteError}
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
-/**
-  * Created by jackie on 29/03/17.
-  */
+
 class SubscriptionServiceSpec extends SCRSSpec {
 
   val mockSubRepo = mock[SubscriptionsMongoRepository]
@@ -37,13 +35,9 @@ class SubscriptionServiceSpec extends SCRSSpec {
   trait Setup {
 
     val service = new SubscriptionService {
-      override val subRepo = new SubscriptionsMongo(reactiveMongoComponent) {
-        override val repo = mockSubRepo
-      }
-      override val incorpRepo = new IncorpUpdateMongo(reactiveMongoComponent){
-        override val repo = mockIncorpRepo
-      }
-    }
+      override val subRepo = mockSubRepo
+      override val incorpRepo = mockIncorpRepo
+   }
   }
 
   val transId = "transId123"
@@ -55,14 +49,12 @@ class SubscriptionServiceSpec extends SCRSSpec {
 
 
   "checkForSubscription" should {
-
     "return an incorp update for a subscription that exists" in new Setup {
       when(mockIncorpRepo.getIncorpUpdate(eqTo(transId))).thenReturn(Future.successful(Some(incorpUpdate)))
 
       val result = await(service.checkForIncorpUpdate(transId))
       result.get shouldBe incorpUpdate
     }
-
 
     "return a None result for when an added subscription that does not yet exist" in new Setup {
       when(mockIncorpRepo.getIncorpUpdate(eqTo(transId))).thenReturn(Future(None))

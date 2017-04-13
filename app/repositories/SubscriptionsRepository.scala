@@ -19,7 +19,7 @@ package repositories
 import javax.inject.{Inject, Singleton}
 
 import models.{IncorpUpdate, Subscription}
-import play.modules.reactivemongo.{ReactiveMongoComponent, MongoDbConnection}
+import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DB
 import reactivemongo.api.commands._
 import reactivemongo.api.indexes.{Index, IndexType}
@@ -44,6 +44,9 @@ trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
 
   def getSubscription(transactionId: String, regime: String, subscriber: String) : Future[Option[Subscription]]
 
+  // TODO - LJ - might need to be of Future[Option[Seq[Subscription]]]
+  def getSubscriptions(transactionId: String): Future[Seq[Subscription]]
+
   def wipeTestData(): Future[WriteResult]
 }
 
@@ -61,8 +64,10 @@ case object NotDeletedSub extends UnsubscribeStatus
 
 case class UpsertResult(modified: Int, inserted: Int, errors: Seq[WriteError])
 
-class SubscriptionsMongoRepository(mongo: () => DB)
-  extends ReactiveRepository[Subscription, BSONObjectID]("subscriptions", mongo, Subscription.format, ReactiveMongoFormats.objectIdFormats)
+class SubscriptionsMongoRepository(mongo: () => DB) extends ReactiveRepository[Subscription, BSONObjectID](
+    collectionName = "subscriptions",
+    mongo = mongo,
+    domainFormat = Subscription.format)
     with SubscriptionsRepository
 {
 
@@ -90,6 +95,11 @@ class SubscriptionsMongoRepository(mongo: () => DB)
   def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] = {
     val query = BSONDocument("transactionId" -> transactionId, "regime" -> regime, "subscriber" -> subscriber)
     collection.find(query).one[Subscription]
+  }
+
+  def getSubscriptions(transactionId: String): Future[Seq[Subscription]] = {
+    val query = BSONDocument("transactionId" -> transactionId)
+    collection.find(query).cursor[Subscription]().collect[Seq]()
   }
 
 

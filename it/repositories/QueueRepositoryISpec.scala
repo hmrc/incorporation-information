@@ -1,5 +1,5 @@
 /*
-* Copyright 2016 HM Revenue & Customs
+* Copyright 2017 HM Revenue & Customs
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -37,11 +37,10 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
   val transactionId = "12345"
 
   val update = IncorpUpdate(transactionId, "rejected", None, None, "tp", Some("description"))
-  val queuedUpdate = QueuedIncorpUpdate("awaiting", now, update)
+  val queuedUpdate = QueuedIncorpUpdate(now, update)
 
   def docs(num: Int = 1) = (1 to num).map(n =>
     QueuedIncorpUpdate(
-      "awaiting",
       now,
       IncorpUpdate(
         transactionId = s"foo$n",
@@ -105,6 +104,19 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
       count shouldBe 1
     }
 
+    "insert duplicate documents" in new Setup {
+      count shouldBe 0
+
+      await(repo.storeIncorpUpdates(docs(1)))
+      count shouldBe 1
+
+      val response = await(repo.storeIncorpUpdates(docs(1)))
+      response.inserted shouldBe 0
+      response.duplicate shouldBe 1
+      response.errors.size shouldBe 0
+      count shouldBe 1
+    }
+
     "insert 6 docs" in new Setup {
       count shouldBe 0
       val num = 6
@@ -133,6 +145,24 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
       response.duplicate shouldBe numPart
       response.errors.size shouldBe 0
       count shouldBe num
+    }
+  }
+
+  "updateTimestamp" should {
+    "update a Timestamp of an existing queued incorp update" in new Setup {
+      count shouldBe 0
+      val numPart = 1
+      await(repo.storeIncorpUpdates(docs(1)))
+      count shouldBe 1
+
+      val result = await(repo.getIncorpUpdate("foo1"))
+      result.get.timestamp shouldBe now
+
+      await(repo.updateTimestamp("foo1"))
+      val updateResult = await(repo.getIncorpUpdate("foo1"))
+      val updatedTimestamp = now.plusMinutes(10)
+
+      updateResult.get.timestamp.getMillis shouldBe (updatedTimestamp.toDate.getTime +- 10000)
     }
   }
 

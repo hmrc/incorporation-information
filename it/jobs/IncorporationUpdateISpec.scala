@@ -19,11 +19,15 @@ package jobs
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.google.inject.name.Names
 import helpers.IntegrationSpecBase
+import models.{IncorpUpdate, QueuedIncorpUpdate}
+import org.joda.time.DateTime
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.inject.{BindingKey, QualifierInstance}
 import play.api.libs.json.{JsObject, Json}
-import repositories.{DocValidator, IncorpUpdateMongo, TimepointMongo}
+import reactivemongo.bson.BSONDocument
+import reactivemongo.core.errors.GenericDatabaseException
+import repositories.{DocValidator, IncorpUpdateMongo, QueueMongo, TimepointMongo}
 import uk.gov.hmrc.play.scheduling.ScheduledJob
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -50,17 +54,19 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
   class Setup {
     val incorpRepo = app.injector.instanceOf[IncorpUpdateMongo].repo
     val timepointRepo = app.injector.instanceOf[TimepointMongo].repo
+    val queueRepo = app.injector.instanceOf[QueueMongo].repo
+
+    def insert(u: QueuedIncorpUpdate) = await(queueRepo.collection.insert(u)(QueuedIncorpUpdate.format, global))
   }
 
   override def beforeEach() = new Setup {
-    Seq(incorpRepo, timepointRepo) map { r =>
+    Seq(incorpRepo, timepointRepo, queueRepo) map { r =>
       await(r.drop)
       await(r.ensureIndexes)
     }
   }
 
   override def afterEach() = new Setup {
-    await(incorpRepo.drop)
   }
 
   def setupAuditMocks() = {
@@ -137,7 +143,6 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       r shouldBe job.Result("incorp-updates-job")
 
       await(incorpRepo.collection.count()) shouldBe 1
-
       await(timepointRepo.retrieveTimePoint) shouldBe Some(timepoint)
       verify(getRequestedFor(urlMatching("/ifes/submission.*")).
         withQueryParam("timepoint", absent).
@@ -199,6 +204,22 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
         withQueryParam("timepoint", equalTo(tp1)))
     }
 
+  }
+
+  "incorp update queue" should {
+    "not accept duplicate incorp update documents" in new Setup {
+      setupFeatures(submissionCheck = true)
+
+      val iu = IncorpUpdate("1234", "awaiting", None, None, "tp", None)
+      val qiu1 = QueuedIncorpUpdate(DateTime.now, iu)
+
+      insert(qiu1)
+      await(queueRepo.collection.count()) shouldBe 1
+
+      val result = await(queueRepo.bulkInsert(Seq(qiu1)))
+      result.writeErrors.head.code shouldBe 11000
+      await(queueRepo.collection.count()) shouldBe 1
+    }
   }
 
 }
