@@ -19,11 +19,12 @@ package services
 import javax.inject.{Inject, Singleton}
 
 import connectors.IncorporationCheckAPIConnector
-import models.IncorpUpdate
+import models.{IncorpUpdate, QueuedIncorpUpdate}
 import play.api.Logger
 import repositories._
 import repositories.{IncorpUpdateRepository, InsertResult, TimepointRepository}
 import uk.gov.hmrc.play.http.HeaderCarrier
+import org.joda.time.DateTime
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -32,11 +33,13 @@ import scala.concurrent.Future
 class IncorpUpdateServiceImpl @Inject()(
                                          injConnector: IncorporationCheckAPIConnector,
                                          injIncorpRepo: IncorpUpdateMongo,
-                                         injTimepointRepo: TimepointMongo
+                                         injTimepointRepo: TimepointMongo,
+                                         injQueueRepo: QueueMongo
                                        ) extends IncorpUpdateService {
   override val incorporationCheckAPIConnector = injConnector
   override val incorpUpdateRepository = injIncorpRepo.repo
   override val timepointRepository = injTimepointRepo.repo
+  override val queueRepository = injQueueRepo.repo
 }
 
 trait IncorpUpdateService {
@@ -44,6 +47,7 @@ trait IncorpUpdateService {
   val incorporationCheckAPIConnector: IncorporationCheckAPIConnector
   val incorpUpdateRepository: IncorpUpdateRepository
   val timepointRepository: TimepointRepository
+  val queueRepository: QueueRepository
 
 
   private[services] def fetchIncorpUpdates(implicit hc: HeaderCarrier): Future[Seq[IncorpUpdate]] = {
@@ -58,6 +62,7 @@ trait IncorpUpdateService {
   private[services] def storeIncorpUpdates(updates: Seq[IncorpUpdate]): Future[InsertResult] = {
     for {
       result <- incorpUpdateRepository.storeIncorpUpdates(updates)
+
     } yield {
       result
     }
@@ -65,23 +70,51 @@ trait IncorpUpdateService {
 
   private[services] def latestTimepoint(items: Seq[IncorpUpdate]): String = items.reverse.head.timepoint
 
+  // TODO - look to refactor this into a simpler for-comprehension
   def updateNextIncorpUpdateJobLot(implicit hc: HeaderCarrier): Future[InsertResult] = {
-
     fetchIncorpUpdates flatMap { items =>
-      storeIncorpUpdates(items) map { ir =>
+      storeIncorpUpdates(items) flatMap { ir =>
         ir match {
-          case InsertResult(0, _, Seq()) => Logger.info("No Incorp updates were fetched")
-          case InsertResult(i, d, Seq()) => {
-            timepointRepository.updateTimepoint(latestTimepoint(items)).map(tp => {
-              val message = s"$i incorp updates were inserted, $d incorp updates were duplicates, and the timepoint has been updated to $tp"
-              Logger.info(message)
-            }
-            )
+          case InsertResult(0, _, Seq()) => {
+            Logger.info("No Incorp updates were fetched")
+            Future.successful(ir)
           }
-          case InsertResult(_, _, e) => Logger.info(s"There was an error when inserting incorp updates, message: $e")
+          case InsertResult(i, d, Seq()) => {
+            copyToQueue(createQueuedIncorpUpdate(items)) flatMap {
+              case true => {
+                timepointRepository.updateTimepoint(latestTimepoint(items)).map(tp => {
+                  val message = s"$i incorp updates were inserted, $d incorp updates were duplicates, and the timepoint has been updated to $tp"
+                  Logger.info(message)
+                  ir
+                })
+              }
+              case false => {
+                Logger.info(s"There was an error when copying incorp updates to the new queue")
+                Future.successful(ir)
+              }
+            }
+          }
+          case InsertResult(_, _, e) => {
+            Logger.info(s"There was an error when inserting incorp updates, message: $e")
+            Future.successful(ir)
+          }
         }
-        ir
       }
+    }
+  }
+
+  def createQueuedIncorpUpdate(incorpUpdates: Seq[IncorpUpdate]): Seq[QueuedIncorpUpdate] = {
+    incorpUpdates map { incorp =>
+      QueuedIncorpUpdate(DateTime.now, incorp)
+    }
+  }
+
+  def copyToQueue(queuedIncorpUpdates: Seq[QueuedIncorpUpdate]): Future[Boolean] = {
+    queueRepository.storeIncorpUpdates(queuedIncorpUpdates).map { r =>
+      // TODO - explain result
+      Logger.info(s"Incorp updates to be copied to queue = ${queuedIncorpUpdates}")
+      Logger.info(s"result = ${r}")
+      r.inserted == queuedIncorpUpdates.length
     }
   }
 

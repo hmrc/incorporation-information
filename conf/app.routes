@@ -11,7 +11,3 @@ GET        /subscribe/:transId/regime/:regime/subscriber/:sub          @controll
 
 
 
-
-
-
-

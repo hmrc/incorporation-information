@@ -18,13 +18,15 @@ package repositories
 
 import javax.inject.{Inject, Singleton}
 
-import constants.CollectionNames._
 import models.QueuedIncorpUpdate
+import org.joda.time.DateTime
+import play.api.Logger
 import play.api.libs.json.Format
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DB
-import reactivemongo.api.indexes.{IndexType, Index}
+import reactivemongo.api.indexes.{Index, IndexType}
 import reactivemongo.bson.{BSONDocument, BSONObjectID}
+import reactivemongo.core.errors.DatabaseException
 import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
 
@@ -42,11 +44,15 @@ trait QueueRepository {
 
   def getIncorpUpdate(transactionId: String): Future[Option[QueuedIncorpUpdate]]
 
+  def getIncorpUpdates: Future[Seq[QueuedIncorpUpdate]]
+
   def removeQueuedIncorpUpdate(transactionId: String): Future[Boolean]
+
+  def updateTimestamp(transactionId: String): Future[Boolean]
 }
 
 class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate]) extends ReactiveRepository[QueuedIncorpUpdate, BSONObjectID](
-  collectionName = QUEUE,
+  collectionName = "incorp-update-queue",
   mongo = mongo,
   domainFormat = format
 ) with QueueRepository
@@ -58,7 +64,7 @@ class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate]) 
 
   override def indexes: Seq[Index] = Seq(
     Index(
-      key = Seq("incorp_update.transaction_id" -> IndexType.Ascending),
+      key = Seq("incorp_update.transaction_id" -> IndexType.Ascending, "timestamp" -> IndexType.Ascending),
       name = Some("QueuedIncorpIndex"), unique = true, sparse = false
     )
   )
@@ -69,6 +75,10 @@ class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate]) 
         val inserted = wr.n
         val (duplicates, errors) = wr.writeErrors.partition(_.code == ERR_DUPLICATE)
         InsertResult(inserted, duplicates.size, errors)
+    } recover {
+      case ex: DatabaseException =>
+        Logger.info(s"Failed to store incorp update with transactionId: ${ex.originalDocument.get.get("incorp_update.transaction_id").get.toString} due to error: $ex")
+        throw new Exception
     }
   }
 
@@ -76,7 +86,21 @@ class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate]) 
     collection.find(selector(transactionId)).one[QueuedIncorpUpdate]
   }
 
+  override def getIncorpUpdates: Future[Seq[QueuedIncorpUpdate]] = {
+    // TODO - LJ - check tests for timestamp on retrieve (to check we don't get future queue messages)
+    findAll()
+  }
+
   override def removeQueuedIncorpUpdate(transactionId: String): Future[Boolean] = {
     collection.remove(selector(transactionId)).map(_.n > 0)
   }
+
+  override def updateTimestamp(transactionId: String): Future[Boolean] = {
+    // TODO - LJ - timestamp should be passed from the service
+    val modifier = BSONDocument("$set" -> BSONDocument("timestamp" -> DateTime.now.plusMinutes(10).getMillis)) // TODO - LJ - needs config for 10!
+    collection.findAndUpdate(selector(transactionId), modifier, true, false).map{
+      _.result.fold(false)(_ => true)
+    }
+  }
 }
+

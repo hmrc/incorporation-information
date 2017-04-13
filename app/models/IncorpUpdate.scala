@@ -16,8 +16,7 @@
 
 package models
 
-import org.joda.time.{DateTimeZone, DateTime}
-import org.joda.time.format.DateTimeFormat
+import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 
@@ -31,17 +30,16 @@ case class IncorpUpdate(transactionId : String,
                         statusDescription : Option[String] = None)
 
 object IncorpUpdate {
-  private val dateReads = Reads[DateTime](js =>
-    js.validate[String].map[DateTime](
-      DateTime.parse(_, DateTimeFormat.forPattern("yyyy-MM-dd"))
-    )
-  )
+
+  import utils.TimeatampFormats._
+
+  implicit val format = Json.format[IncorpUpdate]
 
   val mongoFormat = (
     (__ \ "_id").format[String] and
       (__ \ "transaction_status").format[String] and
       (__ \ "company_number").formatNullable[String] and
-      (__ \ "incorporated_on").formatNullable[DateTime] and
+      (__ \ "incorporated_on").formatNullable[DateTime](dateFormat) and
       (__ \ "timepoint").format[String] and
       (__ \ "transaction_status_description").formatNullable[String]
     ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
@@ -50,26 +48,18 @@ object IncorpUpdate {
     (__ \ "transaction_id").format[String] and
       (__ \ "transaction_status").format[String] and
       (__ \ "company_number").formatNullable[String] and
-      (__ \ "incorporated_on").formatNullable[DateTime] and
+      (__ \ "incorporated_on").formatNullable[DateTime](dateFormat) and
       (__ \ "timepoint").format[String] and
       (__ \ "transaction_status_description").formatNullable[String]
     ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
 
-
-  val cohoFormat = (
-    (__ \ "transaction_id").format[String] and
-      (__ \ "transaction_status").format[String] and
-      (__ \ "company_number").formatNullable[String] and
-      (__ \ "incorporated_on").formatNullable[DateTime] and
-      (__ \ "timepoint").format[String] and
-      (__ \ "transaction_status_description").formatNullable[String]
-    ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
+  val cohoFormat = queueFormat
 
   val responseFormat = (
     (__ \ "transaction_id").format[String] and
       (__ \ "status").format[String] and
       (__ \ "crn").formatNullable[String] and
-      (__ \ "incorporationDate").formatNullable[DateTime] and
+      (__ \ "incorporationDate").formatNullable[DateTime](dateFormat) and
       (__ \ "timepoint").format[String] and
       (__ \ "transaction_status_description").formatNullable[String]
     ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
@@ -85,6 +75,8 @@ object IncorpStatusEvent {
       (__ \ "description").formatNullable[String] and
       (__ \ "timestamp").format[DateTime]
     ) (IncorpStatusEvent.apply, unlift(IncorpStatusEvent.unapply))
+
+    implicit val format = Json.format[IncorpStatusEvent]
 }
 
 case class IncorpUpdateResponse(regime: String, subscriber: String, callbackUrl: String, incorpUpdate: IncorpUpdate)
@@ -115,13 +107,14 @@ object IncorpUpdateResponse {
 
     def now: DateTime = DateTime.now(DateTimeZone.UTC)
   }
+
+  implicit val format = Json.format[IncorpUpdateResponse]
 }
 
-case class QueuedIncorpUpdate(queueStatus: String, timestamp: DateTime, incorpUpdate: IncorpUpdate)
+case class QueuedIncorpUpdate(timestamp: DateTime, incorpUpdate: IncorpUpdate)
 
 object QueuedIncorpUpdate {
   val format = (
-    (__ \ "queue_status").format[String] and
       (__ \ "timestamp").format[DateTime] and
       (__ \ "incorp_update").format[IncorpUpdate](IncorpUpdate.queueFormat)
   ) (QueuedIncorpUpdate.apply, unlift(QueuedIncorpUpdate.unapply))

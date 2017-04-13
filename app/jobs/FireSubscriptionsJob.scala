@@ -20,9 +20,8 @@ import javax.inject.{Inject, Singleton}
 
 import org.joda.time.Duration
 import play.api.Logger
-import services.IncorpUpdateService
+import services.SubscriptionFiringService
 import uk.gov.hmrc.lock.{LockKeeper, LockRepository}
-import uk.gov.hmrc.play.http.HeaderCarrier
 import uk.gov.hmrc.play.scheduling.ExclusiveScheduledJob
 import utils.SCRSFeatureSwitches
 import play.modules.reactivemongo.MongoDbConnection
@@ -30,9 +29,9 @@ import play.modules.reactivemongo.MongoDbConnection
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class IncorpUpdatesJobImpl @Inject()(injService: IncorpUpdateService) extends IncorpUpdatesJob {
-  val name = "incorp-updates-job"
-  lazy val incorpUpdateService = injService
+class FireSubscriptionsJobImpl @Inject()(fireSubsService: SubscriptionFiringService) extends FireSubscriptionsJob {
+  val name = "fire-subs-job"
+  lazy val subscriptionFiringService = fireSubsService
 
   override lazy val lock: LockKeeper = new LockKeeper() {
     override val lockId = s"$name-lock"
@@ -42,10 +41,10 @@ class IncorpUpdatesJobImpl @Inject()(injService: IncorpUpdateService) extends In
   }
 }
 
-trait IncorpUpdatesJob extends ExclusiveScheduledJob with JobConfig {
+trait FireSubscriptionsJob extends ExclusiveScheduledJob with JobConfig {
 
   val lock: LockKeeper
-  val incorpUpdateService: IncorpUpdateService
+  val subscriptionFiringService: SubscriptionFiringService
 
 
   override def executeInMutex(implicit ec: ExecutionContext): Future[Result] = {
@@ -53,7 +52,7 @@ trait IncorpUpdatesJob extends ExclusiveScheduledJob with JobConfig {
       case true => {
         lock.tryLock {
           Logger.info(s"Triggered $name")
-          incorpUpdateService.updateNextIncorpUpdateJobLot(HeaderCarrier()) map { result =>
+          subscriptionFiringService.fireIncorpUpdateBatch map { result =>
             val message = s"Feature is turned on - result = ${result}"
             Logger.info(message)
             Result(message)
@@ -72,5 +71,6 @@ trait IncorpUpdatesJob extends ExclusiveScheduledJob with JobConfig {
       case false => Future.successful(Result(s"Feature is turned off"))
     }
   }
+
 }
 
