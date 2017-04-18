@@ -48,7 +48,7 @@ trait FireSubscriptionsJob extends ExclusiveScheduledJob with JobConfig {
 
 
   override def executeInMutex(implicit ec: ExecutionContext): Future[Result] = {
-    SCRSFeatureSwitches.scheduler.enabled match {
+    SCRSFeatureSwitches.fireSubs.enabled match {
       case true => {
         lock.tryLock {
           Logger.info(s"Triggered $name")

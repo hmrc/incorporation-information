@@ -78,7 +78,7 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
 
     "Should do no processing when disabled" in new Setup {
       setupAuditMocks()
-      setupFeatures(submissionCheck = false)
+      setupFeatures(fireSubscriptions = false)
 
       val job = lookupJob("fire-subs-job")
 
@@ -89,7 +89,7 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
 
     "Should process successfully when enabled" in new Setup {
       setupAuditMocks()
-      setupFeatures(submissionCheck = true)
+      setupFeatures(fireSubscriptions = true)
 
       stubPost("/mockUri", 200, "")
 
@@ -106,7 +106,7 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
 
     "Both submission and queue repos should be empty after job has been fired" in new Setup {
       setupAuditMocks()
-      setupFeatures(submissionCheck = true)
+      setupFeatures(fireSubscriptions = true)
 
       stubPost("/mockUri", 200, "")
 
@@ -140,7 +140,7 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
 
     "not be able to run two jobs at the same time" in new Setup {
       setupAuditMocks()
-      setupFeatures(submissionCheck = true)
+      setupFeatures(fireSubscriptions = true)
 
       stubPost("/mockUri", 200, "")
 
