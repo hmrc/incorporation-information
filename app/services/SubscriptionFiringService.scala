@@ -79,13 +79,13 @@ trait SubscriptionFiringService {
   }
 
   private def deleteSub(transId: String, regime: String, subscriber: String): Future[Boolean] = {
-    subscriptionsRepository.deleteSub(transId, regime, subscriber).map(res => res match {
-      case DefaultWriteResult(true, _, _, _, _, _) =>
+    subscriptionsRepository.deleteSub(transId, regime, subscriber) map {
+      case DefaultWriteResult(true, 1, _, _, _, _) =>
         Logger.info(s"[SubscriptionFiringService][deleteSub] Subscription with transactionId: ${transId} deleted sub for $regime")
         true
       case _ => Logger.info(s"[SubscriptionFiringService][deleteSub] Subscription with transactionId: ${transId} failed to delete")
         false
-    })
+    }
   }
 
   private def deleteQueuedIU(transId: String): Future[Boolean] = {
@@ -118,8 +118,7 @@ trait SubscriptionFiringService {
           case e : Exception =>
             Logger.info(s"[SubscriptionFiringService][fireIncorpUpdate] Subscription with transactionId: ${sub.transactionId} failed to return a 200 response")
             val newTS = DateTime.now.plusSeconds(queueFailureDelay)
-            queueRepository.updateTimestamp(sub.transactionId, newTS)
-            Future(false)
+            queueRepository.updateTimestamp(sub.transactionId, newTS).map(_ => false)
         }
       } ) flatMap { sb =>
         deleteQueuedIU(iu.incorpUpdate.transactionId)

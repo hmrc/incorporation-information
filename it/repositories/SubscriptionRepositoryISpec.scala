@@ -19,6 +19,7 @@ package repositories
 import helpers.SCRSMongoSpec
 import models.Subscription
 import play.modules.reactivemongo.MongoDbConnection
+import reactivemongo.api.commands.DefaultWriteResult
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -167,7 +168,13 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
         await(repository.count) shouldBe 2
         await(repository.deleteSub("transId1","test","CTabc"))
         await(repository.count) shouldBe 2
+      }
 
+      "try to delete a subscription from an empty collection" in new Setup {
+        await(repository.drop)
+        await(repository.count) shouldBe 0
+        val res = await(repository.deleteSub("transId1","test","CTabc"))
+        (res.ok, res.n) shouldBe (true, 0)
       }
     }
 

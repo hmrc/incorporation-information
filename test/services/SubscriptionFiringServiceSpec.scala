@@ -21,6 +21,7 @@ import connectors.FiringSubscriptionsConnector
 import models.{IncorpUpdate, IncorpUpdateResponse, QueuedIncorpUpdate, Subscription}
 import org.joda.time.DateTime
 import org.mockito.Matchers
+import org.mockito.Matchers.any
 import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.mock.MockitoSugar
@@ -29,6 +30,7 @@ import repositories.{QueueRepository, SubscriptionsRepository}
 import uk.gov.hmrc.play.http.{HeaderCarrier, HttpResponse}
 import uk.gov.hmrc.play.test.UnitSpec
 
+import scala.concurrent.Future
 
 class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEach with JSONhelpers {
 
@@ -75,6 +77,7 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
       when(mockSubscriptionsRepository.getSubscriptions(Matchers.any())).thenReturn(Seq(sub), Seq())
       when(mockQueueRepository.removeQueuedIncorpUpdate(sub.transactionId)).thenReturn(true)
       when(mockFiringSubsConnector.connectToAnyURL(Matchers.any(), Matchers.any())(Matchers.any())).thenReturn(HttpResponse(200))
+      when(mockQueueRepository.updateTimestamp(any(), any())).thenReturn(Future.successful(true))
 
       val result = await(service.fireIncorpUpdateBatch)
       result shouldBe Seq(true)
