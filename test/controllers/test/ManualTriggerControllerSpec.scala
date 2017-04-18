@@ -46,5 +46,14 @@ class ManualTriggerControllerSpec extends SCRSSpec {
         bodyOf(result) shouldBe "anything"
       }
     }
+
+    "supplying the job name xxxx" should {
+
+      "return a 404" in new Setup {
+        val result = await(controller.triggerJob("xxxx")(FakeRequest()))
+
+        status(result) shouldBe 404
+      }
+    }
   }
 }

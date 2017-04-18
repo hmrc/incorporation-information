@@ -18,12 +18,15 @@ package controllers.test
 
 import javax.inject.{Singleton, Named, Inject}
 
+import play.api.Logger
 import play.api.mvc.Action
 import uk.gov.hmrc.play.microservice.controller.BaseController
 import uk.gov.hmrc.play.scheduling.{ScheduledJob, ExclusiveScheduledJob}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import constants.JobNames.INCORP_UPDATE
+
+import scala.concurrent.Future
 
 @Singleton
 class ManualTriggerControllerImpl @Inject()(@Named("incorp-update-job") val incUpdatesJob: ScheduledJob) extends ManualTriggerController
@@ -36,6 +39,10 @@ trait ManualTriggerController extends BaseController {
     implicit request =>
       jobName match {
         case INCORP_UPDATE => triggerIncorpUpdateJob
+        case _ =>
+          val message = s"$jobName did not match any known jobs"
+          Logger.info(message)
+          Future.successful(NotFound(message))
       }
   }
 
