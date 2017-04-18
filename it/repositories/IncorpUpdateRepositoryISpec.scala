@@ -19,6 +19,7 @@ package repositories
 import helpers.SCRSMongoSpec
 import models.IncorpUpdate
 import play.api.libs.json.{JsNumber, Json}
+import play.modules.reactivemongo.MongoDbConnection
 import reactivemongo.api.BSONSerializationPack
 import reactivemongo.api.commands._
 import reactivemongo.bson.{BSONDocument, BSONRegex}
@@ -45,8 +46,8 @@ trait DocValidator {
 
 class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
 
-  class Setup extends MongoErrorCodes {
-    val incorpRepo = new IncorpUpdateMongo(reactiveMongoComponent).repo
+  class Setup extends MongoErrorCodes with MongoDbConnection {
+    val incorpRepo = new IncorpUpdateMongoRepository(db, IncorpUpdate.mongoFormat)
     await(incorpRepo.drop)
 
     def count = await(incorpRepo.count)

@@ -19,7 +19,7 @@ package repositories
 import javax.inject.{Inject, Singleton}
 
 import models.{IncorpUpdate, Subscription}
-import play.modules.reactivemongo.{ReactiveMongoComponent, MongoDbConnection}
+import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DB
 import reactivemongo.api.commands._
 import reactivemongo.api.indexes.{Index, IndexType}
@@ -31,10 +31,9 @@ import scala.collection.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-
 @Singleton
 class SubscriptionsMongo @Inject()(mongo: ReactiveMongoComponent) extends ReactiveMongoFormats {
-  val repo = new SubscriptionsMongoRepository(mongo.mongoConnector.db)
+  lazy val repo = new SubscriptionsMongoRepository(mongo.mongoConnector.db)
 }
 
 trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
