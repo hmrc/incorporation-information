@@ -35,13 +35,15 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
 
   "calling switch" should {
 
+    def message(name: String, state: String) = s"[FeatureSwitch] Feature switch for $name is now $state"
+
     "return an incorp update feature state set to false when we specify stub" in new Setup {
       val featureName = KEY_INCORP_UPDATE
       val featureState = "stub"
 
       val result = controller.switch(featureName, featureState)(FakeRequest())
       status(result) shouldBe OK
-      bodyOf(await(result)) shouldBe s"BooleanFeatureSwitch($KEY_INCORP_UPDATE,false)"
+      bodyOf(await(result)) shouldBe message(featureName, "disabled")
     }
 
     "return an incorp update feature state set to true when we specify coho" in new Setup {
@@ -50,7 +52,7 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
 
       val result = controller.switch(featureName, featureState)(FakeRequest())
       status(result) shouldBe OK
-      bodyOf(await(result)) shouldBe s"BooleanFeatureSwitch($KEY_INCORP_UPDATE,true)"
+      bodyOf(await(result)) shouldBe message(featureName, "enabled")
     }
 
     "return a transactional API feature state set to false when we specify stub" in new Setup {
@@ -59,7 +61,7 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
 
       val result = controller.switch(featureName, featureState)(FakeRequest())
       status(result) shouldBe OK
-      bodyOf(await(result)) shouldBe s"BooleanFeatureSwitch($KEY_TX_API,false)"
+      bodyOf(await(result)) shouldBe message(featureName, "disabled")
     }
 
     "return a transactional API feature state set to true when we specify coho" in new Setup {
@@ -68,7 +70,7 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
 
       val result = controller.switch(featureName, featureState)(FakeRequest())
       status(result) shouldBe OK
-      bodyOf(await(result)) shouldBe s"BooleanFeatureSwitch($KEY_TX_API,true)"
+      bodyOf(await(result)) shouldBe message(featureName, "enabled")
     }
 
 
@@ -76,19 +78,17 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
       val featureName = KEY_TX_API
       val featureState = "xxxx"
 
-      val result = controller.switch(featureName, featureState)(FakeRequest())
-      status(result) shouldBe OK
-      bodyOf(await(result)) shouldBe s"BooleanFeatureSwitch($KEY_TX_API,false)"
+      val ex = intercept[Exception](await(controller.switch(featureName, featureState)(FakeRequest())))
+      ex.getMessage shouldBe s"[FeatureSwitchController] xxxx was not a valid state for $KEY_TX_API - try coho / on to enable or stub / off to disable"
+
     }
 
     "return a incorp update feature state set to false as a default when we specify xxxx" in new Setup {
       val featureName = KEY_INCORP_UPDATE
       val featureState = "xxxx"
 
-      val result = controller.switch(featureName, featureState)(FakeRequest())
-
-      status(result) shouldBe OK
-      bodyOf(await(result)) shouldBe s"BooleanFeatureSwitch($KEY_INCORP_UPDATE,false)"
+      val ex = intercept[Exception](await(controller.switch(featureName, featureState)(FakeRequest())))
+      ex.getMessage shouldBe s"[FeatureSwitchController] xxxx was not a valid state for $KEY_INCORP_UPDATE - try coho / on to enable or stub / off to disable"
     }
 
 
@@ -99,10 +99,6 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
       val result = controller.switch(featureName, featureState)(FakeRequest())
 
       status(result) shouldBe BAD_REQUEST
-
-
     }
-
   }
-
 }

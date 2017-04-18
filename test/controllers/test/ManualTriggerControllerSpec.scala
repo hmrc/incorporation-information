@@ -16,6 +16,35 @@
 
 package controllers.test
 
-class ManualTriggerControllerSpec {
+import Helpers.SCRSSpec
+import play.api.test.FakeRequest
+import uk.gov.hmrc.play.scheduling.ScheduledJob
+import org.mockito.Mockito._
+import org.mockito.Matchers.any
+import scala.concurrent.Future
+import constants.JobNames._
 
+class ManualTriggerControllerSpec extends SCRSSpec {
+
+  val mockScheduledJob = mock[ScheduledJob]
+
+  class Setup {
+    val controller = new ManualTriggerController {
+      override protected val incUpdatesJob = mockScheduledJob
+    }
+  }
+
+  "calling triggerJob" when {
+
+    "supplying the job name incorp-update" should {
+
+      "execute the job and return a message" in new Setup {
+        when(mockScheduledJob.execute(any())).thenReturn(Future.successful(mockScheduledJob.Result("anything")))
+        val result = await(controller.triggerJob(INCORP_UPDATE)(FakeRequest()))
+
+        status(result) shouldBe 200
+        bodyOf(result) shouldBe "anything"
+      }
+    }
+  }
 }

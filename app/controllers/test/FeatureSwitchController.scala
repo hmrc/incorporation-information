@@ -34,16 +34,17 @@ trait FeatureSwitchController extends BaseController {
   def switch(featureName: String, state: String) = Action.async {
     implicit request =>
 
-      def feature = state match {
-        case "stub" => fs.disable(FeatureSwitch(featureName, enabled = false))
-        case "coho" => fs.enable(FeatureSwitch(featureName, enabled = true))
-        case _ => fs.disable(FeatureSwitch(featureName, enabled = false))
+      lazy val feature = state.toLowerCase match {
+        case "stub" | "off" => fs.disable(FeatureSwitch(featureName, enabled = false))
+        case "coho" | "on" => fs.enable(FeatureSwitch(featureName, enabled = true))
+        case _ => throw new Exception(s"[FeatureSwitchController] $state was not a valid state for $featureName - try coho / on to enable or stub / off to disable")
       }
 
       SCRSFeatureSwitches(featureName) match {
-        case Some(f) =>
-          Logger.info(s"[FeatureSwitch] Feature switch for $featureName is ${if(f.enabled) "enabled" else "disabled"}")
-          Future.successful(Ok(feature.toString))
+        case Some(_) =>
+          val message = s"[FeatureSwitch] Feature switch for ${feature.name} is now ${if(feature.enabled) "enabled" else "disabled"}"
+          Logger.info(message)
+          Future.successful(Ok(message))
         case None =>
           Logger.info(s"[FeatureSwitch] No feature switch with the name $featureName could not be found")
           Future.successful(BadRequest)
