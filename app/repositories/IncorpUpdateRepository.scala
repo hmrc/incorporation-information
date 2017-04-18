@@ -26,7 +26,6 @@ import reactivemongo.api.commands.WriteError
 import reactivemongo.bson.{BSONDocument, BSONObjectID}
 import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
-import constants.CollectionNames.INCORP_INFO
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -43,7 +42,7 @@ trait IncorpUpdateRepository {
 }
 
 class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate]) extends ReactiveRepository[IncorpUpdate, BSONObjectID](
-  collectionName = INCORP_INFO,
+  collectionName = "incorporation-information",
   mongo = mongo,
   domainFormat = format
 ) with IncorpUpdateRepository

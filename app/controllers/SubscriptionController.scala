@@ -46,7 +46,6 @@ trait SubscriptionController extends BaseController {
           case _ => InternalServerError
         }
       }
-
   }
 
 

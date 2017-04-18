@@ -16,12 +16,16 @@
 
 package services
 
+import Helpers.JSONhelpers
 import connectors.IncorporationCheckAPIConnector
-import models.IncorpUpdate
+import models.{IncorpUpdate, QueuedIncorpUpdate}
+import org.joda.time.DateTime
 import org.mockito.{ArgumentCaptor, Matchers}
 import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.mock.MockitoSugar
+import play.api.libs.json.{JsObject, Json}
+import reactivemongo.api.commands.WriteError
 import repositories._
 import uk.gov.hmrc.play.http.HeaderCarrier
 import uk.gov.hmrc.play.test.UnitSpec
@@ -29,11 +33,12 @@ import uk.gov.hmrc.play.test.UnitSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEach {
+class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEach with JSONhelpers{
 
   val mockIncorporationCheckAPIConnector = mock[IncorporationCheckAPIConnector]
   val mockIncorpUpdateRepository = mock[IncorpUpdateRepository]
   val mockTimepointRepository = mock[TimepointRepository]
+  val mockQueueRepository = mock[QueueRepository]
 
   implicit val hc = HeaderCarrier()
 
@@ -45,12 +50,14 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
     reset(mockIncorporationCheckAPIConnector)
     reset(mockIncorpUpdateRepository)
     reset(mockTimepointRepository)
+    reset(mockQueueRepository)
   }
 
   trait mockService extends IncorpUpdateService {
     val incorporationCheckAPIConnector = mockIncorporationCheckAPIConnector
     val incorpUpdateRepository = mockIncorpUpdateRepository
     val timepointRepository = mockTimepointRepository
+    val queueRepository = mockQueueRepository
   }
 
   trait Setup {
@@ -64,6 +71,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
   val incorpUpdateNew = IncorpUpdate("transId", "accepted", None, None, timepointNew, None)
   val incorpUpdates = Seq(incorpUpdate, incorpUpdateNew)
   val emptyUpdates = Seq()
+  val queuedIncorpUpdate = QueuedIncorpUpdate(DateTime.now, incorpUpdate)
 
   "fetchIncorpUpdates" should {
     "return some updates" in new Setup {
@@ -101,6 +109,16 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
       val response = service.storeIncorpUpdates(Future.successful(emptyUpdates))
       response.map(ir => ir shouldBe InsertResult(0, 0, Seq()))
     }
+
+    "return an InsertResult containing errors, when a failure occurred whilst adding incorp updates to the main collection" in new Setup {
+      when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
+      when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
+      val writeError = WriteError(0, 121, "Invalid Incorp Update could not be stored")
+      when(mockIncorpUpdateRepository.storeIncorpUpdates(emptyUpdates)).thenReturn(InsertResult(0, 0, Seq(writeError)))
+
+      val response = service.storeIncorpUpdates(emptyUpdates)
+      response.map(ir => ir shouldBe InsertResult(0, 0, Seq(writeError)))
+    }
   }
 
   "latestTimepoint" should {
@@ -127,16 +145,47 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
 
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepointOld)))
       when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Matchers.eq(Some(timepointOld)))(Matchers.any())).thenReturn(Future.successful(incorpUpdates))
-      when(mockIncorpUpdateRepository.storeIncorpUpdates(incorpUpdates)).thenReturn(Future.successful(InsertResult(1, 0, Seq())))
+
+      when(mockIncorpUpdateRepository.storeIncorpUpdates(Matchers.any())).thenReturn(Future.successful(InsertResult(2, 0, Seq())))
+
+      when(mockQueueRepository.storeIncorpUpdates(Matchers.any())).thenReturn(Future.successful(InsertResult(2, 0, Seq())))
+
+      val captor = ArgumentCaptor.forClass(classOf[String])
+
       when(mockTimepointRepository.updateTimepoint(Matchers.any())).thenReturn(Future.successful(newTimepoint))
 
       val response = await(service.updateNextIncorpUpdateJobLot)
-
-      val captor = ArgumentCaptor.forClass(classOf[String])
       verify(mockTimepointRepository).updateTimepoint(captor.capture())
       captor.getValue shouldBe newTimepoint
+      response shouldBe InsertResult(2,0,Seq())
+    }
+  }
 
-      response shouldBe InsertResult(1,0,Seq())
+
+  "createQueuedIncorpUpdate" should {
+    "return a correctly formatted QueuedIncorpUpdate when given an IncorpUpdate" in new Setup {
+
+      val fResult = service.createQueuedIncorpUpdate(Seq(incorpUpdate))
+      val result = await(fResult)
+
+      result.head.copy(timestamp = queuedIncorpUpdate.timestamp) shouldBe queuedIncorpUpdate
+      result.head.timestamp.getMillis shouldBe (queuedIncorpUpdate.timestamp.getMillis +- 1000)
+    }
+  }
+
+  "copyToQueue" should {
+    "return true if a Seq of QueuedIncorpUpdates have been copied to the queue" in new Setup {
+      when(mockQueueRepository.storeIncorpUpdates(Seq(queuedIncorpUpdate))).thenReturn(Future(InsertResult(1, 0, Seq())))
+
+      val result = await(service.copyToQueue(Seq(queuedIncorpUpdate)))
+      result shouldBe true
+    }
+
+    "return false if a Seq of QueuedIncorpUpdates have not been copied to the queue" in new Setup {
+      when(mockQueueRepository.storeIncorpUpdates(Seq(queuedIncorpUpdate))).thenReturn(Future(InsertResult(0, 1, Seq())))
+
+      val result = await(service.copyToQueue(Seq(queuedIncorpUpdate)))
+      result shouldBe false
     }
   }
 }
