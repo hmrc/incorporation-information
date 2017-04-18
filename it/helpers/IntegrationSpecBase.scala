@@ -30,7 +30,7 @@ trait IntegrationSpecBase extends UnitSpec
 
   def ws(implicit app: Application) = app.injector.instanceOf[WSClient]
 
-  def setupFeatures(submissionCheck: Boolean = false, transactionalAPI: Boolean = false) = {
+  def setupFeatures(submissionCheck: Boolean = false, transactionalAPI: Boolean = false, scheduledMetrics: Boolean = false) = {
     def enableFeature(fs: FeatureSwitch, enabled: Boolean) = {
       enabled match {
         case true => FeatureSwitch.enable(fs)
@@ -40,6 +40,7 @@ trait IntegrationSpecBase extends UnitSpec
 
     enableFeature(SCRSFeatureSwitches.scheduler, submissionCheck)
     enableFeature(SCRSFeatureSwitches.transactionalAPI, transactionalAPI)
+    enableFeature(SCRSFeatureSwitches.scheduledMetrics, scheduledMetrics)
   }
 
   override def beforeEach() = {

@@ -18,8 +18,8 @@ package services
 
 import javax.inject.Inject
 
-import com.codahale.metrics.Histogram
-import com.kenshoo.play.metrics.Metrics
+import com.kenshoo.play.metrics.{Metrics, MetricsDisabledException}
+import play.api.Logger
 import repositories._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -28,16 +28,15 @@ import scala.concurrent.Future
 
 class MetricsServiceImpl @Inject()(
                                          val injSubRepo: SubscriptionsMongo,
-                                         val metrics: Metrics
+                                         val injMetrics: Metrics
                                        ) extends MetricsService {
   override val subRepo = injSubRepo.repo
-
-  val subRegimeStat = metrics.defaultRegistry.histogram("subscription-regime")
+  override val metrics = injMetrics
 }
 
 trait MetricsService {
 
-  protected val subRegimeStat: Histogram
+  protected val metrics: Metrics
   protected val subRepo: SubscriptionsRepository
 
   def updateSubscriptionMetrics(): Future[Map[String, Int]] = {
@@ -53,7 +52,15 @@ trait MetricsService {
   }
 
   private def recordSubscriptionRegimeStat(regime: String, count: Int) = {
-    subRegimeStat.update(count)
+    val metricName = s"subscription-regime.${regime}"
+    try {
+      val subRegimeStat = metrics.defaultRegistry.histogram(metricName)
+      subRegimeStat.update(count)
+    } catch {
+      case ex: MetricsDisabledException => {
+        Logger.warn(s"[MetricsService] [recordSubscriptionRegimeStat] Metrics disabled - ${metricName} -> ${count}")
+      }
+    }
   }
 
 }

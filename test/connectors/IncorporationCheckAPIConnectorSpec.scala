@@ -49,6 +49,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       val featureSwitch: SCRSFeatureSwitches = new SCRSFeatureSwitches {
         override val KEY_TX_API = "x"
         override val KEY_INCORP_UPDATE = "y"
+        override val KEY_SCHED_METRICS = "z"
         override val transactionalAPI = FeatureSwitch(KEY_TX_API, false)
         override val scheduler = FeatureSwitch(KEY_INCORP_UPDATE, false)
       }
