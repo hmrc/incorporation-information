@@ -44,12 +44,10 @@ trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
 
   def getSubscription(transactionId: String, regime: String, subscriber: String) : Future[Option[Subscription]]
 
-  // TODO - LJ - might need to be of Future[Option[Seq[Subscription]]]
   def getSubscriptions(transactionId: String): Future[Seq[Subscription]]
 
   def wipeTestData(): Future[WriteResult]
 }
-
 
 sealed trait SubscriptionStatus
 case object SuccessfulSub extends SubscriptionStatus
@@ -86,7 +84,6 @@ class SubscriptionsMongoRepository(mongo: () => DB) extends ReactiveRepository[S
     }
   }
 
-
   def deleteSub(transactionId: String, regime: String, subscriber: String): Future[WriteResult] = {
     val selector = BSONDocument("transactionId" -> transactionId, "regime" -> regime, "subscriber" -> subscriber)
      collection.remove(selector)
@@ -106,7 +103,4 @@ class SubscriptionsMongoRepository(mongo: () => DB) extends ReactiveRepository[S
   def wipeTestData(): Future[WriteResult] = {
     removeAll(WriteConcern.Acknowledged)
   }
-
 }
-
-

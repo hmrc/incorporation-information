@@ -24,10 +24,8 @@ import uk.gov.hmrc.play.http._
 
 import scala.concurrent.Future
 
-
 class FiringSubscriptionsConnectorImpl extends FiringSubscriptionsConnector with ServicesConfig {
   val http = WSHttp
-
 }
 
 trait FiringSubscriptionsConnector {
@@ -37,6 +35,4 @@ trait FiringSubscriptionsConnector {
     val json = Json.toJson[IncorpUpdateResponse](iuResponse)
     http.POST[JsValue, HttpResponse](s"$url", json)
   }
-
-
 }

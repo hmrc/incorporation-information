@@ -52,6 +52,7 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
     val firingSubsConnector = mockFiringSubsConnector
     val queueRepository = mockQueueRepository
     val subscriptionsRepository = mockSubscriptionsRepository
+    val queueFailureDelay = 10
 
     implicit val hc = HeaderCarrier()
 

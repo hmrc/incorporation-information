@@ -85,6 +85,9 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
   val incorpUpdateResponse = IncorpUpdateResponse("CT", "subscriber", mockUrl, incorpUpdate)
 
 
+  // TODO - LJ - add scenario to test not picking up queue items in the future
+  // TODO - LJ - add scenario for ensuring failed updates get moved into the future
+
   "fireIncorpUpdateBatch" should {
     "return a Sequence of a true value when one queued incorp update has been successfully fired and both the " +
       "queued incorp update and the subscription have been deleted" in new Setup {

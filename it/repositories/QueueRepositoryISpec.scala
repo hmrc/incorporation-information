@@ -158,11 +158,13 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
       val result = await(repo.getIncorpUpdate("foo1"))
       result.get.timestamp shouldBe now
 
-      await(repo.updateTimestamp("foo1"))
+      val newTS = DateTime.now.plusSeconds(10)
+      await(repo.updateTimestamp("foo1", newTS))
       val updateResult = await(repo.getIncorpUpdate("foo1"))
       val updatedTimestamp = now.plusMinutes(10)
 
-      updateResult.get.timestamp.getMillis shouldBe (updatedTimestamp.toDate.getTime +- 10000)
+      // updateResult.get.timestamp.getMillis shouldBe (updatedTimestamp.toDate.getTime +- 10000) // TODO - LJ - remove
+      updateResult.get.timestamp.getMillis shouldBe newTS.getMillis
     }
   }
 

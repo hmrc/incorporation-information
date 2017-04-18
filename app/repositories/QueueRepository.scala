@@ -18,6 +18,7 @@ package repositories
 
 import javax.inject.{Inject, Singleton}
 
+import config.MicroserviceConfig
 import models.QueuedIncorpUpdate
 import org.joda.time.DateTime
 import play.api.Logger
@@ -40,6 +41,7 @@ class QueueMongo @Inject()(mongo: ReactiveMongoComponent) extends ReactiveMongoF
 }
 
 trait QueueRepository {
+
   def storeIncorpUpdates(updates: Seq[QueuedIncorpUpdate]): Future[InsertResult]
 
   def getIncorpUpdate(transactionId: String): Future[Option[QueuedIncorpUpdate]]
@@ -48,7 +50,7 @@ trait QueueRepository {
 
   def removeQueuedIncorpUpdate(transactionId: String): Future[Boolean]
 
-  def updateTimestamp(transactionId: String): Future[Boolean]
+  def updateTimestamp(transactionId: String, newTS: DateTime): Future[Boolean]
 }
 
 class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate]) extends ReactiveRepository[QueuedIncorpUpdate, BSONObjectID](
@@ -95,9 +97,8 @@ class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate]) 
     collection.remove(selector(transactionId)).map(_.n > 0)
   }
 
-  override def updateTimestamp(transactionId: String): Future[Boolean] = {
-    // TODO - LJ - timestamp should be passed from the service
-    val modifier = BSONDocument("$set" -> BSONDocument("timestamp" -> DateTime.now.plusMinutes(10).getMillis)) // TODO - LJ - needs config for 10!
+  override def updateTimestamp(transactionId: String, newTS: DateTime): Future[Boolean] = {
+    val modifier = BSONDocument("$set" -> BSONDocument("timestamp" -> newTS.getMillis))
     collection.findAndUpdate(selector(transactionId), modifier, true, false).map{
       _.result.fold(false)(_ => true)
     }

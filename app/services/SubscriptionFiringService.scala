@@ -18,6 +18,7 @@ package services
 
 import javax.inject.{Inject, Singleton}
 
+import config.MicroserviceConfig
 import connectors.FiringSubscriptionsConnector
 import models.{IncorpUpdateResponse, QueuedIncorpUpdate}
 import org.joda.time.DateTime
@@ -33,11 +34,13 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class SubscriptionFiringServiceImpl @Inject()(
                                                fsConnector: FiringSubscriptionsConnector,
                                                injQueueRepo: QueueMongo,
-                                               injSubRepo: SubscriptionsMongo
+                                               injSubRepo: SubscriptionsMongo,
+                                               config: MicroserviceConfig
                                              ) extends SubscriptionFiringService {
   override val firingSubsConnector = fsConnector
   override val queueRepository = injQueueRepo.repo
   override val subscriptionsRepository = injSubRepo.repo
+  override val queueFailureDelay = config.queueFailureDelay
 
   implicit val hc = HeaderCarrier()
 }
@@ -46,6 +49,7 @@ trait SubscriptionFiringService {
   val firingSubsConnector: FiringSubscriptionsConnector
   val queueRepository: QueueRepository
   val subscriptionsRepository: SubscriptionsRepository
+  val queueFailureDelay: Int
 
   implicit val hc: HeaderCarrier
 
@@ -102,7 +106,6 @@ trait SubscriptionFiringService {
     }
   }
 
-
   private def fireIncorpUpdate(iu: QueuedIncorpUpdate): Future[Boolean] = {
 
     subscriptionsRepository.getSubscriptions(iu.incorpUpdate.transactionId) flatMap { subscriptions =>
@@ -114,7 +117,8 @@ trait SubscriptionFiringService {
         } recoverWith {
           case e : Exception =>
             Logger.info(s"[SubscriptionFiringService][fireIncorpUpdate] Subscription with transactionId: ${sub.transactionId} failed to return a 200 response")
-            queueRepository.updateTimestamp(sub.transactionId)
+            val newTS = DateTime.now.plusSeconds(queueFailureDelay)
+            queueRepository.updateTimestamp(sub.transactionId, newTS)
             Future(false)
         }
       } ) flatMap { sb =>
