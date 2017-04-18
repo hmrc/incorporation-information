@@ -16,29 +16,35 @@
 
 package controllers.test
 
-import javax.inject.Inject
+import javax.inject.{Singleton, Named, Inject}
 
+import play.api.Logger
 import play.api.mvc.Action
 import uk.gov.hmrc.play.microservice.controller.BaseController
-import uk.gov.hmrc.play.scheduling.ExclusiveScheduledJob
+import uk.gov.hmrc.play.scheduling.{ScheduledJob, ExclusiveScheduledJob}
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import constants.JobNames.INCORP_UPDATE
 
-//todo: find out how to inject ExclusiveScheduledJob
-class ManualTriggerControllerImpl @Inject()(val incUpdatesJob: ExclusiveScheduledJob) extends ManualTriggerController
+import scala.concurrent.Future
+
+@Singleton
+class ManualTriggerControllerImpl @Inject()(@Named("incorp-update-job") val incUpdatesJob: ScheduledJob) extends ManualTriggerController
 
 trait ManualTriggerController extends BaseController {
 
-  protected val incUpdatesJob: ExclusiveScheduledJob
-
-  private val INCORP_UPDATE = "incorp-update"
+  protected val incUpdatesJob: ScheduledJob
 
   def triggerJob(jobName: String) = Action.async {
     implicit request =>
       jobName match {
         case INCORP_UPDATE => triggerIncorpUpdateJob
+        case _ =>
+          val message = s"$jobName did not match any known jobs"
+          Logger.info(message)
+          Future.successful(NotFound(message))
       }
   }
 
-  private[controllers] def triggerIncorpUpdateJob = incUpdatesJob.executeInMutex map (res => Ok(res.message))
+  private def triggerIncorpUpdateJob = incUpdatesJob.execute map (res => Ok(res.message))
 }
