@@ -28,12 +28,7 @@ import uk.gov.hmrc.play.test.WithFakeApplication
 
 import scala.concurrent.Future
 
-class TransactionalConnectorSpec extends SCRSSpec with WithFakeApplication {
-
-  override lazy val fakeApplication = new GuiceApplicationBuilder()
-    .bindings(bindModules:_*)
-    .configure("proxy.proxyRequiredForThisEnvironment" -> true)
-    .build()
+class TransactionalConnectorSpec extends SCRSSpec {
 
   val mockHttp = mock[HttpGet with WSProxy]
   val mockFeatureSwitch = mock[SCRSFeatureSwitches]
