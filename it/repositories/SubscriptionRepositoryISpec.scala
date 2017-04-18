@@ -78,6 +78,35 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
 
   val testKey = "testKey"
 
+  "getSubscriptionStats" should {
+    "return an empty Map if the collection is empty" in new Setup {
+      await(repository.count) shouldBe 0
+
+      await(repository.getSubscriptionStats()) shouldBe Map()
+    }
+
+    "return an single metric for a single subscription" in new Setup {
+      await(repository.insertSub(testValid))
+      await(repository.count) shouldBe 1
+
+      await(repository.getSubscriptionStats()) shouldBe Map( testValid.regime -> 1 )
+    }
+
+    "return an metrics for multiple subscriptions" in new Setup {
+
+      await(repository.insertSub(Subscription("tx1", "r1", "s1", "url1")))
+      await(repository.insertSub(Subscription("tx2", "r2", "s1", "url2")))
+      await(repository.insertSub(Subscription("tx3", "r2", "s2", "url3")))
+      await(repository.insertSub(Subscription("tx4", "r3", "s1", "url4")))
+      await(repository.insertSub(Subscription("tx5", "r3", "s2", "url5")))
+      await(repository.insertSub(Subscription("tx6", "r3", "s3", "url6")))
+      await(repository.count) shouldBe 6
+
+      await(repository.getSubscriptionStats()) shouldBe Map( "r1" -> 1, "r2" -> 2, "r3" -> 3 )
+    }
+
+  }
+
   "getSubscriptions" should {
     "return a submissions" in new Setup {
       await(repository.count) shouldBe 0

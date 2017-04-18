@@ -16,15 +16,15 @@
 
 package Helpers
 
+import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
 import org.scalatest.mock.MockitoSugar
-import play.modules.reactivemongo.ReactiveMongoComponent
 import uk.gov.hmrc.play.http.HeaderCarrier
-import uk.gov.hmrc.play.test.{WithFakeApplication, UnitSpec}
+import uk.gov.hmrc.play.test.UnitSpec
 
-trait SCRSSpec extends UnitSpec with MockitoSugar with WithFakeApplication {
+trait SCRSSpec extends UnitSpec with MockitoSugar {
 
   implicit val defaultHc = HeaderCarrier()
-  implicit val mat = fakeApplication.materializer
-
-  lazy val reactiveMongoComponent = fakeApplication.injector.instanceOf[ReactiveMongoComponent]
+  implicit val system = ActorSystem("II")
+  implicit val materializer = ActorMaterializer()
 }

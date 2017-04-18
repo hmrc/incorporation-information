@@ -36,8 +36,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class SubscriptionControllerImplSpec extends SCRSSpec with JSONhelpers {
 
-  implicit val system = ActorSystem("II")
-  implicit val materializer = ActorMaterializer()
+//  implicit val system = ActorSystem("II")
+//  implicit val materializer = ActorMaterializer()
 
   val mockService = mock[SubscriptionService]
 

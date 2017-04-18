@@ -19,6 +19,7 @@ package repositories
 import javax.inject.{Inject, Singleton}
 
 import models.{IncorpUpdate, Subscription}
+import play.api.libs.json.JsString
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DB
 import reactivemongo.api.commands._
@@ -45,6 +46,8 @@ trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
   def getSubscription(transactionId: String, regime: String, subscriber: String) : Future[Option[Subscription]]
 
   def getSubscriptions(transactionId: String): Future[Seq[Subscription]]
+
+  def getSubscriptionStats(): Future[Map[String, Int]]
 
   def wipeTestData(): Future[WriteResult]
 }
@@ -99,6 +102,28 @@ class SubscriptionsMongoRepository(mongo: () => DB) extends ReactiveRepository[S
     collection.find(query).cursor[Subscription]().collect[Seq]()
   }
 
+  def getSubscriptionStats(): Future[Map[String, Int]] = {
+
+    import play.api.libs.json._
+    import reactivemongo.json.collection.JSONBatchCommands.AggregationFramework.{Group, Match, SumValue}
+
+    val matchQuery = Match(Json.obj())
+    val group = Group(JsString("$regime"))("count" -> SumValue(1))
+
+    val metrics = collection.aggregate(matchQuery, List(group)) map {
+        _.documents map {
+          d => {
+            val regime = (d \ "_id").as[String]
+            val count = (d \ "count").as[Int]
+            regime -> count
+          }
+        }
+    }
+
+    metrics map {
+      _.toMap
+    }
+  }
 
   def wipeTestData(): Future[WriteResult] = {
     removeAll(WriteConcern.Acknowledged)
