@@ -17,22 +17,18 @@
 package connectors
 
 import Helpers.SCRSSpec
-import org.mockito.Matchers.{eq => eqTo, any}
+import org.mockito.Matchers.{any, eq => eqTo}
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.{Json, JsValue}
-import uk.gov.hmrc.play.http.{HttpException, NotFoundException, HttpGet}
+import play.api.libs.json.{JsValue, Json}
+import uk.gov.hmrc.play.http.{HttpException, HttpGet, NotFoundException}
 import uk.gov.hmrc.play.http.ws.WSProxy
 import utils.{BooleanFeatureSwitch, SCRSFeatureSwitches}
 import org.mockito.Mockito._
+import uk.gov.hmrc.play.test.WithFakeApplication
 
 import scala.concurrent.Future
 
 class TransactionalConnectorSpec extends SCRSSpec {
-
-  override lazy val fakeApplication = new GuiceApplicationBuilder()
-    .bindings(bindModules:_*)
-    .configure("proxy.proxyRequiredForThisEnvironment" -> true)
-    .build()
 
   val mockHttp = mock[HttpGet with WSProxy]
   val mockFeatureSwitch = mock[SCRSFeatureSwitches]

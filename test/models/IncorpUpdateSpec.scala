@@ -17,13 +17,11 @@
 package models
 
 import org.joda.time.{DateTime, DateTimeZone}
-import play.api.libs.json.{JsLookupResult, JsObject, Json, __}
+import play.api.libs.json._
 import uk.gov.hmrc.play.test.UnitSpec
 import Helpers.JSONhelpers
 
-/**
-  * Created by jackie on 23/03/17.
-  */
+
 class IncorpUpdateSpec extends UnitSpec with JSONhelpers {
 
   "writes" should {
@@ -108,6 +106,85 @@ class IncorpUpdateSpec extends UnitSpec with JSONhelpers {
       val after = DateTime.now(DateTimeZone.UTC).getMillis
 
       (before <= timestamp && after >= timestamp) shouldBe true
+    }
+  }
+
+  "mongoFormat" should {
+    def j(ts: String) = Json.parse(
+      s"""
+         |{
+         |"_id":"transId1",
+         |"transaction_status":"awaiting",
+         |"company_number":"08978562",
+         |"incorporated_on":"${ts}",
+         |"timepoint":"timepoint",
+         |"transaction_status_description":"status"
+         |}
+      """.stripMargin)
+
+    "return an IncorpUpdate in mongo format and be able to convert it back again consistently" in {
+      val ts = "2013-12-12"
+      val json = j(ts)
+      val incorpUpdate = IncorpUpdate("transId1", "awaiting", Some("08978562"), Some(DateTime.parse(ts)), "timepoint", Some("status"))
+
+      val result = json.validate[IncorpUpdate](IncorpUpdate.mongoFormat)
+
+      result shouldBe JsSuccess(incorpUpdate)
+
+      Json.toJson[IncorpUpdate](result.get)(IncorpUpdate.mongoFormat) shouldBe json
+    }
+  }
+
+  "cohoFormat (and queueFormat)" should {
+    def j(ts: String) = Json.parse(
+      s"""
+         |{
+         |"transaction_id":"transId1",
+         |"transaction_status":"awaiting",
+         |"company_number":"08978562",
+         |"incorporated_on":"${ts}",
+         |"timepoint":"timepoint",
+         |"transaction_status_description":"status"
+         |}
+      """.stripMargin)
+
+    "return an IncorpUpdate in mongo format and be able to convert it back again consistently" in {
+      val ts = "2013-12-12"
+      val json = j(ts)
+      val incorpUpdate = IncorpUpdate("transId1", "awaiting", Some("08978562"), Some(DateTime.parse(ts)), "timepoint", Some("status"))
+
+      val result = json.validate[IncorpUpdate](IncorpUpdate.cohoFormat)
+
+      result shouldBe JsSuccess(incorpUpdate)
+
+      Json.toJson[IncorpUpdate](result.get)(IncorpUpdate.cohoFormat) shouldBe json
+    }
+  }
+
+
+  "responseFormat" should {
+    def j(ts: String) = Json.parse(
+      s"""
+         |{
+         |"transaction_id":"transId1",
+         |"status":"awaiting",
+         |"crn":"08978562",
+         |"incorporationDate":"${ts}",
+         |"timepoint":"timepoint",
+         |"transaction_status_description":"status"
+         |}
+      """.stripMargin)
+
+    "return an IncorpUpdate in mongo format and be able to convert it back again consistently" in {
+      val ts = "2013-12-12"
+      val json = j(ts)
+      val incorpUpdate = IncorpUpdate("transId1", "awaiting", Some("08978562"), Some(DateTime.parse(ts)), "timepoint", Some("status"))
+
+      val result = json.validate[IncorpUpdate](IncorpUpdate.responseFormat)
+
+      result shouldBe JsSuccess(incorpUpdate)
+
+      Json.toJson[IncorpUpdate](result.get)(IncorpUpdate.responseFormat) shouldBe json
     }
   }
 

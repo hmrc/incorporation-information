@@ -19,7 +19,8 @@ package repositories
 import javax.inject.{Inject, Singleton}
 
 import models.{IncorpUpdate, Subscription}
-import play.modules.reactivemongo.{ReactiveMongoComponent, MongoDbConnection}
+import play.api.libs.json.JsString
+import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DB
 import reactivemongo.api.commands._
 import reactivemongo.api.indexes.{Index, IndexType}
@@ -44,9 +45,12 @@ trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
 
   def getSubscription(transactionId: String, regime: String, subscriber: String) : Future[Option[Subscription]]
 
+  def getSubscriptions(transactionId: String): Future[Seq[Subscription]]
+
+  def getSubscriptionStats(): Future[Map[String, Int]]
+
   def wipeTestData(): Future[WriteResult]
 }
-
 
 sealed trait SubscriptionStatus
 case object SuccessfulSub extends SubscriptionStatus
@@ -61,8 +65,10 @@ case object NotDeletedSub extends UnsubscribeStatus
 
 case class UpsertResult(modified: Int, inserted: Int, errors: Seq[WriteError])
 
-class SubscriptionsMongoRepository(mongo: () => DB)
-  extends ReactiveRepository[Subscription, BSONObjectID]("subscriptions", mongo, Subscription.format, ReactiveMongoFormats.objectIdFormats)
+class SubscriptionsMongoRepository(mongo: () => DB) extends ReactiveRepository[Subscription, BSONObjectID](
+    collectionName = "subscriptions",
+    mongo = mongo,
+    domainFormat = Subscription.format)
     with SubscriptionsRepository
 {
 
@@ -81,7 +87,6 @@ class SubscriptionsMongoRepository(mongo: () => DB)
     }
   }
 
-
   def deleteSub(transactionId: String, regime: String, subscriber: String): Future[WriteResult] = {
     val selector = BSONDocument("transactionId" -> transactionId, "regime" -> regime, "subscriber" -> subscriber)
      collection.remove(selector)
@@ -92,11 +97,35 @@ class SubscriptionsMongoRepository(mongo: () => DB)
     collection.find(query).one[Subscription]
   }
 
+  def getSubscriptions(transactionId: String): Future[Seq[Subscription]] = {
+    val query = BSONDocument("transactionId" -> transactionId)
+    collection.find(query).cursor[Subscription]().collect[Seq]()
+  }
+
+  def getSubscriptionStats(): Future[Map[String, Int]] = {
+
+    import play.api.libs.json._
+    import reactivemongo.json.collection.JSONBatchCommands.AggregationFramework.{Group, Match, SumValue}
+
+    val matchQuery = Match(Json.obj())
+    val group = Group(JsString("$regime"))("count" -> SumValue(1))
+
+    val metrics = collection.aggregate(matchQuery, List(group)) map {
+        _.documents map {
+          d => {
+            val regime = (d \ "_id").as[String]
+            val count = (d \ "count").as[Int]
+            regime -> count
+          }
+        }
+    }
+
+    metrics map {
+      _.toMap
+    }
+  }
 
   def wipeTestData(): Future[WriteResult] = {
     removeAll(WriteConcern.Acknowledged)
   }
-
 }
-
-
