@@ -18,4 +18,5 @@ package constants
 
 object JobNames {
   lazy val INCORP_UPDATE = "incorp-update"
+  lazy val FIRE_SUBS = "fireSubs"
 }
