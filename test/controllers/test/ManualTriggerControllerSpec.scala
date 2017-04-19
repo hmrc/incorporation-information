@@ -26,11 +26,13 @@ import constants.JobNames._
 
 class ManualTriggerControllerSpec extends SCRSSpec {
 
-  val mockScheduledJob = mock[ScheduledJob]
+  val mockIncUpdatesJob = mock[ScheduledJob]
+  val mockFireSubJob = mock[ScheduledJob]
 
   class Setup {
     val controller = new ManualTriggerController {
-      override protected val incUpdatesJob = mockScheduledJob
+      override protected val incUpdatesJob = mockIncUpdatesJob
+      override protected val fireSubJob = mockFireSubJob
     }
   }
 
@@ -39,8 +41,19 @@ class ManualTriggerControllerSpec extends SCRSSpec {
     "supplying the job name incorp-update" should {
 
       "execute the job and return a message" in new Setup {
-        when(mockScheduledJob.execute(any())).thenReturn(Future.successful(mockScheduledJob.Result("anything")))
+        when(mockIncUpdatesJob.execute(any())).thenReturn(Future.successful(mockIncUpdatesJob.Result("anything")))
         val result = await(controller.triggerJob(INCORP_UPDATE)(FakeRequest()))
+
+        status(result) shouldBe 200
+        bodyOf(result) shouldBe "anything"
+      }
+    }
+
+    "supplying the job name fire-subs" should {
+
+      "execute the job and return a message" in new Setup {
+        when(mockFireSubJob.execute(any())).thenReturn(Future.successful(mockFireSubJob.Result("anything")))
+        val result = await(controller.triggerJob(FIRE_SUBS)(FakeRequest()))
 
         status(result) shouldBe 200
         bodyOf(result) shouldBe "anything"

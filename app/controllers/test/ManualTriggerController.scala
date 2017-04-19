@@ -24,21 +24,24 @@ import uk.gov.hmrc.play.microservice.controller.BaseController
 import uk.gov.hmrc.play.scheduling.{ScheduledJob, ExclusiveScheduledJob}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import constants.JobNames.INCORP_UPDATE
+import constants.JobNames._
 
 import scala.concurrent.Future
 
 @Singleton
-class ManualTriggerControllerImpl @Inject()(@Named("incorp-update-job") val incUpdatesJob: ScheduledJob) extends ManualTriggerController
+class ManualTriggerControllerImpl @Inject()(@Named("incorp-update-job") val incUpdatesJob: ScheduledJob,
+                                            @Named("fire-subs-job") val fireSubJob: ScheduledJob) extends ManualTriggerController
 
 trait ManualTriggerController extends BaseController {
 
   protected val incUpdatesJob: ScheduledJob
+  protected val fireSubJob: ScheduledJob
 
   def triggerJob(jobName: String) = Action.async {
     implicit request =>
       jobName match {
         case INCORP_UPDATE => triggerIncorpUpdateJob
+        case FIRE_SUBS => triggerFireSubsJob
         case _ =>
           val message = s"$jobName did not match any known jobs"
           Logger.info(message)
@@ -47,4 +50,5 @@ trait ManualTriggerController extends BaseController {
   }
 
   private def triggerIncorpUpdateJob = incUpdatesJob.execute map (res => Ok(res.message))
+  private def triggerFireSubsJob = fireSubJob.execute map (res => Ok(res.message))
 }
