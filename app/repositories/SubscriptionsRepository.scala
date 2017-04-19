@@ -72,12 +72,18 @@ class SubscriptionsMongoRepository(mongo: () => DB) extends ReactiveRepository[S
     with SubscriptionsRepository
 {
 
-  override def indexes: Seq[Index] = Seq(
-    Index(
-      key = Seq("transactionId" -> IndexType.Ascending, "regime" -> IndexType.Ascending, "subscriber" -> IndexType.Ascending),
-      name = Some("SubscriptionIdIndex"), unique = true, sparse = false
+  override def indexes: Seq[Index] = {
+    import IndexType.{Ascending => Asc}
+    Seq(
+      Index(
+        key = Seq("transactionId" -> Asc, "regime" -> Asc, "subscriber" -> Asc),
+        name = Some("SubscriptionIdIndex"), unique = true, sparse = false
+      ),
+      Index(
+        key = Seq("regime" -> Asc), name = Some("regime"), unique = false
+      )
     )
-  )
+  }
 
   def insertSub(sub: Subscription) : Future[UpsertResult] = {
     val selector = BSONDocument("transactionId" -> sub.transactionId, "regime" -> sub.regime, "subscriber" -> sub.subscriber)
@@ -105,12 +111,16 @@ class SubscriptionsMongoRepository(mongo: () => DB) extends ReactiveRepository[S
   def getSubscriptionStats(): Future[Map[String, Int]] = {
 
     import play.api.libs.json._
-    import reactivemongo.json.collection.JSONBatchCommands.AggregationFramework.{Group, Match, SumValue}
+    import reactivemongo.json.collection.JSONBatchCommands.AggregationFramework.{Group, Match, SumValue, Project}
 
-    val matchQuery = Match(Json.obj())
+    // needed to make it pick up the index
+    val matchQuery = Match(Json.obj("regime" -> Json.obj("$ne" -> "")))
+    // covering query to prevent doc fetch (optimiser would probably spot this anyway and transform the query)
+    val project = Project(Json.obj("regime" -> 1, "_id" -> 0))
+    // calculate the regime counts
     val group = Group(JsString("$regime"))("count" -> SumValue(1))
 
-    val metrics = collection.aggregate(matchQuery, List(group)) map {
+    val metrics = collection.aggregate(matchQuery, List(project, group)) map {
         _.documents map {
           d => {
             val regime = (d \ "_id").as[String]

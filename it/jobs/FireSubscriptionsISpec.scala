@@ -103,7 +103,9 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
 
       await(incorpRepo.collection.count()) shouldBe 0
     }
+  }
 
+  "fire subscriptions check with data" should {
     "Both submission and queue repos should be empty after job has been fired" in new Setup {
       setupAuditMocks()
       setupFeatures(fireSubscriptions = true)
@@ -166,7 +168,4 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
       f2 shouldBe job.Result("Skipping execution: job running")
     }
   }
-
-
-
 }

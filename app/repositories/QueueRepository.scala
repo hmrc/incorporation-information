@@ -18,22 +18,21 @@ package repositories
 
 import javax.inject.{Inject, Singleton}
 
-import config.MicroserviceConfig
 import models.QueuedIncorpUpdate
 import org.joda.time.DateTime
 import play.api.Logger
-import play.api.libs.json.Format
+import play.api.libs.json.{Format, JsObject, Json}
 import play.modules.reactivemongo.ReactiveMongoComponent
-import reactivemongo.api.DB
+import reactivemongo.api.{DB, ReadPreference}
 import reactivemongo.api.indexes.{Index, IndexType}
-import reactivemongo.bson.{BSONDocument, BSONObjectID}
+import reactivemongo.bson.{BSONDocument, BSONLong, BSONObjectID}
 import reactivemongo.core.errors.DatabaseException
 import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
 
 import scala.collection.Seq
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 @Singleton
 class QueueMongo @Inject()(mongo: ReactiveMongoComponent) extends ReactiveMongoFormats {
@@ -62,12 +61,15 @@ class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate]) 
 
   implicit val fmt = format
 
-  private def selector(transactionId: String) = BSONDocument("incorp_update.transaction_id" -> transactionId)
+  private def txSelector(transactionId: String) = BSONDocument("incorp_update.transaction_id" -> transactionId)
 
   override def indexes: Seq[Index] = Seq(
     Index(
       key = Seq("incorp_update.transaction_id" -> IndexType.Ascending, "timestamp" -> IndexType.Ascending),
       name = Some("QueuedIncorpIndex"), unique = true, sparse = false
+    ),
+    Index(
+      key = Seq("timestamp" -> IndexType.Ascending), name = Some("QueueByTs"), unique = false
     )
   )
 
@@ -85,21 +87,23 @@ class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate]) 
   }
 
   override def getIncorpUpdate(transactionId: String): Future[Option[QueuedIncorpUpdate]] = {
-    collection.find(selector(transactionId)).one[QueuedIncorpUpdate]
+    collection.find(txSelector(transactionId)).one[QueuedIncorpUpdate]
   }
 
   override def getIncorpUpdates: Future[Seq[QueuedIncorpUpdate]] = {
-    // TODO - LJ - check tests for timestamp on retrieve (to check we don't get future queue messages)
-    findAll()
+    val selector = Json.obj("timestamp" -> Json.obj("$lte" -> DateTime.now.getMillis))
+    val rp = ReadPreference.primaryPreferred
+
+    collection.find(selector).sort(Json.obj("timestamp" -> 1)).cursor[QueuedIncorpUpdate](rp).collect[List]()
   }
 
   override def removeQueuedIncorpUpdate(transactionId: String): Future[Boolean] = {
-    collection.remove(selector(transactionId)).map(_.n > 0)
+    collection.remove(txSelector(transactionId)).map(_.n > 0)
   }
 
   override def updateTimestamp(transactionId: String, newTS: DateTime): Future[Boolean] = {
     val modifier = BSONDocument("$set" -> BSONDocument("timestamp" -> newTS.getMillis))
-    collection.findAndUpdate(selector(transactionId), modifier, true, false).map{
+    collection.findAndUpdate(txSelector(transactionId), modifier, true, false).map {
       _.result.fold(false)(_ => true)
     }
   }
