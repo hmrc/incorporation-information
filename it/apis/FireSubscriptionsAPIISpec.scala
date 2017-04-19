@@ -159,7 +159,7 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
       subCount shouldBe 1
     }
 
-    "return a sequence of a false value when the timestamp of an queued incorp update is in the future" in new Setup {
+    "return an empty when the timestamp of the only queued incorp update is in the future" in new Setup {
       insert(sub)
       subCount shouldBe 1
 
@@ -172,7 +172,7 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
 
       val fResult = service.fireIncorpUpdateBatch
       val result = await(fResult)
-      result shouldBe Seq(false)
+      result shouldBe Seq()
     }
 
     "return a sequence of false when the subscriptions for a queued incorp update did not return a 200 response" in new Setup {
@@ -190,11 +190,5 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
       val result = await(fResult)
       result shouldBe Seq(false)
     }
-
-
-
   }
-
-
-
 }
