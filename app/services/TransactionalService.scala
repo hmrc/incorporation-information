@@ -44,12 +44,9 @@ trait TransactionalService {
   }
 
   private[services] def extractJson(f: => Future[TransactionalAPIResponse], transformer: Reads[JsObject]) = {
-    //todo: assert that the transform happens or return None - currently a success if transform did jack
     f.map {
       case SuccessfulTransactionalAPIResponse(json) => json.transform(transformer) match {
-        case JsSuccess(js, p) =>
-          println("======================= path: " + p)
-          Some(js)
+        case JsSuccess(js, path) if !path.toString().contains("unmatched") => Some(js)
         case _ => None
       }
       case FailedTransactionalAPIResponse => None

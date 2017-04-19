@@ -18,6 +18,7 @@ package connectors
 
 import com.github.tomakehurst.wiremock.client.WireMock._
 import helpers.IntegrationSpecBase
+import play.api.libs.json.{JsObject, Json}
 import play.api.test.FakeApplication
 
 class TransactionalAPIISpec extends IntegrationSpecBase {
@@ -36,11 +37,73 @@ class TransactionalAPIISpec extends IntegrationSpecBase {
 
     val destinationUrl = s"/incorporation-frontend-stubs/fetch-data/$transactionId"
 
-    val body = """{
-                |"SCRSCompanyProfile" : {
-                |   "test":"json"
-                | }
-                |}""".stripMargin
+    val body =
+      s"""
+         |{
+         |  "transaction_id": "000-033808",
+         |  "company_name": "MOOO LIMITED",
+         |  "company_type": "ltd",
+         |  "registered_office_address": {
+         |    "country": "United Kingdom",
+         |    "address_line_2": "GORING-BY-SEA",
+         |    "premises": "98",
+         |    "postal_code": "BN12 6AG",
+         |    "address_line_1": "LIMBRICK LANE",
+         |    "locality": "WORTHING"
+         |  },
+         |  "officers": [
+         |    {
+         |      "date_of_birth": {
+         |        "month": "11",
+         |        "day": "12",
+         |        "year": "1973"
+         |      },
+         |      "name_elements": {
+         |        "forename": "Bob",
+         |        "surname": "Bobbings",
+         |        "other_forenames": "Bimbly Bobblous"
+         |      },
+         |      "address": {
+         |        "country": "United Kingdom",
+         |        "address_line_2": "GORING-BY-SEA",
+         |        "premises": "98",
+         |        "postal_code": "BN12 6AG",
+         |        "address_line_1": "LIMBRICK LANE",
+         |        "locality": "WORTHING"
+         |      }
+         |    },
+         |    {
+         |      "date_of_birth": {
+         |        "month": "07",
+         |        "day": "12",
+         |        "year": "1988"
+         |      },
+         |      "name_elements": {
+         |        "title": "Mx",
+         |        "forename": "Jingly",
+         |        "surname": "Jingles"
+         |      },
+         |      "address": {
+         |        "country": "England",
+         |        "premises": "713",
+         |        "postal_code": "NE1 4BB",
+         |        "address_line_1": "ST. JAMES GATE",
+         |        "locality": "NEWCASTLE UPON TYNE"
+         |      }
+         |    }
+         |  ],
+         |  "sic_codes": [
+         |    {
+         |      "sic_description": "Public order and safety activities",
+         |      "sic_code": "84240"
+         |    },
+         |    {
+         |      "sic_description": "Raising of dairy cattle",
+         |      "sic_code": "01410"
+         |    }
+         |  ]
+         |}
+    """.stripMargin
 
     // TODO - re-check against expecations
     "return a 200 and Json from the companies house API stub" in {
@@ -50,7 +113,7 @@ class TransactionalAPIISpec extends IntegrationSpecBase {
 
       val response = buildClient(clientUrl).get().futureValue
       response.status shouldBe 200
-      response.body shouldBe """{"test":"json"}"""
+      response.body shouldBe (Json.parse(body).as[JsObject] - "officers").toString()
     }
 
     "return a 404 if a Json body cannot be returned for the given transaction Id" in {
