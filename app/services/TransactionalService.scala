@@ -19,7 +19,7 @@ package services
 import javax.inject.Inject
 
 import connectors.{FailedTransactionalAPIResponse, SuccessfulTransactionalAPIResponse, TransactionalAPIResponse, TransactionalConnector}
-import play.api.libs.json.JsValue
+import play.api.libs.json._
 import uk.gov.hmrc.play.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -32,18 +32,24 @@ trait TransactionalService {
   protected val connector: TransactionalConnector
 
   def fetchCompanyProfile(transactionId: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
-    extractJson(connector.fetchTransactionalData(transactionId), "SCRSCompanyProfile")
+    val transformer = (JsPath \ "officers").json.prune
+    extractJson(connector.fetchTransactionalData(transactionId), transformer)
   }
 
   def fetchOfficerList(transactionId: String)(implicit hc: HeaderCarrier) = {
-    extractJson(connector.fetchTransactionalData(transactionId), "SCRSCompanyOfficerList")
+    connector.fetchTransactionalData(transactionId) map {
+      case SuccessfulTransactionalAPIResponse(js) => (js \ "officers").toOption
+      case _ => None
+    }
   }
 
-  private[services] def extractJson(f: => Future[TransactionalAPIResponse], key: String) = {
+  private[services] def extractJson(f: => Future[TransactionalAPIResponse], transformer: Reads[JsObject]) = {
     f.map {
-      case SuccessfulTransactionalAPIResponse(json) => (json \ key).toOption
+      case SuccessfulTransactionalAPIResponse(json) => json.transform(transformer) match {
+        case JsSuccess(js, path) if !path.toString().contains("unmatched") => Some(js)
+        case _ => None
+      }
       case FailedTransactionalAPIResponse => None
     }
   }
 }
-
