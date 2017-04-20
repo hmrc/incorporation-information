@@ -18,18 +18,18 @@ package services
 
 import javax.inject.Inject
 
-import connectors.{FailedTransactionalAPIResponse, SuccessfulTransactionalAPIResponse, TransactionalAPIResponse, TransactionalConnector}
+import connectors._
 import play.api.libs.json._
 import uk.gov.hmrc.play.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class TransactionalServiceImpl @Inject()(val connector: TransactionalConnector) extends TransactionalService
+class TransactionalServiceImpl @Inject()(val connector: IncorporationAPIConnector) extends TransactionalService
 
 trait TransactionalService {
 
-  protected val connector: TransactionalConnector
+  protected val connector: IncorporationAPIConnector
 
   def fetchCompanyProfile(transactionId: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
     val transformer = (JsPath \ "officers").json.prune

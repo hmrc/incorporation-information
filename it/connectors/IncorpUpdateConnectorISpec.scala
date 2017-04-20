@@ -66,7 +66,7 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
     "items from the sample response" in {
       stubGet("/ifes/submission.*", 200, responseOne)
 
-      val connector = app.injector.instanceOf[IncorporationCheckAPIConnector]
+      val connector = app.injector.instanceOf[IncorporationAPIConnector]
 
       val f = connector.checkForIncorpUpdate(None)(HeaderCarrier())
       val r = await(f)
@@ -76,7 +76,7 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
     "Return no items if a 204 (no content) result is returned" in {
       stubGet("/ifes/submission.*", 204, "")
 
-      val connector = app.injector.instanceOf[IncorporationCheckAPIConnector]
+      val connector = app.injector.instanceOf[IncorporationAPIConnector]
 
       val f = connector.checkForIncorpUpdate(None)(HeaderCarrier())
       val r = await(f)
@@ -86,7 +86,7 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
     "Return no items if a 400 (bad request) result is returned" in {
       stubGet("/ifes/submission.*", 400, "")
 
-      val connector = app.injector.instanceOf[IncorporationCheckAPIConnector]
+      val connector = app.injector.instanceOf[IncorporationAPIConnector]
 
       val f = connector.checkForIncorpUpdate(None)(HeaderCarrier())
 
