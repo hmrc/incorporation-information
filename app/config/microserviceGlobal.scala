@@ -20,7 +20,7 @@ import javax.inject.{Inject, Named, Singleton}
 
 import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
-import play.api.{Application, Configuration, Play}
+import play.api.{Application, Configuration, Play, Logger}
 import uk.gov.hmrc.play.audit.filters.AuditFilter
 import uk.gov.hmrc.play.auth.controllers.AuthParamsControllerConfig
 import uk.gov.hmrc.play.auth.microservice.filters.AuthorisationFilter
@@ -66,6 +66,14 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Mi
   override val authFilter = Some(MicroserviceAuthFilter)
 
   override def microserviceMetricsConfig(implicit app: Application): Option[Configuration] = app.configuration.getConfig(s"microservice.metrics")
+
+  override def onStart(app : play.api.Application) : scala.Unit = {
+
+    val confVersion = app.configuration.getString("config.version")
+    Logger.info(s"Config Version = ${confVersion}")
+
+    super.onStart(app)
+  }
 }
 
 trait JobsList {
