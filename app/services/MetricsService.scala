@@ -19,6 +19,7 @@ package services
 import javax.inject.Inject
 
 import com.kenshoo.play.metrics.{Metrics, MetricsDisabledException}
+import com.codahale.metrics.Gauge
 import play.api.Logger
 import repositories._
 
@@ -52,10 +53,14 @@ trait MetricsService {
   }
 
   private def recordSubscriptionRegimeStat(regime: String, count: Int) = {
-    val metricName = s"subscription-regime.${regime}"
+    val metricName = s"subscription-regime-stat.${regime}"
     try {
-      val subRegimeStat = metrics.defaultRegistry.histogram(metricName)
-      subRegimeStat.update(count)
+      val gauge = new Gauge[Int] {
+        val getValue = count
+      }
+
+      metrics.defaultRegistry.remove(metricName)
+      metrics.defaultRegistry.register(metricName, gauge)
     } catch {
       case ex: MetricsDisabledException => {
         Logger.warn(s"[MetricsService] [recordSubscriptionRegimeStat] Metrics disabled - ${metricName} -> ${count}")

@@ -75,37 +75,32 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
 
     "update a single metric when one is supplied" in new Setup {
       when(mockMetrics.defaultRegistry).thenReturn(mockRegistry)
-      when(mockRegistry.histogram(Matchers.contains("wibble"))).thenReturn(mockHisto1)
       when(mockSubRepo.getSubscriptionStats()).thenReturn(Map("wibble" -> 1))
 
       val result = await(service.updateSubscriptionMetrics())
 
       result shouldBe Map("wibble" -> 1)
 
-      verify(mockRegistry).histogram(Matchers.contains("wibble"))
+      verify(mockRegistry).remove(Matchers.contains("wibble"))
+      verify(mockRegistry).register(Matchers.contains("wibble"), Matchers.any())
       verifyNoMoreInteractions(mockRegistry)
-      verify(mockHisto1).update(Matchers.eq(1))
     }
 
     "update a multiple metrics when required" in new Setup {
       when(mockMetrics.defaultRegistry).thenReturn(mockRegistry)
-      when(mockRegistry.histogram(Matchers.contains("foo1"))).thenReturn(mockHisto1)
-      when(mockRegistry.histogram(Matchers.contains("foo2"))).thenReturn(mockHisto2)
-      when(mockRegistry.histogram(Matchers.contains("foo3"))).thenReturn(mockHisto3)
       when(mockSubRepo.getSubscriptionStats()).thenReturn(Map("foo1" -> 1, "foo2" -> 2, "foo3" -> 3))
 
       val result = await(service.updateSubscriptionMetrics())
 
       result shouldBe Map("foo1" -> 1, "foo2" -> 2, "foo3" -> 3)
 
-      verify(mockRegistry).histogram(Matchers.contains("foo1"))
-      verify(mockRegistry).histogram(Matchers.contains("foo2"))
-      verify(mockRegistry).histogram(Matchers.contains("foo3"))
+      verify(mockRegistry).remove(Matchers.contains("foo1"))
+      verify(mockRegistry).register(Matchers.contains("foo1"), Matchers.any())
+      verify(mockRegistry).remove(Matchers.contains("foo2"))
+      verify(mockRegistry).register(Matchers.contains("foo2"), Matchers.any())
+      verify(mockRegistry).remove(Matchers.contains("foo3"))
+      verify(mockRegistry).register(Matchers.contains("foo3"), Matchers.any())
       verifyNoMoreInteractions(mockRegistry)
-
-      verify(mockHisto1).update(Matchers.eq(1))
-      verify(mockHisto2).update(Matchers.eq(2))
-      verify(mockHisto3).update(Matchers.eq(3))
     }
   }
 }
