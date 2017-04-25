@@ -44,7 +44,9 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
     "microservice.services.incorp-update-api.stub-url" -> s"http://${wiremockHost}:${wiremockPort}/ifes/submission",
     "microservice.services.incorp-update-api.url" -> "N/A",
     "microservice.services.incorp-update-api.token" -> "N/A",
-    "microservice.services.incorp-update-api.itemsToFetch" -> "3"
+    "microservice.services.incorp-update-api.itemsToFetch" -> "3",
+    "microservice.services.incorp-frontend-stubs.host" -> wiremockHost,
+    "microservice.services.incorp-frontend-stubs.port" -> wiremockPort
   )
 
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
@@ -110,7 +112,7 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       setupFeatures(submissionCheck = true)
 
       val emptyChResponse = chResponse("")
-      stubGet("/ifes/submission.*", 200, emptyChResponse)
+      stubGet("/incorporation-frontend-stubs/submissions.*", 200, emptyChResponse)
 
       await(incorpRepo.collection.count()) shouldBe 0
 
@@ -131,7 +133,7 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
 
       val timepoint = "23456"
       val response = chResponse(jsonItem("12345", timepoint))
-      stubGet("/ifes/submission.*", 200, response)
+      stubGet("/incorporation-frontend-stubs/submissions.*", 200, response)
 
       await(incorpRepo.collection.count()) shouldBe 0
       await(timepointRepo.retrieveTimePoint) shouldBe None
@@ -144,7 +146,7 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
 
       await(incorpRepo.collection.count()) shouldBe 1
       await(timepointRepo.retrieveTimePoint) shouldBe Some(timepoint)
-      verify(getRequestedFor(urlMatching("/ifes/submission.*")).
+      verify(getRequestedFor(urlMatching("/incorporation-frontend-stubs/submissions.*")).
         withQueryParam("timepoint", absent).
         withQueryParam("items_per_page", equalTo("3")))
     }
@@ -158,7 +160,7 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       val (tp1, tp2, tp3) = ("12345", "23456", "34567")
       val items = jsonItem("12345", tp2, "bar1") + "," + jsonItem("23456", tp3, "bar8")
       val response = chResponse(items)
-      stubGet("/ifes/submission.*", 200, response)
+      stubGet("/incorporation-frontend-stubs/submissions.*", 200, response)
       await(timepointRepo.updateTimepoint(tp1))
 
       val job = lookupJob("incorp-update-job")
@@ -170,7 +172,7 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       await(incorpRepo.collection.count()) shouldBe 1
 
       await(timepointRepo.retrieveTimePoint) shouldBe Some(tp1)
-      verify(getRequestedFor(urlMatching("/ifes/submission.*")).
+      verify(getRequestedFor(urlMatching("/incorporation-frontend-stubs/submissions.*")).
         withQueryParam("timepoint", equalTo(tp1)))
     }
 
@@ -189,7 +191,7 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
 
       val items = jsonItem(tx1, tp1) + "," + jsonItem(tx2, tp2, "bar8")
       val response = chResponse(items)
-      stubGet("/ifes/submission.*", 200, response)
+      stubGet("/incorporation-frontend-stubs/submissions.*", 200, response)
 
       val job = lookupJob("incorp-update-job")
 
@@ -200,7 +202,7 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       await(incorpRepo.collection.count()) shouldBe 2
 
       await(timepointRepo.retrieveTimePoint) shouldBe Some(tp2)
-      verify(getRequestedFor(urlMatching("/ifes/submission.*")).
+      verify(getRequestedFor(urlMatching("/incorporation-frontend-stubs/submissions.*")).
         withQueryParam("timepoint", equalTo(tp1)))
     }
 

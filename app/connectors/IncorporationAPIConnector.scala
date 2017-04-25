@@ -51,8 +51,8 @@ object IncorpUpdatesResponse {
 
 @Singleton
 class IncorporationAPIConnectorImpl @Inject()(config: MicroserviceConfig) extends IncorporationAPIConnector {
-  val stubBaseUrl = config.incorpUpdateStubUrl
-  val cohoBaseUrl = config.incorpUpdateCohoAPIUrl
+  val stubBaseUrl = config.incorpFrontendStubUrl
+  val cohoBaseUrl = config.companiesHouseUrl
   val cohoApiAuthToken = config.incorpUpdateCohoApiAuthToken
   val itemsToFetch = config.incorpUpdateItemsToFetch
   val httpNoProxy = WSHttp
@@ -81,8 +81,8 @@ trait IncorporationAPIConnector {
     import play.api.http.Status.NO_CONTENT
 
     val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoBaseUrl${buildQueryString(timepoint, itemsToFetch)}")
-      case false => (httpNoProxy, hc, s"$stubBaseUrl${buildQueryString(timepoint, itemsToFetch)}")
+      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
+      case false => (httpNoProxy, hc, s"$stubBaseUrl/incorporation-frontend-stubs/submissions${buildQueryString(timepoint, itemsToFetch)}")
     }
 
     http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {

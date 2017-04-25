@@ -33,13 +33,13 @@ import scala.concurrent.Future
 
 class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
-  val testProxyUrl = "testIIUrl"
+  val testProxyUrl = "testIIUrl/incorporation-frontend-stubs"
   implicit val hc = HeaderCarrier()
 
   val mockHttp = mock[WSHttp]
   val mockHttpProxy = mock[WSHttp with WSProxy]
 
-  val stubUrlValue = "testIIUrl/internal/check-submission"
+  val stubUrlValue = "testIIUrl"
   val cohoUrlValue = "b"
 
   class Setup {
@@ -75,7 +75,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       | }
       |],
       |"links":{
-      | "next":"https://ewf.companieshouse.gov.uk/submissions?timepoint=123456789"
+      | "next":"https://ewf.companieshouse.gov.uk/internal/check-submission?timepoint=123456789"
       |}
       |}""".stripMargin)
 
@@ -93,7 +93,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
     val testTimepoint = UUID.randomUUID().toString
 
     "return a submission status response when no timepoint is provided" in new Setup {
-      val url = s"$testProxyUrl/internal/check-submission?items_per_page=1"
+      val url = s"$testProxyUrl/submissions?items_per_page=1"
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
@@ -107,7 +107,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
     }
 
     "verify a timepoint is appended as a query string to the url when one is supplied" in new Setup {
-      val url = s"$testProxyUrl/internal/check-submission?timepoint=$testTimepoint&items_per_page=1"
+      val url = s"$testProxyUrl/submissions?timepoint=$testTimepoint&items_per_page=1"
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
@@ -121,7 +121,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
     }
 
     "report an error when receiving a 400" in new Setup {
-      val url = s"$testProxyUrl/internal/check-submission?items_per_page=1"
+      val url = s"$testProxyUrl/submissions?items_per_page=1"
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
@@ -134,7 +134,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
     }
 
     "report an error when receiving a 404" in new Setup {
-      val url = s"$testProxyUrl/internal/check-submission?items_per_page=1"
+      val url = s"$testProxyUrl/submissions?items_per_page=1"
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
@@ -147,7 +147,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
     }
 
     "report an error when receiving an Upstream4xx" in new Setup {
-      val url = s"$testProxyUrl/internal/check-submission?items_per_page=1"
+      val url = s"$testProxyUrl/submissions?items_per_page=1"
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
@@ -160,7 +160,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
     }
 
     "report an error when receiving an Upstream5xx" in new Setup {
-      val url = s"$testProxyUrl/internal/check-submission?items_per_page=1"
+      val url = s"$testProxyUrl/submissions?items_per_page=1"
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
@@ -173,7 +173,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
     }
 
     "report an error when receiving an unexpected error" in new Setup {
-      val url = s"$testProxyUrl/internal/check-submission?items_per_page=1"
+      val url = s"$testProxyUrl/submissions?items_per_page=1"
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 

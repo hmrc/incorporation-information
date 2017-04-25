@@ -26,7 +26,8 @@ import uk.gov.hmrc.play.http.{BadRequestException, HeaderCarrier}
 class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
 
   val additionalConfiguration = Map(
-    "microservice.services.incorp-update-api.stub-url" -> s"http://${wiremockHost}:${wiremockPort}/ifes/submission",
+    "microservice.services.incorp-frontend-stubs.host" -> wiremockHost,
+    "microservice.services.incorp-frontend-stubs.port" -> wiremockPort,
     "microservice.services.incorp-update-api.url" -> "N/A",
     "microservice.services.incorp-update-api.token" -> "N/A"
   )
@@ -42,14 +43,14 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
 
     val destinationUrl = s"/incorporation-frontend-stubs/fetch-data/$transactionId"
 
-    val responseOne = """{
+    val responseOne = s"""{
                   |"items":[
                   | {
                   |   "company_number":"9999999999",
                   |   "transaction_status":"accepted",
                   |   "transaction_type":"incorporation",
                   |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
-                  |   "transaction_id":"7894578956784",
+                  |   "transaction_id":"$transactionId",
                   |   "incorporated_on":"2016-08-10",
                   |   "timepoint":"123456789"
                   | }
@@ -61,20 +62,19 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
 
 
     val date = new DateTime(2016, 8, 10, 0, 0)
-    val item1 = IncorpUpdate("7894578956784", "accepted", Some("9999999999"), Some(date), "123456789", None)
+    val item1 = IncorpUpdate(transactionId, "accepted", Some("9999999999"), Some(date), "123456789", None)
 
     "items from the sample response" in {
-      stubGet("/ifes/submission.*", 200, responseOne)
+      stubGet("/incorporation-frontend-stubs/submissions.*", 200, responseOne)
 
       val connector = app.injector.instanceOf[IncorporationAPIConnector]
 
-      val f = connector.checkForIncorpUpdate(None)(HeaderCarrier())
-      val r = await(f)
-      r shouldBe Seq(item1)
+      val result = await(connector.checkForIncorpUpdate(None)(HeaderCarrier()))
+      result shouldBe Seq(item1)
     }
 
     "Return no items if a 204 (no content) result is returned" in {
-      stubGet("/ifes/submission.*", 204, "")
+      stubGet("/incorporation-frontend-stubs/submissions.*", 204, "")
 
       val connector = app.injector.instanceOf[IncorporationAPIConnector]
 
@@ -84,7 +84,7 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
     }
 
     "Return no items if a 400 (bad request) result is returned" in {
-      stubGet("/ifes/submission.*", 400, "")
+      stubGet("/incorporation-frontend-stubs/submissions.*", 400, "")
 
       val connector = app.injector.instanceOf[IncorporationAPIConnector]
 
