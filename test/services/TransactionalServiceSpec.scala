@@ -17,8 +17,7 @@
 package services
 
 import Helpers.SCRSSpec
-import connectors.{FailedTransactionalAPIResponse, SuccessfulTransactionalAPIResponse, TransactionalConnector}
-import org.mockito.Matchers
+import connectors.{IncorporationAPIConnector, FailedTransactionalAPIResponse, SuccessfulTransactionalAPIResponse}
 import play.api.libs.json.{JsValue, JsObject, JsPath, Json}
 import org.mockito.Mockito._
 
@@ -26,11 +25,11 @@ import scala.concurrent.Future
 
 class TransactionalServiceSpec extends SCRSSpec {
 
-  val mockTransactionalConnector = mock[TransactionalConnector]
+  val mockConnector = mock[IncorporationAPIConnector]
 
   class Setup {
     val service = new TransactionalService {
-      override protected val connector = mockTransactionalConnector
+      override protected val connector = mockConnector
     }
   }
 
@@ -146,7 +145,7 @@ class TransactionalServiceSpec extends SCRSSpec {
 
     "return some Json when a document is retrieved by the supplied transaction Id and the sub-document is fetched by the supplied key" in new Setup {
       val response = SuccessfulTransactionalAPIResponse(buildJson())
-      when(mockTransactionalConnector.fetchTransactionalData(transactionId))
+      when(mockConnector.fetchTransactionalData(transactionId))
         .thenReturn(Future.successful(response))
       await(service.fetchCompanyProfile(transactionId)) shouldBe Some(companyProfileJson)
     }
@@ -155,7 +154,7 @@ class TransactionalServiceSpec extends SCRSSpec {
 
       "a FailedTransactionalAPIResponse is returned from the connector" in new Setup {
         val response = FailedTransactionalAPIResponse
-        when(mockTransactionalConnector.fetchTransactionalData(transactionId))
+        when(mockConnector.fetchTransactionalData(transactionId))
           .thenReturn(Future.successful(response))
         await(service.fetchCompanyProfile(transactionId)) shouldBe None
       }
@@ -175,7 +174,7 @@ class TransactionalServiceSpec extends SCRSSpec {
 
     "return some Json when a document is retrieved by the supplied transaction Id and the sub-document is fetched by the supplied key" in new Setup {
       val response = SuccessfulTransactionalAPIResponse(buildJson())
-      when(mockTransactionalConnector.fetchTransactionalData(transactionId))
+      when(mockConnector.fetchTransactionalData(transactionId))
         .thenReturn(Future.successful(response))
       await(service.fetchOfficerList(transactionId)) shouldBe Some(officersJson)
     }
@@ -184,14 +183,14 @@ class TransactionalServiceSpec extends SCRSSpec {
 
       "a FailedTransactionalAPIResponse is returned from the connector" in new Setup {
         val response = FailedTransactionalAPIResponse
-        when(mockTransactionalConnector.fetchTransactionalData(transactionId))
+        when(mockConnector.fetchTransactionalData(transactionId))
           .thenReturn(Future.successful(response))
         await(service.fetchOfficerList(transactionId)) shouldBe None
       }
 
       "a SuccessfulTransactionalAPIResponse is returned for the supplied transaction Id but an incorrect json document is provided" in new Setup {
         val response = SuccessfulTransactionalAPIResponse(incorrectJson)
-        when(mockTransactionalConnector.fetchTransactionalData(transactionId))
+        when(mockConnector.fetchTransactionalData(transactionId))
           .thenReturn(Future.successful(response))
         await(service.fetchOfficerList(transactionId)) shouldBe None
       }

@@ -17,7 +17,7 @@
 package services
 
 import Helpers.JSONhelpers
-import connectors.IncorporationCheckAPIConnector
+import connectors.IncorporationAPIConnector
 import models.{IncorpUpdate, QueuedIncorpUpdate}
 import org.joda.time.DateTime
 import org.mockito.{ArgumentCaptor, Matchers}
@@ -35,7 +35,7 @@ import scala.concurrent.Future
 
 class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEach with JSONhelpers{
 
-  val mockIncorporationCheckAPIConnector = mock[IncorporationCheckAPIConnector]
+  val mockIncorporationCheckAPIConnector = mock[IncorporationAPIConnector]
   val mockIncorpUpdateRepository = mock[IncorpUpdateRepository]
   val mockTimepointRepository = mock[TimepointRepository]
   val mockQueueRepository = mock[QueueRepository]

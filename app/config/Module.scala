@@ -41,8 +41,7 @@ class Module extends AbstractModule {
     bind(classOf[ManualTriggerController]).to(classOf[ManualTriggerControllerImpl])
 
     // connectors
-    bind(classOf[IncorporationCheckAPIConnector]).to(classOf[IncorporationCheckAPIConnectorImpl])
-    bind(classOf[TransactionalConnector]).to(classOf[TransactionalConnectorImpl])
+    bind(classOf[IncorporationAPIConnector]).to(classOf[IncorporationAPIConnectorImpl])
     bind(classOf[FiringSubscriptionsConnector]).to(classOf[FiringSubscriptionsConnectorImpl])
 
     // services
