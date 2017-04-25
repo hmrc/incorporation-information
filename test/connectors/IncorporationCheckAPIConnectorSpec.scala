@@ -39,10 +39,13 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
   val mockHttp = mock[WSHttp]
   val mockHttpProxy = mock[WSHttp with WSProxy]
 
-  val stubUrlValue = "testIIUrl"
+  val stubUrlValue = "testIIUrl/incorporation-frontend-stubs"
   val cohoUrlValue = "b"
 
   class Setup {
+
+    reset(mockHttp, mockHttpProxy)
+
     val connector = new IncorporationAPIConnector {
       val stubBaseUrl = stubUrlValue
       val cohoBaseUrl = cohoUrlValue
@@ -199,7 +202,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
           |}
         """.stripMargin)
 
-      val fullStubUrl = s"$stubUrlValue/incorporation-frontend-stubs/fetch-data/$transactionId"
+      val fullStubUrl = s"$stubUrlValue/fetch-data/$transactionId"
 
       "return a SuccessfulTransactionalAPIResponse with a JsValue" in new Setup {
         when(mockHttp.GET[JsValue](eqTo(fullStubUrl))(any(), any())).thenReturn(Future.successful(json))

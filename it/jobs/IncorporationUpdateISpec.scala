@@ -41,7 +41,7 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
     "auditing.consumer.baseUri.port" -> s"$wiremockPort",
     "Test.auditing.consumer.baseUri.host" -> s"$wiremockHost",
     "Test.auditing.consumer.baseUri.port" -> s"$wiremockPort",
-    "microservice.services.incorp-update-api.stub-url" -> s"http://${wiremockHost}:${wiremockPort}/ifes/submission",
+    "microservice.services.incorp-update-api.stub-url" -> s"http://${wiremockHost}:${wiremockPort}/incorporation-frontend-stubs",
     "microservice.services.incorp-update-api.url" -> "N/A",
     "microservice.services.incorp-update-api.token" -> "N/A",
     "microservice.services.incorp-update-api.itemsToFetch" -> "3",

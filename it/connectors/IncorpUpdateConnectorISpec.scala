@@ -26,9 +26,8 @@ import uk.gov.hmrc.play.http.{BadRequestException, HeaderCarrier}
 class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
 
   val additionalConfiguration = Map(
-    "microservice.services.incorp-frontend-stubs.host" -> wiremockHost,
-    "microservice.services.incorp-frontend-stubs.port" -> wiremockPort,
-    "microservice.services.incorp-update-api.url" -> "N/A",
+    "microservice.services.incorp-update-api.stub-url" -> s"http://${wiremockHost}:${wiremockPort}/incorporation-frontend-stubs",
+    "microservice.services.incorp-update-api.url" -> s"http://${wiremockHost}:${wiremockPort}",
     "microservice.services.incorp-update-api.token" -> "N/A"
   )
 

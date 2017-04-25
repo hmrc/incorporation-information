@@ -82,7 +82,7 @@ trait IncorporationAPIConnector {
 
     val (http, realHc, url) = useProxy match {
       case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
-      case false => (httpNoProxy, hc, s"$stubBaseUrl/incorporation-frontend-stubs/submissions${buildQueryString(timepoint, itemsToFetch)}")
+      case false => (httpNoProxy, hc, s"$stubBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
     }
 
     http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
@@ -97,11 +97,10 @@ trait IncorporationAPIConnector {
   def fetchTransactionalData(transactionID: String)(implicit hc: HeaderCarrier): Future[TransactionalAPIResponse] = {
     val (http, realHc, url) = useProxy match {
       case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoBaseUrl/submissionData/$transactionID")
-      case false => (httpNoProxy, hc, s"$stubBaseUrl/incorporation-frontend-stubs/fetch-data/$transactionID")
+      case false => (httpNoProxy, hc, s"$stubBaseUrl/fetch-data/$transactionID")
     }
 
-    // TODO - change from warn when logger starts logging info in env's
-    Logger.warn(s"[TransactionalConnector] [fetchTransactionalData] - url : $url - auth token : ${realHc.authorization}")
+    Logger.info("============================ " + url)
 
     http.GET[JsValue](url)(implicitly[HttpReads[JsValue]], realHc) map { res =>
       Logger.warn("json - " + res)
@@ -123,13 +122,13 @@ trait IncorporationAPIConnector {
       logError(ex, timepoint)
       throw new IncorpUpdateAPIFailure(ex)
     case ex: Upstream4xxResponse =>
-      Logger.error("[IncorporationCheckAPIConnector] [incorpUpdates]" + ex.upstreamResponseCode + " " + ex.message)
+      Logger.error("[IncorporationCheckAPIConnector] [checkForIncorpUpdate]" + ex.upstreamResponseCode + " " + ex.message)
       throw new IncorpUpdateAPIFailure(ex)
     case ex: Upstream5xxResponse =>
-      Logger.error("[IncorporationCheckAPIConnector] [incorpUpdates]" + ex.upstreamResponseCode + " " + ex.message)
+      Logger.error("[IncorporationCheckAPIConnector] [checkForIncorpUpdate]" + ex.upstreamResponseCode + " " + ex.message)
       throw new IncorpUpdateAPIFailure(ex)
     case ex: Exception =>
-      Logger.error("[IncorporationCheckAPIConnector] [incorpUpdates]" + ex)
+      Logger.error("[IncorporationCheckAPIConnector] [checkForIncorpUpdate]" + ex)
       throw new IncorpUpdateAPIFailure(ex)
   }
 
