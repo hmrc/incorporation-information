@@ -72,9 +72,9 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Mi
     val confVersion = app.configuration.getString("config.version")
     Logger.info(s"[Config] Config Version = ${confVersion}")
 
-    val metricsKey = "microservice.metrics.enabled"
+    val metricsKey = "microservice.metrics.graphite.enabled"
     val metricsEnabled = app.configuration.getString(metricsKey)
-    Logger.info(s"[Config] S{metrics.key} = ${metricsEnabled}")
+    Logger.info(s"[Config] ${metrics.key} = ${metricsEnabled}")
 
     super.onStart(app)
   }
