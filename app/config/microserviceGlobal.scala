@@ -70,23 +70,11 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Mi
   override def onStart(app : play.api.Application) : scala.Unit = {
 
     val confVersion = app.configuration.getString("config.version")
-    Logger.info(s"Config Version = ${confVersion}")
+    Logger.info(s"[Config] Config Version = ${confVersion}")
 
-    val sysProps = sys.props.toMap filter {
-      case(k,v) =>
-        !(k startsWith "java") &&
-          !(k startsWith "sun") &&
-          !(k startsWith "line.")
-    } map {
-      case(k,v) =>
-        if( k.contains("password") || k.contains("key"))
-          k -> "***MASKED***"
-        else if(v.length > 30)
-          k -> v.substring(0, 10) + "<snipped>"
-        else
-          k -> v
-    }
-    Logger.info(s"SysProps = ${sysProps}")
+    val metricsKey = "microservice.metrics.enabled"
+    val metricsEnabled = app.configuration.getString(metricsKey)
+    Logger.info(s"[Config] S{metrics.key} = ${metricsEnabled}")
 
     super.onStart(app)
   }
