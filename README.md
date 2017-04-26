@@ -73,6 +73,7 @@ A ```202``` response: ```no body```
 ### How to use (for testing subscriptions with the stub)
 
 __For a 200 response__
+
 1\. Setup an incorporation in IFES 
 
 >__POST /incorporation-frontend-stubs/test-only/insert-submission__
@@ -101,5 +102,4 @@ __For a 200 response__
 
 >__POST /subscribe/:transId/regime/:regime/subscriber/:sub__
 > Where transId needs to be the same as the one on the test incorporation in IFES
-
 >e.g. /subscribe/92836405817/regime/PAYE/subscriber/SCRS
