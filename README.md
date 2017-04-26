@@ -70,7 +70,7 @@ A ```202``` response: ```no body```
 | ----------------------------------------------------------------------- | ----------------- | ----------- |
 |```/incorporation-information/test-only/manual-trigger/incorp-update```  |        GET        | manually triggers a poll for incorporations |            
       
-###How to use (for testing subscriptions with the stub)
+### How to use (for testing subscriptions with the stub)
 
 __For a 200 response__
 1\. Setup an incorporation in IFES 
