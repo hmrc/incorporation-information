@@ -77,7 +77,7 @@ __For a 200 response__
 
 >__POST /incorporation-frontend-stubs/test-only/insert-submission__
 
->```json
+```json
 {
 	"company_number":"90000001",
 	"transaction_status":"accepted",
