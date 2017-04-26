@@ -19,7 +19,7 @@ package config
 import com.google.inject.AbstractModule
 import com.google.inject.name.Names
 import connectors._
-import controllers.test.{ManualTriggerControllerImpl, ManualTriggerController, FeatureSwitchControllerImpl, FeatureSwitchController}
+import controllers.test._
 import controllers.{SubscriptionController, SubscriptionControllerImpl, TransactionalController, TransactionalControllerImpl}
 import jobs.{FireSubscriptionsJobImpl, IncorpUpdatesJobImpl, MetricsJobImpl}
 import repositories._
@@ -39,6 +39,7 @@ class Module extends AbstractModule {
     bind(classOf[TransactionalController]).to(classOf[TransactionalControllerImpl])
     bind(classOf[FeatureSwitchController]).to(classOf[FeatureSwitchControllerImpl])
     bind(classOf[ManualTriggerController]).to(classOf[ManualTriggerControllerImpl])
+    bind(classOf[CallbackTestEndpointController]).to(classOf[CallbackTestEndpointControllerImpl])
 
     // connectors
     bind(classOf[IncorporationAPIConnector]).to(classOf[IncorporationAPIConnectorImpl])
