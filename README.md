@@ -22,6 +22,7 @@ Responds with:
 | 202           | Accepted      |
 
 **Request body**
+
 ```json
 {
   "SCRSIncorpSubscription": {
@@ -31,6 +32,7 @@ Responds with:
 ```
 
 **Response body**
+
 A ```200``` response:
 ```json
 {
