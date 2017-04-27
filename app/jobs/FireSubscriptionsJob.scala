@@ -65,7 +65,10 @@ trait FireSubscriptionsJob extends ExclusiveScheduledJob with JobConfig {
             Logger.info(s"failed to acquire lock for $name")
             Result(s"$name failed")
         } recover {
-          case _: Exception => Result(s"$name failed")
+          case e: Exception => {
+            Logger.error(s"$name failed - ${e.getMessage}", e)
+            Result(s"$name failed")
+          }
         }
       }
       case false => Future.successful(Result(s"Feature is turned off"))
