@@ -2,4 +2,4 @@
 
 GET        /feature-switch/:featureName/:state                         @controllers.test.FeatureSwitchController.switch(featureName, state)
 GET        /manual-trigger/:jobName                                    @controllers.test.ManualTriggerController.triggerJob(jobName)
-GET        /callback                                                   @controllers.test.CallbackTestEndpointController.get
+POST       /callback                                                   @controllers.test.CallbackTestEndpointController.post

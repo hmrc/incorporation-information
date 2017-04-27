@@ -16,9 +16,10 @@
 
 package controllers.test
 
-import javax.inject.{Singleton, Inject}
+import javax.inject.{Inject, Singleton}
 
 import play.api.Logger
+import play.api.libs.json.JsObject
 import play.api.mvc.Action
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
@@ -29,9 +30,11 @@ class CallbackTestEndpointControllerImpl @Inject()() extends CallbackTestEndpoin
 
 trait CallbackTestEndpointController extends BaseController {
 
-  val get = Action.async {
+  val post = Action.async(parse.json) {
     implicit request =>
-      Logger.info("[Callback] - callback to test endpoint received")
-      Future.successful(Ok)
+      withJsonBody[JsObject] { js =>
+        Logger.info("[Callback] - callback to test endpoint received")
+        Future.successful(Ok)
+      }
   }
 }
