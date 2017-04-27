@@ -18,6 +18,7 @@ package connectors
 
 import config.WSHttp
 import models.{IncorpStatusEvent, IncorpUpdateResponse}
+import play.api.Logger
 import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.play.config.ServicesConfig
 import uk.gov.hmrc.play.http._
@@ -33,6 +34,13 @@ trait FiringSubscriptionsConnector {
 
   def connectToAnyURL(iuResponse: IncorpUpdateResponse, url: String)(implicit hc: HeaderCarrier): Future[HttpResponse] = {
     val json = Json.toJson[IncorpUpdateResponse](iuResponse)
-    http.POST[JsValue, HttpResponse](s"$url", json)
+    try {
+      http.POST[JsValue, HttpResponse](s"$url", json)
+    } catch {
+      case ex: Exception =>
+        // Exceptions like MalformedUrlException won't be wrapped in a future by default :-(
+        Logger.error(s"[FiringSubscriptionsConnector] [connectToAnyURL] - Error posting incorp response to $url - ${ex.getMessage}", ex)
+        Future.failed(ex)
+    }
   }
 }

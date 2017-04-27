@@ -106,7 +106,7 @@ trait SubscriptionFiringService {
     }
   }
 
-  private def fireIncorpUpdate(iu: QueuedIncorpUpdate): Future[Boolean] = {
+  private[services] def fireIncorpUpdate(iu: QueuedIncorpUpdate): Future[Boolean] = {
 
     subscriptionsRepository.getSubscriptions(iu.incorpUpdate.transactionId) flatMap { subscriptions =>
       Future.sequence( subscriptions map { sub =>

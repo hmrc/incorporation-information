@@ -190,5 +190,19 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
       val result = await(fResult)
       result shouldBe Seq(false)
     }
+
+    "return a sequence of false when the subscriptions for a queued incorp update has a malformed url" in new Setup {
+      insert(sub.copy(callbackUrl = "/test"))
+      subCount shouldBe 1
+
+      insert(queuedIncorpUpdate)
+      queueCount shouldBe 1
+
+      val service = app.injector.instanceOf[SubscriptionFiringService]
+
+      val fResult = service.fireIncorpUpdateBatch
+      val result = await(fResult)
+      result shouldBe Seq(false)
+    }
   }
 }
