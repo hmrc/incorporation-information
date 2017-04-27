@@ -113,6 +113,7 @@ trait SubscriptionFiringService {
         val iuResponse: IncorpUpdateResponse = IncorpUpdateResponse(sub.regime, sub.subscriber, sub.callbackUrl, iu.incorpUpdate)
 
         firingSubsConnector.connectToAnyURL(iuResponse, sub.callbackUrl)(hc) flatMap { response =>
+          Logger.info(s"[SubscriptionFiringService] [fireIncorpUpdate] - Posting response to callback for txid : ${iu.incorpUpdate.transactionId} was successful")
             deleteSub(sub.transactionId, sub.regime, sub.subscriber)
         } recoverWith {
           case e : Exception =>
