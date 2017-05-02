@@ -33,7 +33,7 @@ trait FiringSubscriptionsConnector {
   val http: HttpGet with HttpPost with HttpPatch
 
   def connectToAnyURL(iuResponse: IncorpUpdateResponse, url: String)(implicit hc: HeaderCarrier): Future[HttpResponse] = {
-    val json = Json.toJson[IncorpUpdateResponse](iuResponse)
+    val json = Json.toJson[IncorpUpdateResponse](iuResponse)(IncorpUpdateResponse.writes)
     try {
       http.POST[JsValue, HttpResponse](s"$url", json)
     } catch {
