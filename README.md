@@ -12,7 +12,7 @@ This code is open source software licensed under the [Apache 2.0 License]("http:
 
 | Path                                                                                      | Supported Methods | Description |
 | ----------------------------------------------------------------------------------------- | ----------------- | ----------- |
-|```/incorporation-information/subscribe/:transactionId/regime/:regime/subscriber/:sub```   |       POST        | Registers an interest in an incorporation with the transaction id provided and when retrieved, will fire the incorporation data to the provided callback url
+|```/incorporation-information/subscribe/:transactionId/regime/:regime/subscriber/:sub```   |       POST        | Attempts to fetch incorporation data keyed on the transactionId and if it can't be found the service registers an interest in the incorporation with the transaction id provided and when retrieved, will fire the incorporation data to the provided callback url
 
 Responds with:
 
@@ -58,48 +58,87 @@ A ```200``` response:
 
 A ```202``` response: ```no body```
 
-### Test endpoints
-
-| Feature switch test endpoint path                                                         | Supported Methods | Description |
-| ----------------------------------------------------------------------------------------- | ----------------- | ----------- |
-|```/incorporation-information/test-only/feature-switch/transactionalAPI/(stub or coho)```  |        GET        | Directs the calls to fetch incorporations and submission data requests to either incorporation-frontend-stubs (stub) or companies house (coho)   |         
-|```/incorporation-information/test-only/feature-switch/incorpUpdate/(on or off)```         |        GET        | Turns the scheduler that polls for incorporations on or off   |         
 
 
-| Manual trigger test endpoint path                                       | Supported Methods | Description |
-| ----------------------------------------------------------------------- | ----------------- | ----------- |
-|```/incorporation-information/test-only/manual-trigger/incorp-update```  |        GET        | manually triggers a poll for incorporations |            
-      
-### How to use (for testing subscriptions with the stub)
+| Path                                                             | Supported Methods | Description |
+| ---------------------------------------------------------------- | ----------------- | ----------- |
+|```/incorporation-information/:transactionId/company-profile```   |       GET         | Fetches a pre-incorporated companies company profile data keyed on the transactionId
 
-__For a 200 response__
+Responds with:
 
-1\. Setup an incorporation in IFES 
+| Status        | Message       |
+|:--------------|:--------------|
+| 200           | OK            |
+| 404           | Not Found     |
 
->__POST /incorporation-frontend-stubs/test-only/insert-submission__
+**Response body**
 
+A ```200``` response:
 ```json
 {
-	"company_number":"90000001",
-	"transaction_status":"accepted",
-	"transaction_type":"incorporation",
-	"company_profile_link":"https://api.companieshouse.gov.uk/company/90000001",
-	"transaction_id":"92836405817",
-	"incorporated_on":"2009-01-01",
-	"timepoint":"22"
+  "company_number": "10371322",
+  "transaction_id": "041-286558",
+  "registered_office_address": {
+    "country": "United Kingdom",
+    "premises": "11",
+    "postal_code": "ZZ4 3ZZ",
+    "region": "Shropshire",
+    "address_line_1": "Pear Drive",
+    "locality": "TELFORD"
+  },
+  "company_name": "TEST COMPANY LIMITED",
+  "company_type": "ltd",
+  "sic_codes": [
+    {
+      "sic_description": "Manufacture of electric motors, generators and transformers",
+      "sic_code": "27110"
+    }
+  ]
 }
 ```
 
-2\. point the transactional API feature switch to the stub
+A ```404``` response: ```no body```
 
->__GET /incorporation-information/test-only/feature-switch/transactionalAPI/stub__
 
-3\. enable the incorpUpdate scheduler (manually trigger if you don't want to wait)
+| Path                                                          | Supported Methods | Description |
+| ------------------------------------------------------------- | ----------------- | ----------- |
+|```/incorporation-information/:transactionId/officer-list```   |       GET         | Fetches a pre-incorporated companies officer list keyed on the transactionId
 
->__GET /incorporation-information/test-only/feature-switch/incorpUpdate/on__
+Responds with:
 
-4\. hit the subscribe API, providing the same trans ID as the one in the incorporation setup
+| Status        | Message       |
+|:--------------|:--------------|
+| 200           | OK            |
+| 404           | Not Found     |
 
->__POST /subscribe/:transId/regime/:regime/subscriber/:sub__
-> Where transId needs to be the same as the one on the test incorporation in IFES
->e.g. /subscribe/92836405817/regime/PAYE/subscriber/SCRS
+**Response body**
+
+A ```200``` response:
+```json
+  [
+    {
+      "officer_role": "director",
+      "date_of_birth": {
+        "month": "12",
+        "day": "12",
+        "year": "1980"
+      },
+      "address": {
+        "country": "United Kingdom",
+        "premises": "11",
+        "postal_code": "ZZ4 3ZZ",
+        "region": "Shropshire",
+        "address_line_1": "Pear Drive",
+        "locality": "TELFORD"
+      },
+      "name_elements": {
+        "forename": "John",
+        "other_forenames": "Jim",
+        "title": "Mr",
+        "surname": "Johnson"
+      }
+    }
+  ]
+```
+
+A ```404``` response: ```no body```
