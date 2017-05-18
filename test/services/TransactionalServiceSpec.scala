@@ -17,19 +17,23 @@
 package services
 
 import Helpers.SCRSSpec
-import connectors.{IncorporationAPIConnector, FailedTransactionalAPIResponse, SuccessfulTransactionalAPIResponse}
-import play.api.libs.json.{JsValue, JsObject, JsPath, Json}
+import connectors.{FailedTransactionalAPIResponse, IncorporationAPIConnector, SuccessfulTransactionalAPIResponse}
+import models.IncorpUpdate
+import org.mockito.Matchers
+import play.api.libs.json.{JsObject, JsPath, JsValue, Json}
 import org.mockito.Mockito._
+import repositories.IncorpUpdateRepository
 
 import scala.concurrent.Future
 
 class TransactionalServiceSpec extends SCRSSpec {
 
   val mockConnector = mock[IncorporationAPIConnector]
-
+  val mockRepos = mock[IncorpUpdateRepository]
   class Setup {
     val service = new TransactionalService {
       override protected val connector = mockConnector
+      override val incorpRepos = mockRepos
     }
   }
 
@@ -196,4 +200,26 @@ class TransactionalServiceSpec extends SCRSSpec {
       }
     }
   }
+  "checkIfCompIncorporated" should {
+    "return Some(String) - the crn" when {
+      "Company exists and has a crn" in new Setup {
+        val incorpUpdate = IncorpUpdate("transId", "accepted", Some("foo"), None, "", None)
+        when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(Some(incorpUpdate)))
+        await(service.checkIfCompIncorporated("fooBarTest")) shouldBe  Some("foo")
+      }
+
+        "return None" when {
+          "Company exists, has a status != rejected but has no crn" in new Setup {
+            val incorpUpdate = IncorpUpdate("transId", "foo", None, None, "", None)
+            when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(Some(incorpUpdate)))
+            await(service.checkIfCompIncorporated("fooBarTest")) shouldBe  None
+          }}
+          "return None" when {
+            "Company does not exist" in new Setup {
+              when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(None))
+              await(service.checkIfCompIncorporated("fooBarTest")) shouldBe  None
+            }}
+  }
+
+}
 }

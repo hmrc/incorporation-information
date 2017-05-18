@@ -19,22 +19,27 @@ package services
 import javax.inject.Inject
 
 import connectors._
+import models.IncorpUpdate
 import play.api.libs.json._
+import repositories.IncorpUpdateRepository
 import uk.gov.hmrc.play.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class TransactionalServiceImpl @Inject()(val connector: IncorporationAPIConnector) extends TransactionalService
+class TransactionalServiceImpl @Inject()(val connector: IncorporationAPIConnector,val incorpRepos:IncorpUpdateRepository ) extends TransactionalService
 
 trait TransactionalService {
 
   protected val connector: IncorporationAPIConnector
+  val incorpRepos: IncorpUpdateRepository
 
   def fetchCompanyProfile(transactionId: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
     val transformer = (JsPath \ "officers").json.prune
     extractJson(connector.fetchTransactionalData(transactionId), transformer)
   }
+
+
 
   def fetchOfficerList(transactionId: String)(implicit hc: HeaderCarrier) = {
     connector.fetchTransactionalData(transactionId) map {
@@ -42,6 +47,14 @@ trait TransactionalService {
       case _ => None
     }
   }
+
+  def checkIfCompIncorporated(transactionId:String)(implicit hc:HeaderCarrier): Future[Option[String]] = {
+    incorpRepos.getIncorpUpdate(transactionId) map {
+      case Some(s) if(s.crn.isDefined) => s.crn
+      case _ => None
+      }
+    }
+
 
   private[services] def extractJson(f: => Future[TransactionalAPIResponse], transformer: Reads[JsObject]) = {
     f.map {
