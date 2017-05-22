@@ -61,7 +61,8 @@ trait PublicCohoApiConn {
       case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/company/$crn")
       case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company/$crn")//todo: build stub endpoint
     }
-println(url)
+
+
     http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
       res =>
         res.status match {
@@ -76,7 +77,7 @@ println(url)
 
     val (http, realHc, url) = useProxy match {
       case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/company/$crn/officers")
-      case false => (httpNoProxy, hc, "")//todo: build stub endpoint
+      case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company/1234567890")//todo: build stub endpoint
     }
 
     http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
@@ -93,7 +94,7 @@ println(url)
 
     val (http, realHc, url) = useProxy match {
       case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/officers/$officerId/appointments?items_per_page=1")
-      case false => (httpNoProxy, hc, "")//todo: build stub endpoint
+      case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company/1234567890")//todo: build stub endpoint
     }
 
     http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
@@ -102,6 +103,7 @@ println(url)
           case NO_CONTENT => None
           case _ => Some(res.json)
         }
+
     } recover handlegetOfficerAppointmentsError(officerId)
   }
 
