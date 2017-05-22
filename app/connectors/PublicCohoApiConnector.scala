@@ -38,6 +38,7 @@ class PublicCohoApiConnector @Inject()(config: MicroserviceConfig) extends Publi
   val incorpFrontendStubUrl =  config.incorpFrontendStubUrl
   val cohoPublicUrl =  config.cohoPublicBaseUrl
   val cohoPublicApiAuthToken = config.cohoPublicApiAuthToken
+  val cohoStubbedUrl = config.cohoStubbedUrl
 
 
 }
@@ -51,15 +52,16 @@ trait PublicCohoApiConn {
   val incorpFrontendStubUrl : String
   val cohoPublicUrl: String
   val cohoPublicApiAuthToken: String
+  val cohoStubbedUrl:String
 
   def getCompanyProfile(crn: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
     import play.api.http.Status.NO_CONTENT
 
     val (http, realHc, url) = useProxy match {
       case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/company/$crn")
-      case false => (httpNoProxy, hc, "")//todo: build stub endpoint
+      case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company/$crn")//todo: build stub endpoint
     }
-
+println(url)
     http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
       res =>
         res.status match {

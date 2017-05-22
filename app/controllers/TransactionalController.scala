@@ -32,7 +32,7 @@ trait TransactionalController extends BaseController {
 
   def fetchCompanyProfile(transactionId: String) = Action.async {
     implicit request =>
-      service.fetchCompanyProfile(transactionId).map {
+      service.fetchCompanyProfileFromTxOrCoho(transactionId).map {
         case Some(json) => Ok(json)
         case _ => NotFound
       }

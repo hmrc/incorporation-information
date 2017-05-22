@@ -38,6 +38,9 @@ trait MicroserviceConfig {
 
   lazy val cohoPublicApiAuthToken = config.getConfString("public-coho-api.authToken", throw new Exception("public-coho-api.authToken not found"))
 
+  lazy val cohoStubbedUrl = config.getConfString("public-coho-api.stub-url", throw new Exception("public-coho-api.stub-url not found"))
+
+
 
 }
 
