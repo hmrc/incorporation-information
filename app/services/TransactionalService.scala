@@ -19,45 +19,57 @@ package services
 import javax.inject.Inject
 
 import connectors._
-import models.IncorpUpdate
 import play.api.Logger
 import play.api.libs.json._
-import repositories.{IncorpUpdateMongo, IncorpUpdateMongoRepository, IncorpUpdateRepository}
+import repositories.{IncorpUpdateMongo, IncorpUpdateRepository}
 import uk.gov.hmrc.play.http.HeaderCarrier
 import play.api.libs.json.Reads._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class TransactionalServiceImpl @Inject()(val connector: IncorporationAPIConnector, val incorpMongo: IncorpUpdateMongo, val cohoConnector: PublicCohoApiConnector) extends TransactionalService {
+class TransactionalServiceImpl @Inject()(val connector: IncorporationAPIConnector,
+                                         val incorpMongo: IncorpUpdateMongo,
+                                         val cohoConnector: PublicCohoApiConnector) extends TransactionalService {
 
-  lazy val incorpRepos = incorpMongo.repo
+  lazy val incorpRepo = incorpMongo.repo
 }
 
 trait TransactionalService {
 
   protected val connector: IncorporationAPIConnector
-  val incorpRepos: IncorpUpdateRepository
+  val incorpRepo: IncorpUpdateRepository
   val cohoConnector: PublicCohoApiConnector
 
-  def fetchCompanyProfileFromTx(transactionId: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
+  def fetchCompanyProfile(transactionId:String)(implicit hc:HeaderCarrier):Future[Option[JsValue]] = {
+    checkIfCompIncorporated(transactionId) flatMap {
+      case Some(crn) => fetchCompanyProfileFromCoho(crn)
+      case None => fetchCompanyProfileFromTx(transactionId)(hc)
+    }
+  }
+
+  def fetchOfficerList(transactionId: String)(implicit hc: HeaderCarrier) = {
+    connector.fetchTransactionalData(transactionId) map {
+      case SuccessfulTransactionalAPIResponse(js) => (js \ "officers").toOption
+      case _ => None
+    }
+  }
+
+  private[services] def fetchCompanyProfileFromTx(transactionId: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
     val transformer = (JsPath \ "officers").json.prune
     extractJson(connector.fetchTransactionalData(transactionId), transformer)
   }
-def fetchCompanyProfileFromTxOrCoho(transactionId:String)(implicit hc:HeaderCarrier):Future[Option[JsValue]] = {
-  checkIfCompIncorporated(transactionId) flatMap {
-    case Some(s) => fetchCompanyProfileFromCoho(s)
-    case None => fetchCompanyProfileFromTx(transactionId)(hc)
-  }
-}
-  def fetchCompanyProfileFromCoho(crn:String)(implicit hc:HeaderCarrier):Future[Option[JsValue]] = {
+
+  private[services] def fetchCompanyProfileFromCoho(crn:String)(implicit hc:HeaderCarrier):Future[Option[JsValue]] = {
     cohoConnector.getCompanyProfile(crn)(hc) map {
       case Some(s) => transformDataFromCoho(s.as[JsObject])
-      case _ => {Logger.info(s"[TransactionalService][fetchCompanyProfileFromCoho] Service failed to fetch a company that appeared incorporated in INCORPORATION_INFORMATION with the crn number: ${crn} ")
-        None}
+      case _ =>
+        Logger.info(s"[TransactionalService][fetchCompanyProfileFromCoho] Service failed to fetch a company that appeared incorporated in INCORPORATION_INFORMATION with the crn number: $crn")
+        None
     }
   }
-  def transformDataFromCoho(js: JsObject):Option[JsValue] ={
+
+  private[services] def transformDataFromCoho(js: JsObject):Option[JsValue] ={
       val companyType = (js \ "type").as[String]
       val companyName = (js \ "company_name").as[String]
       val companyStatus = (js \ "company_status").toOption
@@ -83,7 +95,7 @@ def fetchCompanyProfileFromTxOrCoho(transactionId:String)(implicit hc:HeaderCarr
     Some(finalJsonResult)
   }
 
-  def sicCodesConverter(sicCodes:Option[JsValue]):Option[List[JsObject]] = {
+  private[services] def sicCodesConverter(sicCodes:Option[JsValue]):Option[List[JsObject]] = {
     sicCodes match {
       case Some(_) => Some(sicCodes.get.as[List[String]]
         .map(sicCode => Json.obj("sic_code" -> sicCode, "sic_description" -> "")))
@@ -91,16 +103,9 @@ def fetchCompanyProfileFromTxOrCoho(transactionId:String)(implicit hc:HeaderCarr
     }
   }
 
-  def fetchOfficerList(transactionId: String)(implicit hc: HeaderCarrier) = {
-    connector.fetchTransactionalData(transactionId) map {
-      case SuccessfulTransactionalAPIResponse(js) => (js \ "officers").toOption
-      case _ => None
-    }
-  }
-
-  def checkIfCompIncorporated(transactionId:String): Future[Option[String]] = {
-    incorpRepos.getIncorpUpdate(transactionId) map {
-      case Some(s) if(s.crn.isDefined) => s.crn
+  private[services] def checkIfCompIncorporated(transactionId:String): Future[Option[String]] = {
+    incorpRepo.getIncorpUpdate(transactionId) map {
+      case Some(s) if s.crn.isDefined => s.crn
       case _ => None
       }
     }
@@ -109,7 +114,7 @@ def fetchCompanyProfileFromTxOrCoho(transactionId:String)(implicit hc:HeaderCarr
   private[services] def extractJson(f: => Future[TransactionalAPIResponse], transformer: Reads[JsObject]) = {
     f.map {
       case SuccessfulTransactionalAPIResponse(json) => json.transform(transformer) match {
-        case JsSuccess(js, path) if !path.toString().contains("unmatched") => Some(js)
+        case JsSuccess(js, p) if !p.toString().contains("unmatched") => Some(js)
         case _ => None
       }
       case FailedTransactionalAPIResponse => None

@@ -35,7 +35,7 @@ class TransactionalServiceSpec extends SCRSSpec {
   class Setup {
     val service = new TransactionalService {
       override protected val connector = mockConnector
-      override val incorpRepos = mockRepos
+      override val incorpRepo = mockRepos
       override val cohoConnector =  mockCohoConnector
 
     }
@@ -43,7 +43,7 @@ class TransactionalServiceSpec extends SCRSSpec {
   class SetupForCohoTransform {
     val service = new TransactionalService {
       override protected val connector = mockConnector
-      override val incorpRepos = mockRepos
+      override val incorpRepo = mockRepos
       override val cohoConnector =  mockCohoConnector
       val jsonObj = Json.obj("foo" -> Json.toJson("fooValue"))
       override def transformDataFromCoho(js: JsObject):Option[JsValue] = Future.successful(Some(jsonObj))
