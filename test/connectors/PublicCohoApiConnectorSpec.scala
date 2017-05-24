@@ -107,7 +107,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
       val result = await(connector.getCompanyProfile(testCrn))
       result shouldBe Some(validCompanyProfileResourceJson)
 
-            urlCaptor.getValue shouldBe "stubbed/company/1234567890"
+            urlCaptor.getValue shouldBe "stubbed/company-profile/1234567890"
     }
 
     "report an error when receiving a 404" in new Setup {
@@ -122,7 +122,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
 
       result shouldBe None
 
-      urlCaptor.getValue shouldBe "stubbed/company/1234567890"
+      urlCaptor.getValue shouldBe "stubbed/company-profile/1234567890"
     }
 
     "report an error when receiving a 400" in new Setup {
@@ -137,7 +137,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
 
       result shouldBe None
 
-      urlCaptor.getValue shouldBe "stubbed/company/1234567890"
+      urlCaptor.getValue shouldBe "stubbed/company-profile/1234567890"
     }
 
     "report an error when receiving a Throwable exception" in new Setup {
@@ -152,7 +152,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
 
       result shouldBe None
 
-      urlCaptor.getValue shouldBe "stubbed/company/1234567890"
+      urlCaptor.getValue shouldBe "stubbed/company-profile/1234567890"
     }
   }
 

@@ -224,7 +224,7 @@ class TransactionalAPIISpec extends IntegrationSpecBase {
                         "company_status":"foo"}
     """.stripMargin
       val crn = "crn1"
-      val cohoDestinationUrl = s"/cohoFrontEndStubs/company/$crn"
+      val cohoDestinationUrl = s"/cohoFrontEndStubs/company-profile/$crn"
       stubGet(cohoDestinationUrl, 200, input)
       val incorpUpdate = IncorpUpdate(transactionId, "rejected", Some("crn1"), None, "tp", Some("description"))
 

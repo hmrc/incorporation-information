@@ -59,7 +59,7 @@ trait PublicCohoApiConn {
 
     val (http, realHc, url) = useProxy match {
       case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/company/$crn")
-      case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company/$crn")//todo: build stub endpoint
+      case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company-profile/$crn")
     }
 
 
