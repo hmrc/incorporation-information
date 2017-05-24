@@ -77,7 +77,7 @@ trait PublicCohoApiConn {
 
     val (http, realHc, url) = useProxy match {
       case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/company/$crn/officers")
-      case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company/1234567890")//todo: build stub endpoint
+      case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company/$crn/officers")
     }
 
     http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
@@ -94,7 +94,7 @@ trait PublicCohoApiConn {
 
     val (http, realHc, url) = useProxy match {
       case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/officers/$officerId/appointments?items_per_page=1")
-      case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company/1234567890")//todo: build stub endpoint
+      case false => (httpNoProxy, hc, s"$officerId")
     }
 
     http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
