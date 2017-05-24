@@ -47,6 +47,7 @@ class TransactionalAPIISpec extends IntegrationSpecBase {
 
     val destinationUrl = s"/incorporation-frontend-stubs/fetch-data/$transactionId"
 
+
     val body =
       s"""
          |{
@@ -126,7 +127,7 @@ class TransactionalAPIISpec extends IntegrationSpecBase {
       response.body shouldBe (Json.parse(body).as[JsObject] - "officers").toString()
     }
 
-    "return a 404 if a Json body cannot be returned for the given transaction Id" in new Setup{
+    "return a 404 if a Json body cannot be returned for the given transaction Id" in new Setup {
       stubGet(destinationUrl, 404, "")
 
       val clientUrl = s"/incorporation-information/$transactionId/company-profile"
@@ -135,96 +136,105 @@ class TransactionalAPIISpec extends IntegrationSpecBase {
       response.status shouldBe 404
     }
 
-
-    "return 200 if a company is incorporated and can be found in " in new Setup {
-      val input =
-        s"""
-           |{
-           |  "transaction_id": "12345",
-           |  "company_number": "crn1",
-           |  "company_name": "MOOO LIMITED",
-           |  "company_type": "ltd",
-           |    "type": "ltd",
-           |    "company_status":"foo",
-           |  "registered_office_address": {
-           |    "country": "United Kingdom",
-           |    "address_line_2": "foo2",
-           |    "premises": "98",
-           |    "po_box": "po1",
-           |    "region":"region1",
-           |    "care_of": "care of 1",
-           |    "postal_code": "post1",
-           |    "address_line_1": "lim1",
-           |    "locality": "WORTHING"
-           |  },
-           |  "officers": [
-           |    {
-           |      "date_of_birth": {
-           |        "month": "11",
-           |        "day": "12",
-           |        "year": "1973"
-           |      },
-           |      "name_elements": {
-           |        "forename": "Bob",
-           |        "surname": "Bobbings",
-           |        "other_forenames": "Bimbly Bobblous"
-           |      },
-           |      "address": {
-           |        "country": "United Kingdom",
-           |        "address_line_2": "add2",
-           |        "premises": "98",
-           |        "postal_code": "post1",
-           |        "address_line_1": "lim1",
-           |        "locality": "WORTHING"
-           |      }
-           |    },
-           |    {
-           |      "date_of_birth": {
-           |        "month": "00",
-           |        "day": "01",
-           |        "year": "0002"
-           |      },
-           |      "name_elements": {
-           |        "title": "Mx",
-           |        "forename": "Jingly",
-           |        "surname": "Jingles"
-           |      },
-           |      "address": {
-           |        "country": "England",
-           |        "premises": "111",
-           |        "postal_code": "post2",
-           |        "address_line_1": "add11",
-           |        "locality": "local1"
-           |      }
-           |    }
-           |  ],
-           | "sic_codes": [
-           |
+    val input =
+      s"""
+         |{
+         |  "transaction_id": "12345",
+         |  "company_number": "crn1",
+         |  "company_name": "MOOO LIMITED",
+         |  "company_type": "ltd",
+         |    "type": "ltd",
+         |    "company_status":"foo",
+         |  "registered_office_address": {
+         |    "country": "United Kingdom",
+         |    "address_line_2": "foo2",
+         |    "premises": "98",
+         |    "po_box": "po1",
+         |    "region":"region1",
+         |    "care_of": "care of 1",
+         |    "postal_code": "post1",
+         |    "address_line_1": "lim1",
+         |    "locality": "WORTHING"
+         |  },
+         |  "officers": [
+         |    {
+         |      "date_of_birth": {
+         |        "month": "11",
+         |        "day": "12",
+         |        "year": "1973"
+         |      },
+         |      "name_elements": {
+         |        "forename": "Bob",
+         |        "surname": "Bobbings",
+         |        "other_forenames": "Bimbly Bobblous"
+         |      },
+         |      "address": {
+         |        "country": "United Kingdom",
+         |        "address_line_2": "add2",
+         |        "premises": "98",
+         |        "postal_code": "post1",
+         |        "address_line_1": "lim1",
+         |        "locality": "WORTHING"
+         |      }
+         |    },
+         |    {
+         |      "date_of_birth": {
+         |        "month": "00",
+         |        "day": "01",
+         |        "year": "0002"
+         |      },
+         |      "name_elements": {
+         |        "title": "Mx",
+         |        "forename": "Jingly",
+         |        "surname": "Jingles"
+         |      },
+         |      "address": {
+         |        "country": "England",
+         |        "premises": "111",
+         |        "postal_code": "post2",
+         |        "address_line_1": "add11",
+         |        "locality": "local1"
+         |      }
+         |    }
+         |  ],
+         | "sic_codes": [
+         |
            |  "84240",
-           |   "01410"
-           |
+         |   "01410"
+         |
            |  ]
-           |}
+         |}
     """.stripMargin
+    "return 200 if a company is incorporated and can be found in " in new Setup {
 
-
-      val expected = s"""
-                        {"company_type":"ltd","type":"ltd","registered_office_address":{"country":"United Kingdom","address_line_2":"foo2","premises":"98","postal_code":"post1","address_line_1":"lim1","locality":"WORTHING"},"company_name":"MOOO LIMITED","company_number":"crn1","sic_codes":[{"sic_code":"84240","sic_description":""},{"sic_code":"01410","sic_description":""}],"company_status":"foo"}
+      val expected =
+        s"""
+                        {"company_type":"ltd",
+                        "type":"ltd",
+                        "registered_office_address":{
+                        "country":"United Kingdom",
+                        "address_line_2":"foo2",
+                        "premises":"98",
+                        "postal_code":"post1",
+                        "address_line_1":"lim1",
+                        "locality":"WORTHING"},
+                        "company_name":"MOOO LIMITED",
+                        "company_number":"crn1",
+                        "sic_codes":[{"sic_code":"84240","sic_description":""},{"sic_code":"01410","sic_description":""}],
+                        "company_status":"foo"}
     """.stripMargin
       val crn = "crn1"
-      val cohoDestinationUrl =  s"/cohoFrontEndStubs/company/$crn"
-  stubGet(cohoDestinationUrl, 200, input)
+      val cohoDestinationUrl = s"/cohoFrontEndStubs/company-profile/$crn"
+      stubGet(cohoDestinationUrl, 200, input)
       val incorpUpdate = IncorpUpdate(transactionId, "rejected", Some("crn1"), None, "tp", Some("description"))
 
-  insert(incorpUpdate)
-  val clientUrl = s"/incorporation-information/$transactionId/company-profile"
-println(clientUrl)
-  val response = buildClient(clientUrl).get().futureValue
-  println(response.toString)
-  response.status shouldBe 200
+      insert(incorpUpdate)
+      val clientUrl = s"/incorporation-information/$transactionId/company-profile"
+      println(clientUrl)
+      val response = buildClient(clientUrl).get().futureValue
+      response.status shouldBe 200
       val res = Json.parse(response.body).as[JsObject]
-res shouldBe Json.parse(expected).as[JsObject]
-}
+      res shouldBe Json.parse(expected).as[JsObject]
     }
-
+  }
 }
