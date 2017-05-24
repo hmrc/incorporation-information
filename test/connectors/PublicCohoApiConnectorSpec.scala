@@ -275,7 +275,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
       when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.successful(HttpResponse(200, Some(validOfficerAppointmentsResourceJson))))
 
-      val result = await(connector.getOfficerAppointments(testOfficerId))
+      val result = await(connector.getOfficerAppointment(testOfficerId))
       result shouldBe Some(validOfficerAppointmentsResourceJson)
 
       urlCaptor.getValue shouldBe "stubbed/company/1234567890"
@@ -289,7 +289,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
       when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(new NotFoundException("404")))
 
-      val result = await(connector.getOfficerAppointments(testOfficerId))
+      val result = await(connector.getOfficerAppointment(testOfficerId))
 
       result shouldBe None
 
@@ -304,7 +304,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
       when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(new HttpException("400", 400)))
 
-      val result = await(connector.getOfficerAppointments(testOfficerId))
+      val result = await(connector.getOfficerAppointment(testOfficerId))
 
       result shouldBe None
 
@@ -319,7 +319,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
       when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(new Throwable()))
 
-      val result = await(connector.getOfficerAppointments(testOfficerId))
+      val result = await(connector.getOfficerAppointment(testOfficerId))
 
       result shouldBe None
 

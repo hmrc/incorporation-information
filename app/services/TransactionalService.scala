@@ -20,17 +20,19 @@ import javax.inject.Inject
 
 import connectors._
 import play.api.Logger
+import play.api.libs.json.Json.JsValueWrapper
 import play.api.libs.json._
 import repositories.{IncorpUpdateMongo, IncorpUpdateRepository}
 import uk.gov.hmrc.play.http.HeaderCarrier
 import play.api.libs.json.Reads._
+import play.api.libs.functional.syntax._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class TransactionalServiceImpl @Inject()(val connector: IncorporationAPIConnector,
                                          val incorpMongo: IncorpUpdateMongo,
-                                         val cohoConnector: PublicCohoApiConnector) extends TransactionalService {
+                                         val publicCohoConnector: PublicCohoApiConnector) extends TransactionalService {
 
   lazy val incorpRepo = incorpMongo.repo
 }
@@ -39,7 +41,7 @@ trait TransactionalService {
 
   protected val connector: IncorporationAPIConnector
   val incorpRepo: IncorpUpdateRepository
-  val cohoConnector: PublicCohoApiConnector
+  val publicCohoConnector: PublicCohoApiConnector
 
   def fetchCompanyProfile(transactionId:String)(implicit hc:HeaderCarrier):Future[Option[JsValue]] = {
     checkIfCompIncorporated(transactionId) flatMap {
@@ -61,11 +63,75 @@ trait TransactionalService {
   }
 
   private[services] def fetchCompanyProfileFromCoho(crn:String)(implicit hc:HeaderCarrier):Future[Option[JsValue]] = {
-    cohoConnector.getCompanyProfile(crn)(hc) map {
+    publicCohoConnector.getCompanyProfile(crn)(hc) map {
       case Some(s) => transformDataFromCoho(s.as[JsObject])
       case _ =>
         Logger.info(s"[TransactionalService][fetchCompanyProfileFromCoho] Service failed to fetch a company that appeared incorporated in INCORPORATION_INFORMATION with the crn number: $crn")
+        None //todo: call fetchCompanyProfileFromTx here and flatMap top-level map as well as wrapping the right hand value of the Some(js) in a future
+    }
+  }
+
+  private[services] def fetchOfficerListFromPublicAPI(crn: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
+    publicCohoConnector.getOfficerList(crn) map {
+      case Some(js) =>
+        val listOfOfficers = (js \ "items").as[Seq[JsObject]]
+        Future.sequence(listOfOfficers map { officer =>
+          val appointmentUrl = (officer \ "links" \ "officers" \ "appointments").as[String]
+          fetchOfficerAppointment(appointmentUrl) map { _ flatMap { oAppointment =>
+            val namedElements = transformOfficerAppointment(oAppointment)
+            namedElements
+            //todo: transform rest of officer list here
+          }}
+        })
         None
+      //todo: transform the officers list into what you need and return a Seq(JsValue)
+      //todo: then map that and fetch the appointments from the appointment url
+      //todo: then drop the original name and append the named elements as \jsObject
+      case None =>
+        Logger.info(s"[TransactionalService][fetchCompanyProfileFromCoho] Service failed to fetch a company that appeared incorporated in INCORPORATION_INFORMATION with the crn number: $crn")
+        None //todo: call fetchOfficerListFromTXAPI here and flatMap top-level map as well as wrapping the right hand value of the Some(js) in a future
+    }
+  }
+
+  private[services] def fetchOfficerAppointment(url: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
+    publicCohoConnector.getOfficerAppointment(url) map {
+      case Some(js) => transformOfficerAppointment(js)
+      case None => None
+    }
+  }
+
+  private[services] def transformOfficerAppointment(json: JsValue): Option[JsValue] = {
+    val reads = (__ \\ "name_elements").json.pick
+    json.transform(reads) match {
+      case JsSuccess(js, _) => Some(js)
+      case _ => None
+    }
+  }
+
+  private[services] def transformOfficerList(json: JsValue): Option[JsValue] = {
+    import scala.language.postfixOps
+
+    def extractAndFold(json: JsObject, name: String): JsObject = {
+      (json \ "address" \ name).asOpt[String].fold(Json.obj())(s => Json.obj("address" -> Json.obj(name -> s)))
+    }
+
+    val reads: Reads[JsObject] = (
+      (__ \ "date_of_birth").json.pickBranch and
+      (__ \ "address").json.pickBranch.map{ addr =>
+        Json.obj("address" -> Json.obj(
+          "address_line_1" -> (addr \ "address" \ "address_line_1").as[String],
+          "country" -> (addr \ "address" \ "country").as[String],
+          "locality" -> (addr \ "address" \"locality").as[String]
+        )).deepMerge(extractAndFold(addr, "address_line_2"))
+          .deepMerge(extractAndFold(addr, "premises"))
+          .deepMerge(extractAndFold(addr, "postal_code"))
+
+      }
+    ) reduce
+
+    json.transform(reads) match {
+      case JsSuccess(js, _) => Some(js)
+      case _ => None
     }
   }
 

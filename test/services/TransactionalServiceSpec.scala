@@ -20,7 +20,7 @@ import Helpers.SCRSSpec
 import connectors.{FailedTransactionalAPIResponse, IncorporationAPIConnector, PublicCohoApiConnector, SuccessfulTransactionalAPIResponse}
 import models.IncorpUpdate
 import org.mockito.Matchers
-import org.mockito.Matchers.any
+import org.mockito.Matchers.{any, eq => eqTo}
 import play.api.libs.json._
 import org.mockito.Mockito._
 import repositories.IncorpUpdateRepository
@@ -36,7 +36,7 @@ class TransactionalServiceSpec extends SCRSSpec {
     val service = new TransactionalService {
       override protected val connector = mockConnector
       override val incorpRepo = mockRepos
-      override val cohoConnector =  mockCohoConnector
+      override val publicCohoConnector =  mockCohoConnector
 
     }
   }
@@ -44,7 +44,7 @@ class TransactionalServiceSpec extends SCRSSpec {
     val service = new TransactionalService {
       override protected val connector = mockConnector
       override val incorpRepo = mockRepos
-      override val cohoConnector =  mockCohoConnector
+      override val publicCohoConnector =  mockCohoConnector
       val jsonObj = Json.obj("foo" -> Json.toJson("fooValue"))
       override def transformDataFromCoho(js: JsObject):Option[JsValue] = Future.successful(Some(jsonObj))
     }
@@ -115,6 +115,101 @@ class TransactionalServiceSpec extends SCRSSpec {
       |      "sic_code": "01410"
       |    }
       |  ]
+      |}
+    """.stripMargin)
+
+  val officerAppointmentJson = Json.parse(
+    """
+      |{
+      |  "name": "test testy TESTERSON",
+      |  "kind": "personal-appointment",
+      |  "items": [
+      |    {
+      |      "links": {
+      |        "company": "/company/SC999999"
+      |      },
+      |      "occupation": "Consultant",
+      |      "country_of_residence": "Scotland",
+      |      "address": {
+      |        "premises": "14",
+      |        "address_line_1": "Test Avenue",
+      |        "region": "Testshire",
+      |        "postal_code": "TE0 1ST",
+      |        "locality": "testkirk",
+      |        "country": "United Kingdom"
+      |      },
+      |      "appointed_on": "2017-02-10",
+      |      "officer_role": "director",
+      |      "nationality": "British",
+      |      "name": "test testy TESTERSON",
+      |      "name_elements": {
+      |        "other_forenames": "Testy",
+      |        "title": "Mr",
+      |        "surname": "TESTERSON",
+      |        "forename": "Test"
+      |      },
+      |      "appointed_to": {
+      |        "company_name": "TEST CONSULTANCY SERVICES LIMITED",
+      |        "company_number": "SC999999",
+      |        "company_status": "active"
+      |      }
+      |    }
+      |  ],
+      |  "date_of_birth": {
+      |    "month": 3,
+      |    "year": 1964
+      |  },
+      |  "is_corporate_officer": false,
+      |  "start_index": 0,
+      |  "total_results": 1,
+      |  "items_per_page": 35,
+      |  "links": {
+      |    "self": "/officers/zzzV2JvcOvjFzi5f6Te05SbuWS1/appointments"
+      |  },
+      |  "etag": "1db68f787d91310e659ab22690d504363aeb9361"
+      |}
+    """.stripMargin)
+
+  val publicOfficerListJson = Json.parse(
+    """
+      |{
+      |  "active-count" : 1,
+      |  "etag" : "f3f1374e8d4d3640fc1a117ac3cc4addfa11e19f",
+      |  "inactive_count" : 0,
+      |  "items" : [ {
+      |    "address" : {
+      |      "premises" : "14",
+      |      "address_line_1" : "test avenue",
+      |      "locality" : "testville",
+      |      "country" : "United Kingdom",
+      |      "postal_code" : "TE1 1ST",
+      |      "region" : "testshire"
+      |    },
+      |    "appointed_on" : 1494866745000,
+      |    "country_of_residence" : "England",
+      |    "date_of_birth" : {
+      |      "month" : 3,
+      |      "year" : 1990
+      |    },
+      |    "former_names" : [ ],
+      |    "links" : {
+      |      "officer" : {
+      |        "appointments" : "/test/link"
+      |      }
+      |    },
+      |    "name" : "TESTINGTON, Test Tester",
+      |    "nationality" : "British",
+      |    "occupation" : "Consultant",
+      |    "officer_role" : "director"
+      |  } ],
+      |  "items_per_page" : 35,
+      |  "kind" : "officer-list",
+      |  "links" : {
+      |    "self" : "/test/self-link"
+      |  },
+      |  "resigned_count" : 0,
+      |  "start_index" : 0,
+      |  "total_results" : 1
       |}
     """.stripMargin)
 
@@ -463,6 +558,113 @@ class TransactionalServiceSpec extends SCRSSpec {
     }
   }
 
+  "transformOfficerAppointment" should {
 
+    val expected = Json.parse(
+      """
+        |{
+        |  "other_forenames":"Testy",
+        |  "title":"Mr",
+        |  "surname":"TESTERSON",
+        |  "forename":"Test"
+        |}
+      """.stripMargin)
+
+    "transform and return the supplied json correctly" in new Setup {
+      val result = await(service.transformOfficerAppointment(officerAppointmentJson))
+      result shouldBe Some(expected)
+    }
+
+    "return a None if the key 'name_elements' cannot be found in the supplied Json" in new Setup {
+      val incorrectJson = Json.parse("""{"test":"json"}""")
+      val result = await(service.transformOfficerAppointment(incorrectJson))
+      result shouldBe None
+    }
+  }
+
+  "fetchOfficerAppointment" should {
+
+    val url = "test/url"
+
+    "return a transformed officer appointment Json" in new Setup {
+      when(mockCohoConnector.getOfficerAppointment(eqTo(url))(any()))
+        .thenReturn(Future.successful(Some(officerAppointmentJson)))
+
+      service.fetchOfficerAppointment(url)
+    }
+
+    "return None when an officer appointment cannot be found in the public API" in new Setup {
+      when(mockCohoConnector.getOfficerAppointment(eqTo(url))(any()))
+        .thenReturn(Future.successful(None))
+
+      service.fetchOfficerAppointment(url)
+    }
+
+    "return None when the returned officer appointment cannot be transformed" in new Setup {
+      val incorrectJson = Json.parse("""{"test":"json"}""")
+      when(mockCohoConnector.getOfficerAppointment(eqTo(url))(any()))
+        .thenReturn(Future.successful(Some(incorrectJson)))
+
+      service.fetchOfficerAppointment(url)
+    }
+  }
+
+  "transformOfficerList" should {
+
+    val publicOfficerJson = Json.parse(
+      """
+        |{
+        |   "address" : {
+        |      "premises" : "14",
+        |      "address_line_1" : "test avenue",
+        |      "address_line_2" : "test line 2",
+        |      "locality" : "testville",
+        |      "country" : "United Kingdom",
+        |      "postal_code" : "TE1 1ST",
+        |      "region" : "testshire"
+        |    },
+        |    "appointed_on" : 1494866745000,
+        |    "country_of_residence" : "England",
+        |    "date_of_birth" : {
+        |      "month" : 3,
+        |      "year" : 1990
+        |    },
+        |    "former_names" : [ ],
+        |    "links" : {
+        |      "officer" : {
+        |        "appointments" : "/test/link"
+        |      }
+        |    },
+        |    "name" : "TESTINGTON, Test Tester",
+        |    "nationality" : "British",
+        |    "occupation" : "Consultant",
+        |    "officer_role" : "director"
+        | }
+      """.stripMargin)
+
+    "transform the supplied json into the pre-incorp officer list json structure" in new Setup {
+
+      val expected = Json.parse(
+        """
+          |{
+          |  "date_of_birth": {
+          |    "month": 3,
+          |    "year": 1990
+          |  },
+          |  "address": {
+          |    "address_line_1": "test avenue",
+          |    "country": "United Kingdom",
+          |    "address_line_2": "test line 2",
+          |    "premises": "14",
+          |    "postal_code": "TE1 1ST",
+          |    "locality" : "testville"
+          |  }
+          |}
+        """.stripMargin)
+
+      val result = service.transformOfficerList(publicOfficerJson)
+      result.get shouldBe expected
+    }
+  }
 }
 

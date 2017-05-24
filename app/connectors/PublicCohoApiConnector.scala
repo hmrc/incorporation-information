@@ -89,11 +89,11 @@ trait PublicCohoApiConn {
     } recover handlegetOfficerListError(crn)
   }
 
-  def getOfficerAppointments(officerId: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
+  def getOfficerAppointment(officerAppointmentUrl: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
     import play.api.http.Status.NO_CONTENT
 
     val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/officers/$officerId/appointments?items_per_page=1")
+      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/officers/$officerAppointmentUrl")
       case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company/1234567890")//todo: build stub endpoint
     }
 
@@ -104,7 +104,7 @@ trait PublicCohoApiConn {
           case _ => Some(res.json)
         }
 
-    } recover handlegetOfficerAppointmentsError(officerId)
+    } recover handlegetOfficerAppointmentsError(url)
   }
 
   private def handlegetCompanyProfileError(crn: String): PartialFunction[Throwable, Option[JsValue]] = {
