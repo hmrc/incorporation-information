@@ -71,25 +71,25 @@ trait TransactionalService {
     }
   }
 
-  private[services] def fetchOfficerListFromPublicAPI(crn: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
-    publicCohoConnector.getOfficerList(crn) map {
+  private[services] def fetchOfficerListFromPublicAPI(crn: String)(implicit hc: HeaderCarrier): Future[Seq[Option[JsObject]]] = {
+    publicCohoConnector.getOfficerList(crn) flatMap {
       case Some(js) =>
         val listOfOfficers = (js \ "items").as[Seq[JsObject]]
         Future.sequence(listOfOfficers map { officer =>
-          val appointmentUrl = (officer \ "links" \ "officers" \ "appointments").as[String]
+          val appointmentUrl = (officer \ "links" \ "officer" \ "appointments").as[String]
           fetchOfficerAppointment(appointmentUrl) map { _ flatMap { oAppointment =>
             val namedElements = transformOfficerAppointment(oAppointment)
-            namedElements
+            val fullOfficerJson = namedElements.flatMap(nE => transformOfficerList(officer).map(_.as[JsObject] ++ nE.as[JsObject]))
             //todo: transform rest of officer list here
+            fullOfficerJson
           }}
         })
-        None
       //todo: transform the officers list into what you need and return a Seq(JsValue)
       //todo: then map that and fetch the appointments from the appointment url
       //todo: then drop the original name and append the named elements as \jsObject
       case None =>
         Logger.info(s"[TransactionalService][fetchCompanyProfileFromCoho] Service failed to fetch a company that appeared incorporated in INCORPORATION_INFORMATION with the crn number: $crn")
-        None //todo: call fetchOfficerListFromTXAPI here and flatMap top-level map as well as wrapping the right hand value of the Some(js) in a future
+        Future.successful(Seq(None)) //todo: call fetchOfficerListFromTXAPI here and flatMap top-level map as well as wrapping the right hand value of the Some(js) in a future
     }
   }
 
@@ -125,7 +125,6 @@ trait TransactionalService {
         )).deepMerge(extractAndFold(addr, "address_line_2"))
           .deepMerge(extractAndFold(addr, "premises"))
           .deepMerge(extractAndFold(addr, "postal_code"))
-
       }
     ) reduce
 
