@@ -332,13 +332,15 @@ class TransactionalServiceSpec extends SCRSSpec {
         }
 "fetchCompanyProfileFromCoho" should {
   "return None when companyProfile cannot be found" in new Setup {
+    val response = FailedTransactionalAPIResponse
     when(mockCohoConnector.getCompanyProfile(Matchers.any[String])(any())).thenReturn(Future.successful(None))
-    await(service.fetchCompanyProfileFromCoho("num")) shouldBe None
+    when(mockConnector.fetchTransactionalData(Matchers.any[String])(any())).thenReturn(Future.successful(response))
+    await(service.fetchCompanyProfileFromCoho("num","")) shouldBe None
   }
   "return Some(json) when companyProfile can be found" in new SetupForCohoTransform {
     val json = buildJson("foo")
     when(mockCohoConnector.getCompanyProfile(Matchers.any[String])(any())).thenReturn(Future.successful(Some(service.jsonObj)))
-    await(service.fetchCompanyProfileFromCoho("num")) shouldBe Some(service.jsonObj)
+    await(service.fetchCompanyProfileFromCoho("num","")) shouldBe Some(service.jsonObj)
   }
 }
 

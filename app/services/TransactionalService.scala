@@ -46,7 +46,7 @@ trait TransactionalService {
 
   def fetchCompanyProfile(transactionId:String)(implicit hc:HeaderCarrier):Future[Option[JsValue]] = {
     checkIfCompIncorporated(transactionId) flatMap {
-      case Some(crn) => fetchCompanyProfileFromCoho(crn)
+      case Some(crn) => fetchCompanyProfileFromCoho(crn,transactionId)
       case None => fetchCompanyProfileFromTx(transactionId)(hc)
     }
   }
@@ -63,12 +63,12 @@ trait TransactionalService {
     extractJson(connector.fetchTransactionalData(transactionId), transformer)
   }
 
-  private[services] def fetchCompanyProfileFromCoho(crn:String)(implicit hc:HeaderCarrier):Future[Option[JsValue]] = {
-    publicCohoConnector.getCompanyProfile(crn)(hc) map {
-      case Some(s) => transformDataFromCoho(s.as[JsObject])
+  private[services] def fetchCompanyProfileFromCoho(crn:String, transactionId:String)(implicit hc:HeaderCarrier):Future[Option[JsValue]] = {
+    publicCohoConnector.getCompanyProfile(crn)(hc) flatMap  {
+      case Some(s) => Future.successful(transformDataFromCoho(s.as[JsObject]))
       case _ =>
         Logger.info(s"[TransactionalService][fetchCompanyProfileFromCoho] Service failed to fetch a company that appeared incorporated in INCORPORATION_INFORMATION with the crn number: $crn")
-        None //todo: call fetchCompanyProfileFromTx here and flatMap top-level map as well as wrapping the right hand value of the Some(js) in a future
+        fetchCompanyProfileFromTx(transactionId)
     }
   }
 
