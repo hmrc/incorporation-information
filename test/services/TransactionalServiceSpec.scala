@@ -572,13 +572,12 @@ class TransactionalServiceSpec extends SCRSSpec {
 
     "transform and return the supplied json correctly" in new Setup {
       val result = await(service.transformOfficerAppointment(officerAppointmentJson))
-      result shouldBe Some(expected)
+      result shouldBe expected
     }
 
     "return a None if the key 'name_elements' cannot be found in the supplied Json" in new Setup {
       val incorrectJson = Json.parse("""{"test":"json"}""")
-      val result = await(service.transformOfficerAppointment(incorrectJson))
-      result shouldBe None
+      intercept[NoItemsFoundException](await(service.transformOfficerAppointment(incorrectJson)))
     }
   }
 
@@ -588,14 +587,14 @@ class TransactionalServiceSpec extends SCRSSpec {
 
     "return a transformed officer appointment Json" in new Setup {
       when(mockCohoConnector.getOfficerAppointment(eqTo(url))(any()))
-        .thenReturn(Future.successful(Some(officerAppointmentJson)))
+        .thenReturn(Future.successful(officerAppointmentJson))
 
       service.fetchOfficerAppointment(url)
     }
 
     "return None when an officer appointment cannot be found in the public API" in new Setup {
       when(mockCohoConnector.getOfficerAppointment(eqTo(url))(any()))
-        .thenReturn(Future.successful(None))
+        .thenReturn(Future.successful(Json.obj()))
 
       service.fetchOfficerAppointment(url)
     }
@@ -603,7 +602,7 @@ class TransactionalServiceSpec extends SCRSSpec {
     "return None when the returned officer appointment cannot be transformed" in new Setup {
       val incorrectJson = Json.parse("""{"test":"json"}""")
       when(mockCohoConnector.getOfficerAppointment(eqTo(url))(any()))
-        .thenReturn(Future.successful(Some(incorrectJson)))
+        .thenReturn(Future.successful(incorrectJson))
 
       service.fetchOfficerAppointment(url)
     }
@@ -663,7 +662,7 @@ class TransactionalServiceSpec extends SCRSSpec {
         """.stripMargin)
 
       val result = service.transformOfficerList(publicOfficerJson)
-      result.get shouldBe expected
+      result shouldBe expected
     }
   }
 
@@ -673,13 +672,41 @@ class TransactionalServiceSpec extends SCRSSpec {
     val url = "test/url"
 
     "return a fully formed officer list json structure" in new Setup {
-      when(mockCohoConnector.getOfficerList(eqTo(crn))(any()))
+
+      val expected = Json.parse(
+        """
+          |{
+          |  "officers" : [
+          |    {
+          |      "date_of_birth" : {
+          |        "month" : 3,
+          |        "year" : 1990
+          |      },
+          |      "address" : {
+          |        "address_line_1" : "test avenue",
+          |        "country" : "United Kingdom",
+          |        "locality" : "testville",
+          |        "premises" : "14",
+          |        "postal_code" : "TE1 1ST"
+          |      },
+          |      "name_elements" : {
+          |        "other_forenames" : "Testy",
+          |        "title" : "Mr",
+          |        "surname" : "TESTERSON",
+          |        "forename" : "Test"
+          |      }
+          |    }
+          |  ]
+          |}
+        """.stripMargin)
+
+      when(mockCohoConnector.getOfficerList(any())(any()))
         .thenReturn(Future.successful(Some(publicOfficerListJson(url))))
       when(mockCohoConnector.getOfficerAppointment(any())(any()))
-        .thenReturn(Future.successful(Some(officerAppointmentJson)))
+        .thenReturn(Future.successful(officerAppointmentJson))
 
       val result = await(service.fetchOfficerListFromPublicAPI(crn))
-//      result shouldBe ""
+      result shouldBe Seq(expected)
     }
   }
 }

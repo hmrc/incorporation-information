@@ -89,7 +89,7 @@ trait PublicCohoApiConn {
     } recover handlegetOfficerListError(crn)
   }
 
-  def getOfficerAppointment(officerAppointmentUrl: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
+  def getOfficerAppointment(officerAppointmentUrl: String)(implicit hc: HeaderCarrier): Future[JsValue] = {
     import play.api.http.Status.NO_CONTENT
 
     val (http, realHc, url) = useProxy match {
@@ -100,11 +100,13 @@ trait PublicCohoApiConn {
     http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
       res =>
         res.status match {
-          case NO_CONTENT => None
-          case _ => Some(res.json)
+          case NO_CONTENT =>
+            Logger.info(s"[PublicCohoApiConnector] [getOfficerAppointments] - Could not find officer appointment for Officer url  - $officerAppointmentUrl")
+            throw new NotFoundException(s"No content for Officer url  - $officerAppointmentUrl")
+          case _ => res.json
         }
 
-    } recover handlegetOfficerAppointmentsError(url)
+    } recover handleOfficerAppointmentsError(url)
   }
 
   private def handlegetCompanyProfileError(crn: String): PartialFunction[Throwable, Option[JsValue]] = {
@@ -130,16 +132,16 @@ trait PublicCohoApiConn {
       Logger.info(s"[PublicCohoApiConnector] [getOfficerList] - Failed for $crn - reason: ${ex.getMessage}")
       None
   }
-  private def handlegetOfficerAppointmentsError(officerId: String): PartialFunction[Throwable, Option[JsValue]] = {
+  private def handleOfficerAppointmentsError(officerId: String): PartialFunction[Throwable, JsValue] = {
     case ex: NotFoundException =>
       Logger.info(s"[PublicCohoApiConnector] [getOfficerAppointments] - Could not find officer appointment for Officer ID  - $officerId")
-      None
+      throw ex
     case ex: HttpException =>
       Logger.info(s"[PublicCohoApiConnector] [getOfficerAppointments] - Returned status code: ${ex.responseCode} for $officerId - reason: ${ex.getMessage}")
-      None
+      throw ex
     case ex: Throwable =>
       Logger.info(s"[PublicCohoApiConnector] [getOfficerAppointments] - Failed for $officerId - reason: ${ex.getMessage}")
-      None
+      throw ex
   }
 
 

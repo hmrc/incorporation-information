@@ -20,7 +20,6 @@ import javax.inject.Inject
 
 import connectors._
 import play.api.Logger
-import play.api.libs.json.Json.JsValueWrapper
 import play.api.libs.json._
 import repositories.{IncorpUpdateMongo, IncorpUpdateRepository}
 import uk.gov.hmrc.play.http.HeaderCarrier
@@ -29,6 +28,8 @@ import play.api.libs.functional.syntax._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+
+case class NoItemsFoundException() extends Exception
 
 class TransactionalServiceImpl @Inject()(val connector: IncorporationAPIConnector,
                                          val incorpMongo: IncorpUpdateMongo,
@@ -71,44 +72,32 @@ trait TransactionalService {
     }
   }
 
-  private[services] def fetchOfficerListFromPublicAPI(crn: String)(implicit hc: HeaderCarrier): Future[Seq[Option[JsObject]]] = {
+  private[services] def fetchOfficerListFromPublicAPI(crn: String)(implicit hc: HeaderCarrier): Future[Seq[JsObject]] = {
     publicCohoConnector.getOfficerList(crn) flatMap {
-      case Some(js) =>
-        val listOfOfficers = (js \ "items").as[Seq[JsObject]]
+      case Some(officerList) =>
+        val listOfOfficers = (officerList \ "items").as[Seq[JsObject]]
         Future.sequence(listOfOfficers map { officer =>
           val appointmentUrl = (officer \ "links" \ "officer" \ "appointments").as[String]
-          fetchOfficerAppointment(appointmentUrl) map { _ flatMap { oAppointment =>
+          fetchOfficerAppointment(appointmentUrl) map { oAppointment =>
             val namedElements = transformOfficerAppointment(oAppointment)
-            val fullOfficerJson = namedElements.flatMap(nE => transformOfficerList(officer).map(_.as[JsObject] ++ nE.as[JsObject]))
-            //todo: transform rest of officer list here
-            fullOfficerJson
-          }}
+            Json.obj("officers" -> Json.arr(transformOfficerList(officer) ++ namedElements))
+          }
         })
-      //todo: transform the officers list into what you need and return a Seq(JsValue)
-      //todo: then map that and fetch the appointments from the appointment url
-      //todo: then drop the original name and append the named elements as \jsObject
       case None =>
         Logger.info(s"[TransactionalService][fetchCompanyProfileFromCoho] Service failed to fetch a company that appeared incorporated in INCORPORATION_INFORMATION with the crn number: $crn")
-        Future.successful(Seq(None)) //todo: call fetchOfficerListFromTXAPI here and flatMap top-level map as well as wrapping the right hand value of the Some(js) in a future
+        Future.successful(Seq(Json.obj())) //todo: call fetchOfficerListFromTXAPI here and flatMap top-level map as well as wrapping the right hand value of the Some(js) in a future
     }
   }
 
-  private[services] def fetchOfficerAppointment(url: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
-    publicCohoConnector.getOfficerAppointment(url) map {
-      case Some(js) => transformOfficerAppointment(js)
-      case None => None
-    }
+  private[services] def fetchOfficerAppointment(url: String)(implicit hc: HeaderCarrier): Future[JsObject] = {
+    publicCohoConnector.getOfficerAppointment(url) map (_.as[JsObject])
   }
 
-  private[services] def transformOfficerAppointment(json: JsValue): Option[JsValue] = {
-    val reads = (__ \\ "name_elements").json.pick
-    json.transform(reads) match {
-      case JsSuccess(js, _) => Some(js)
-      case _ => None
-    }
+  private[services] def transformOfficerAppointment(publicAppointment: JsValue): JsObject = {
+    Json.obj("name_elements" -> ((publicAppointment \ "items").head.getOrElse(throw new NoItemsFoundException) \ "name_elements").get.as[JsObject])
   }
 
-  private[services] def transformOfficerList(json: JsValue): Option[JsValue] = {
+  private[services] def transformOfficerList(publicOfficerList: JsValue): JsObject = {
     import scala.language.postfixOps
 
     def extractAndFold(json: JsObject, name: String): JsObject = {
@@ -128,10 +117,7 @@ trait TransactionalService {
       }
     ) reduce
 
-    json.transform(reads) match {
-      case JsSuccess(js, _) => Some(js)
-      case _ => None
-    }
+    publicOfficerList.transform(reads).get
   }
 
   private[services] def transformDataFromCoho(js: JsObject):Option[JsValue] ={
