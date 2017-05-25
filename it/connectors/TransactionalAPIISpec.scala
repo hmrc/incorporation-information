@@ -323,6 +323,32 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
            |}
     """.stripMargin
 
+      val expectedTXBody =
+        s"""
+          {
+           |  "transaction_id": "000-033808",
+           |  "company_name": "MOOO LIMITED",
+           |  "company_type": "ltd",
+           |  "registered_office_address": {
+           |    "country": "United Kingdom",
+           |    "address_line_2": "add2",
+           |    "premises": "98",
+           |    "postal_code": "post",
+           |    "address_line_1": "lim1",
+           |    "locality": "WORTHING"
+           |  },
+           |   "sic_codes": [
+           |    {
+           |      "sic_description": "Public order and safety activities",
+           |      "sic_code": "84240"
+           |    },
+           |    {
+           |      "sic_description": "Raising of dairy cattle",
+           |      "sic_code": "01410"
+           |    }
+           |  ]
+           |}
+    """.stripMargin
 
         stubGet(transactionAPIUrl, 200, transactionalAPIBody)
 
@@ -332,7 +358,11 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
         val cohoDestinationUrl = s"/cohoFrontEndStubs/company-profile/$crn"
         stubGet(cohoDestinationUrl, 404, "")
         val response = buildClient(clientUrl).get().futureValue
-        response.status shouldBe 404
+        response.status shouldBe 200
+
+      val res = Json.parse(response.body).as[JsObject]
+
+      res shouldBe Json.parse(expectedTXBody).as[JsObject]
       }
 
     }
