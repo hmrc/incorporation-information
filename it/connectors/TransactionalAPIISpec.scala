@@ -23,7 +23,7 @@ import play.api.test.FakeApplication
 import play.modules.reactivemongo.ReactiveMongoComponent
 import repositories.IncorpUpdateMongo
 import scala.concurrent.ExecutionContext.Implicits.global
-class TransactionalAPIISpec extends IntegrationSpecBase {
+class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
 
   //todo: set feature switch to false
   override implicit lazy val app = FakeApplication(additionalConfiguration = Map(
@@ -205,7 +205,7 @@ class TransactionalAPIISpec extends IntegrationSpecBase {
            |  ]
          |}
     """.stripMargin
-    "return 200 if a company is incorporated and can be found in " in new Setup {
+    "return 200 if a company is incorporated and can be found in Public API" in new Setup {
 
       val expected =
         s"""
@@ -223,18 +223,118 @@ class TransactionalAPIISpec extends IntegrationSpecBase {
                         "sic_codes":[{"sic_code":"84240","sic_description":""},{"sic_code":"01410","sic_description":""}],
                         "company_status":"foo"}
     """.stripMargin
-      val crn = "crn1"
-      val cohoDestinationUrl = s"/cohoFrontEndStubs/company-profile/$crn"
-      stubGet(cohoDestinationUrl, 200, input)
-      val incorpUpdate = IncorpUpdate(transactionId, "rejected", Some("crn1"), None, "tp", Some("description"))
 
+      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn1"), None, "tp", Some("description"))
       insert(incorpUpdate)
+      val crn = "crn1"
+
       val clientUrl = s"/incorporation-information/$transactionId/company-profile"
-      println(clientUrl)
+
+      val cohoDestinationUrl = s"/cohoFrontEndStubs/company-profile/$crn"
+
+      stubGet(cohoDestinationUrl, 200, input)
+
       val response = buildClient(clientUrl).get().futureValue
       response.status shouldBe 200
+
       val res = Json.parse(response.body).as[JsObject]
+
       res shouldBe Json.parse(expected).as[JsObject]
     }
-  }
+
+    "return 404 if a company is incorporated but cannot be found in Public API or Transactional API" in new Setup {
+
+      val crn = "crn2"
+      val clientUrl = s"/incorporation-information/$transactionId/company-profile"
+      val cohoDestinationUrl = s"/cohoFrontEndStubs/company-profile/$crn"
+      stubGet(cohoDestinationUrl, 404, "")
+      val response = buildClient(clientUrl).get().futureValue
+      response.status shouldBe 404
+    }
+
+    "return information from transactional API if a company is incorporated but cannot be found in Public API" in new Setup {
+
+      val transactionAPIUrl = s"/incorporation-frontend-stubs/fetch-data/$transactionId"
+      val transactionalAPIBody =
+        s"""
+           |{
+           |  "transaction_id": "000-033808",
+           |  "company_name": "MOOO LIMITED",
+           |  "company_type": "ltd",
+           |  "registered_office_address": {
+           |    "country": "United Kingdom",
+           |    "address_line_2": "add2",
+           |    "premises": "98",
+           |    "postal_code": "post",
+           |    "address_line_1": "lim1",
+           |    "locality": "WORTHING"
+           |  },
+           |  "officers": [
+           |    {
+           |      "date_of_birth": {
+           |        "month": "11",
+           |        "day": "12",
+           |        "year": "1973"
+           |      },
+           |      "name_elements": {
+           |        "forename": "Bob",
+           |        "surname": "Bobbings",
+           |        "other_forenames": "Bimbly Bobblous"
+           |      },
+           |      "address": {
+           |        "country": "United Kingdom",
+           |        "address_line_2": "add2",
+           |        "premises": "98",
+           |        "postal_code": "post1",
+           |        "address_line_1": "lim1",
+           |        "locality": "WORTHING"
+           |      }
+           |    },
+           |    {
+           |      "date_of_birth": {
+           |        "month": "01",
+           |        "day": "12",
+           |        "year": "1988"
+           |      },
+           |      "name_elements": {
+           |        "title": "Mx",
+           |        "forename": "Jingly",
+           |        "surname": "Jingles"
+           |      },
+           |      "address": {
+           |        "country": "England",
+           |        "premises": "prem1",
+           |        "postal_code": "post1",
+           |        "address_line_1": "add1",
+           |        "locality": "local1"
+           |      }
+           |    }
+           |  ],
+           |  "sic_codes": [
+           |    {
+           |      "sic_description": "Public order and safety activities",
+           |      "sic_code": "84240"
+           |    },
+           |    {
+           |      "sic_description": "Raising of dairy cattle",
+           |      "sic_code": "01410"
+           |    }
+           |  ]
+           |}
+    """.stripMargin
+
+
+        stubGet(transactionAPIUrl, 200, transactionalAPIBody)
+
+
+        val crn = "crn2"
+        val clientUrl = s"/incorporation-information/$transactionId/company-profile"
+        val cohoDestinationUrl = s"/cohoFrontEndStubs/company-profile/$crn"
+        stubGet(cohoDestinationUrl, 404, "")
+        val response = buildClient(clientUrl).get().futureValue
+        response.status shouldBe 404
+      }
+
+    }
+
 }
