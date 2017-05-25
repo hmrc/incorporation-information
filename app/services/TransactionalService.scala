@@ -29,7 +29,11 @@ import play.api.libs.functional.syntax._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-case class NoItemsFoundException() extends Exception
+sealed trait TransactionalServiceException extends Throwable {
+  val message = this.getMessage
+}
+case class NoItemsFoundException() extends TransactionalServiceException
+case class FailedToFetchOfficerListFromTxAPI() extends TransactionalServiceException
 
 class TransactionalServiceImpl @Inject()(val connector: IncorporationAPIConnector,
                                          val incorpMongo: IncorpUpdateMongo,
@@ -44,17 +48,24 @@ trait TransactionalService {
   val incorpRepo: IncorpUpdateRepository
   val publicCohoConnector: PublicCohoApiConnector
 
-  def fetchCompanyProfile(transactionId:String)(implicit hc:HeaderCarrier):Future[Option[JsValue]] = {
+  def fetchCompanyProfile(transactionId:String)(implicit hc:HeaderCarrier): Future[Option[JsValue]] = {
     checkIfCompIncorporated(transactionId) flatMap {
       case Some(crn) => fetchCompanyProfileFromCoho(crn,transactionId)
       case None => fetchCompanyProfileFromTx(transactionId)(hc)
     }
   }
 
-  def fetchOfficerList(transactionId: String)(implicit hc: HeaderCarrier) = {
-    connector.fetchTransactionalData(transactionId) map {
-      case SuccessfulTransactionalAPIResponse(js) => (js \ "officers").toOption
-      case _ => None
+  def fetchOfficerList(transactionId: String)(implicit hc: HeaderCarrier): Future[JsValue] = {
+    checkIfCompIncorporated(transactionId) flatMap {
+      case Some(crn) => fetchOfficerListFromPublicAPI(transactionId, crn)
+      case None => fetchOfficerListFromTxAPI(transactionId)
+    }
+  }
+
+  private[services] def fetchOfficerListFromTxAPI(transactionID: String)(implicit hc: HeaderCarrier): Future[JsObject] = {
+    connector.fetchTransactionalData(transactionID) map {
+      case SuccessfulTransactionalAPIResponse(js) => Json.obj("officers" -> (js \ "officers").as[JsArray])
+      case _ => throw new FailedToFetchOfficerListFromTxAPI
     }
   }
 
@@ -72,7 +83,7 @@ trait TransactionalService {
     }
   }
 
-  private[services] def fetchOfficerListFromPublicAPI(crn: String)(implicit hc: HeaderCarrier): Future[JsObject] = {
+  private[services] def fetchOfficerListFromPublicAPI(transactionId: String, crn: String)(implicit hc: HeaderCarrier): Future[JsObject] = {
     publicCohoConnector.getOfficerList(crn) flatMap {
       case Some(officerList) =>
         val listOfOfficers = (officerList \ "items").as[Seq[JsObject]]
@@ -86,7 +97,7 @@ trait TransactionalService {
         }
       case None =>
         Logger.info(s"[TransactionalService][fetchCompanyProfileFromCoho] Service failed to fetch a company that appeared incorporated in INCORPORATION_INFORMATION with the crn number: $crn")
-        Future.successful(Json.obj()) //todo: call fetchOfficerListFromTXAPI here and flatMap top-level map as well as wrapping the right hand value of the Some(js) in a future
+        fetchOfficerListFromTxAPI(transactionId)
     }
   }
 

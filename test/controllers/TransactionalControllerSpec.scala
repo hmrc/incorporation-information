@@ -20,7 +20,7 @@ import Helpers.SCRSSpec
 import org.mockito.Matchers
 import play.api.libs.json.{JsObject, Json}
 import play.api.test.FakeRequest
-import services.TransactionalService
+import services.{FailedToFetchOfficerListFromTxAPI, TransactionalService}
 import org.mockito.Mockito._
 import org.mockito.Matchers.{any, eq => eqTo}
 
@@ -125,7 +125,7 @@ class TransactionalControllerSpec extends SCRSSpec {
 
     "return a 200 and a json when an officer list is successfully fetched" in new Setup {
       when(mockService.fetchOfficerList(eqTo(transactionId))(any()))
-        .thenReturn(Future.successful(Some(json)))
+        .thenReturn(Future.successful(json))
 
       val result = controller.fetchOfficerList(transactionId)(FakeRequest())
       status(result) shouldBe 200
@@ -134,10 +134,18 @@ class TransactionalControllerSpec extends SCRSSpec {
 
     "return a 404 when an officer list could not be found by the supplied transaction Id" in new Setup {
       when(mockService.fetchOfficerList(eqTo(transactionId))(any()))
-        .thenReturn(Future.successful(None))
+        .thenReturn(Future.failed(new FailedToFetchOfficerListFromTxAPI()))
 
       val result = controller.fetchOfficerList(transactionId)(FakeRequest())
       status(result) shouldBe 404
+    }
+
+    "return a 500 when an unknown exception is caught" in new Setup {
+      when(mockService.fetchOfficerList(eqTo(transactionId))(any()))
+        .thenReturn(Future.failed(new Exception()))
+
+      val result = controller.fetchOfficerList(transactionId)(FakeRequest())
+      status(result) shouldBe 500
     }
   }
 }

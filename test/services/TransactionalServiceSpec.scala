@@ -213,7 +213,7 @@ class TransactionalServiceSpec extends SCRSSpec {
       |}
     """.stripMargin)
 
-  val officersJson = (buildJson() \ "officers").get
+  val officersJson = Json.obj("officers" -> (buildJson() \ "officers").get.as[JsArray])
   val companyProfileJson = (buildJson().as[JsObject] - "officers").as[JsValue]
 
   val incorrectJson = Json.parse(
@@ -222,6 +222,8 @@ class TransactionalServiceSpec extends SCRSSpec {
       | "incorrect":"json"
       |}
     """.stripMargin)
+
+  val transactionId = "tx-12345"
 
   "extractJson" should {
 
@@ -253,8 +255,6 @@ class TransactionalServiceSpec extends SCRSSpec {
 
   "fetchCompanyProfile from transactional api" should {
 
-    val transactionId = "12345"
-
     "return some Json when a document is retrieved by the supplied transaction Id and the sub-document is fetched by the supplied key" in new Setup {
       val response = SuccessfulTransactionalAPIResponse(buildJson())
       when(mockConnector.fetchTransactionalData(transactionId))
@@ -282,67 +282,119 @@ class TransactionalServiceSpec extends SCRSSpec {
 
   "fetchOfficerList" should {
 
-    val transactionId = "12345"
+    val crn = "crn-12345"
 
-    "return some Json when a document is retrieved by the supplied transaction Id and the sub-document is fetched by the supplied key" in new Setup {
+    val incorpUpdate = IncorpUpdate(transactionId, "accepted", Some(crn), None, "", None)
+
+    "return Json when a document is retrieved by the supplied transaction Id and the sub-document is fetched by the supplied key" in new Setup {
       val response = SuccessfulTransactionalAPIResponse(buildJson())
+      when(mockRepos.getIncorpUpdate(any())).thenReturn(Future.successful(None))
+      when(mockConnector.fetchTransactionalData(any())(any()))
+        .thenReturn(Future.successful(response))
+
+      await(service.fetchOfficerList(transactionId)) shouldBe officersJson
+    }
+
+    "return FailedToFetchOfficerListFromTxAPI when a FailedTransactionalAPIResponse is returned from the connector" in new Setup {
+      val response = FailedTransactionalAPIResponse
       when(mockConnector.fetchTransactionalData(transactionId))
         .thenReturn(Future.successful(response))
-      await(service.fetchOfficerList(transactionId)) shouldBe Some(officersJson)
+
+      intercept[FailedToFetchOfficerListFromTxAPI](await(service.fetchOfficerList(transactionId)))
+    }
+
+    "return a JsResultException when a SuccessfulTransactionalAPIResponse is returned for the supplied transaction Id but an incorrect json document is provided" in new Setup {
+      val response = SuccessfulTransactionalAPIResponse(incorrectJson)
+      when(mockConnector.fetchTransactionalData(transactionId))
+        .thenReturn(Future.successful(response))
+
+      intercept[JsResultException](await(service.fetchOfficerList(transactionId)))
+    }
+
+    "return a transformed officer list when an incorporated company is fetched from Incorp Info Repo" in new Setup {
+      when(mockRepos.getIncorpUpdate(any())).thenReturn(Future.successful(Some(incorpUpdate)))
+      when(mockCohoConnector.getOfficerList(any())(any()))
+        .thenReturn(Future.successful(Some(publicOfficerListJson())))
+      when(mockCohoConnector.getOfficerAppointment(any())(any()))
+        .thenReturn(Future.successful(officerAppointmentJson))
+
+      val expected = Json.parse(
+        """
+          |{
+          |  "officers" : [
+          |    {
+          |      "date_of_birth" : {
+          |        "month" : 3,
+          |        "year" : 1990
+          |      },
+          |      "address" : {
+          |        "address_line_1" : "test avenue",
+          |        "country" : "United Kingdom",
+          |        "locality" : "testville",
+          |        "premises" : "14",
+          |        "postal_code" : "TE1 1ST"
+          |      },
+          |      "name_elements" : {
+          |        "other_forenames" : "Testy",
+          |        "title" : "Mr",
+          |        "surname" : "TESTERSON",
+          |        "forename" : "Test"
+          |      }
+          |    }
+          |  ]
+          |}
+        """.stripMargin)
+
+      await(service.fetchOfficerList(transactionId)) shouldBe expected
+    }
+  }
+
+  "checkIfCompIncorporated" should {
+
+    "return Some(String) - the crn" when {
+
+      "Company exists and has a crn" in new Setup {
+        val incorpUpdate = IncorpUpdate("transId", "accepted", Some("foo"), None, "", None)
+        when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(Some(incorpUpdate)))
+
+        await(service.checkIfCompIncorporated("fooBarTest")) shouldBe Some("foo")
+      }
     }
 
     "return None" when {
 
-      "a FailedTransactionalAPIResponse is returned from the connector" in new Setup {
-        val response = FailedTransactionalAPIResponse
-        when(mockConnector.fetchTransactionalData(transactionId))
-          .thenReturn(Future.successful(response))
-        await(service.fetchOfficerList(transactionId)) shouldBe None
-      }
+      "Company exists, has a status != rejected but has no crn" in new Setup {
+        val incorpUpdate = IncorpUpdate("transId", "foo", None, None, "", None)
+        when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(Some(incorpUpdate)))
 
-      "a SuccessfulTransactionalAPIResponse is returned for the supplied transaction Id but an incorrect json document is provided" in new Setup {
-        val response = SuccessfulTransactionalAPIResponse(incorrectJson)
-        when(mockConnector.fetchTransactionalData(transactionId))
-          .thenReturn(Future.successful(response))
-        await(service.fetchOfficerList(transactionId)) shouldBe None
+        await(service.checkIfCompIncorporated("fooBarTest")) shouldBe  None
+      }
+    }
+
+    "return None" when {
+
+      "Company does not exist" in new Setup {
+        when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(None))
+        await(service.checkIfCompIncorporated("fooBarTest")) shouldBe  None
       }
     }
   }
-   "checkIfCompIncorporated" should {
-        "return Some(String) - the crn" when {
-          "Company exists and has a crn" in new Setup {
-            val incorpUpdate = IncorpUpdate("transId", "accepted", Some("foo"), None, "", None)
-            when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(Some(incorpUpdate)))
-            await(service.checkIfCompIncorporated("fooBarTest")) shouldBe Some("foo")
-          }
-        }
-               "return None" when {
-                "Company exists, has a status != rejected but has no crn" in new Setup {
-                     val incorpUpdate = IncorpUpdate("transId", "foo", None, None, "", None)
-                     when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(Some(incorpUpdate)))
-                      await(service.checkIfCompIncorporated("fooBarTest")) shouldBe  None
-                    }
-               }
-                "return None" when {
-                    "Company does not exist" in new Setup {
-                        when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(None))
-                        await(service.checkIfCompIncorporated("fooBarTest")) shouldBe  None
-                      }
-                }
-        }
-"fetchCompanyProfileFromCoho" should {
-  "return None when companyProfile cannot be found" in new Setup {
-    val response = FailedTransactionalAPIResponse
-    when(mockCohoConnector.getCompanyProfile(Matchers.any[String])(any())).thenReturn(Future.successful(None))
-    when(mockConnector.fetchTransactionalData(Matchers.any[String])(any())).thenReturn(Future.successful(response))
-    await(service.fetchCompanyProfileFromCoho("num","")) shouldBe None
+
+  "fetchCompanyProfileFromCoho" should {
+
+    "return None when companyProfile cannot be found" in new Setup {
+      val response = FailedTransactionalAPIResponse
+      when(mockCohoConnector.getCompanyProfile(Matchers.any[String])(any())).thenReturn(Future.successful(None))
+      when(mockConnector.fetchTransactionalData(Matchers.any[String])(any())).thenReturn(Future.successful(response))
+      await(service.fetchCompanyProfileFromCoho("num","")) shouldBe None
+    }
+
+    "return Some(json) when companyProfile can be found" in new SetupForCohoTransform {
+      val json = buildJson("foo")
+      when(mockCohoConnector.getCompanyProfile(Matchers.any[String])(any())).thenReturn(Future.successful(Some(service.jsonObj)))
+      await(service.fetchCompanyProfileFromCoho("num","")) shouldBe Some(service.jsonObj)
+    }
   }
-  "return Some(json) when companyProfile can be found" in new SetupForCohoTransform {
-    val json = buildJson("foo")
-    when(mockCohoConnector.getCompanyProfile(Matchers.any[String])(any())).thenReturn(Future.successful(Some(service.jsonObj)))
-    await(service.fetchCompanyProfileFromCoho("num","")) shouldBe Some(service.jsonObj)
-  }
-}
 
   "transformDataFromCoho" should {
 
@@ -709,7 +761,7 @@ class TransactionalServiceSpec extends SCRSSpec {
       when(mockCohoConnector.getOfficerAppointment(any())(any()))
         .thenReturn(Future.successful(officerAppointmentJson))
 
-      val result = await(service.fetchOfficerListFromPublicAPI(crn))
+      val result = await(service.fetchOfficerListFromPublicAPI(transactionId, crn))
       result shouldBe expected
     }
 
@@ -837,7 +889,7 @@ class TransactionalServiceSpec extends SCRSSpec {
       when(mockCohoConnector.getOfficerAppointment(any())(any()))
         .thenReturn(Future.successful(officerAppointmentJson))
 
-      val result = await(service.fetchOfficerListFromPublicAPI(crn))
+      val result = await(service.fetchOfficerListFromPublicAPI(transactionId, crn))
       result shouldBe expected
     }
   }
