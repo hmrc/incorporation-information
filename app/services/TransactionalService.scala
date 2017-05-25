@@ -72,20 +72,21 @@ trait TransactionalService {
     }
   }
 
-  private[services] def fetchOfficerListFromPublicAPI(crn: String)(implicit hc: HeaderCarrier): Future[Seq[JsObject]] = {
+  private[services] def fetchOfficerListFromPublicAPI(crn: String)(implicit hc: HeaderCarrier): Future[JsObject] = {
     publicCohoConnector.getOfficerList(crn) flatMap {
       case Some(officerList) =>
         val listOfOfficers = (officerList \ "items").as[Seq[JsObject]]
         Future.sequence(listOfOfficers map { officer =>
           val appointmentUrl = (officer \ "links" \ "officer" \ "appointments").as[String]
-          fetchOfficerAppointment(appointmentUrl) map { oAppointment =>
-            val namedElements = transformOfficerAppointment(oAppointment)
-            Json.obj("officers" -> Json.arr(transformOfficerList(officer) ++ namedElements))
+          fetchOfficerAppointment(appointmentUrl) map { officerAppointment =>
+            transformOfficerList(officer) ++ transformOfficerAppointment(officerAppointment)
           }
-        })
+        }) map { listTransformedOfficers =>
+          Json.obj("officers" -> Json.toJson(listTransformedOfficers).as[JsArray])
+        }
       case None =>
         Logger.info(s"[TransactionalService][fetchCompanyProfileFromCoho] Service failed to fetch a company that appeared incorporated in INCORPORATION_INFORMATION with the crn number: $crn")
-        Future.successful(Seq(Json.obj())) //todo: call fetchOfficerListFromTXAPI here and flatMap top-level map as well as wrapping the right hand value of the Some(js) in a future
+        Future.successful(Json.obj()) //todo: call fetchOfficerListFromTXAPI here and flatMap top-level map as well as wrapping the right hand value of the Some(js) in a future
     }
   }
 

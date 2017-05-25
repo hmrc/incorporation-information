@@ -565,10 +565,12 @@ class TransactionalServiceSpec extends SCRSSpec {
     val expected = Json.parse(
       """
         |{
-        |  "other_forenames":"Testy",
-        |  "title":"Mr",
-        |  "surname":"TESTERSON",
-        |  "forename":"Test"
+        |  "name_elements" : {
+        |    "other_forenames":"Testy",
+        |    "title":"Mr",
+        |    "surname":"TESTERSON",
+        |    "forename":"Test"
+        |  }
         |}
       """.stripMargin)
 
@@ -673,7 +675,7 @@ class TransactionalServiceSpec extends SCRSSpec {
     val crn = "crn-0123456789"
     val url = "test/url"
 
-    "return a fully formed officer list json structure" in new Setup {
+    "return a fully formed officer list json structure when 1 officer is retrieved" in new Setup {
 
       val expected = Json.parse(
         """
@@ -708,7 +710,135 @@ class TransactionalServiceSpec extends SCRSSpec {
         .thenReturn(Future.successful(officerAppointmentJson))
 
       val result = await(service.fetchOfficerListFromPublicAPI(crn))
-      result shouldBe Seq(expected)
+      result shouldBe expected
+    }
+
+    "return a fully formed officer list json structure when 2 officers are retrieved" in new Setup {
+
+      val listWith2Officers = Json.parse(
+        s"""
+           |{
+           |  "active-count" : 1,
+           |  "etag" : "f3f1374e8d4d3640fc1a117ac3cc4addfa11e19f",
+           |  "inactive_count" : 0,
+           |  "items" : [
+           |    {
+           |      "address" : {
+           |        "premises" : "14",
+           |        "address_line_1" : "test avenue",
+           |        "locality" : "testville",
+           |        "country" : "United Kingdom",
+           |        "postal_code" : "TE1 1ST",
+           |        "region" : "testshire"
+           |      },
+           |      "appointed_on" : 1494866745000,
+           |      "country_of_residence" : "England",
+           |      "date_of_birth" : {
+           |        "month" : 3,
+           |        "year" : 1990
+           |      },
+           |      "former_names" : [ ],
+           |      "links" : {
+           |        "officer" : {
+           |          "appointments" : "test/url"
+           |        }
+           |      },
+           |      "name" : "TESTINGTON, Test Tester",
+           |      "nationality" : "British",
+           |      "occupation" : "Consultant",
+           |      "officer_role" : "director"
+           |    },
+           |    {
+           |      "address" : {
+           |        "premises" : "14",
+           |        "address_line_1" : "test avenue",
+           |        "locality" : "testville",
+           |        "country" : "United Kingdom",
+           |        "postal_code" : "TE1 1ST",
+           |        "region" : "testshire"
+           |      },
+           |      "appointed_on" : 1494866745000,
+           |      "country_of_residence" : "England",
+           |      "date_of_birth" : {
+           |        "month" : 3,
+           |        "year" : 1990
+           |      },
+           |      "former_names" : [ ],
+           |      "links" : {
+           |        "officer" : {
+           |          "appointments" : "test/url"
+           |        }
+           |      },
+           |      "name" : "TESTINGTON, Test Tester",
+           |      "nationality" : "British",
+           |      "occupation" : "Consultant",
+           |      "officer_role" : "director"
+           |    }
+           |  ],
+           |  "items_per_page" : 35,
+           |  "kind" : "officer-list",
+           |  "links" : {
+           |    "self" : "/test/self-link"
+           |  },
+           |  "resigned_count" : 0,
+           |  "start_index" : 0,
+           |  "total_results" : 1
+           |}
+    """.stripMargin)
+
+      val expected = Json.parse(
+        """
+          |{
+          |  "officers" : [
+          |    {
+          |      "date_of_birth" : {
+          |        "month" : 3,
+          |        "year" : 1990
+          |      },
+          |      "address" : {
+          |        "address_line_1" : "test avenue",
+          |        "country" : "United Kingdom",
+          |        "locality" : "testville",
+          |        "premises" : "14",
+          |        "postal_code" : "TE1 1ST"
+          |      },
+          |      "name_elements" : {
+          |        "other_forenames" : "Testy",
+          |        "title" : "Mr",
+          |        "surname" : "TESTERSON",
+          |        "forename" : "Test"
+          |      }
+          |    },
+          |    {
+          |      "date_of_birth" : {
+          |        "month" : 3,
+          |        "year" : 1990
+          |      },
+          |      "address" : {
+          |        "address_line_1" : "test avenue",
+          |        "country" : "United Kingdom",
+          |        "locality" : "testville",
+          |        "premises" : "14",
+          |        "postal_code" : "TE1 1ST"
+          |      },
+          |      "name_elements" : {
+          |        "other_forenames" : "Testy",
+          |        "title" : "Mr",
+          |        "surname" : "TESTERSON",
+          |        "forename" : "Test"
+          |      }
+          |    }
+          |  ]
+          |}
+        """.stripMargin)
+
+      when(mockCohoConnector.getOfficerList(any())(any()))
+        .thenReturn(Future.successful(Some(listWith2Officers)))
+      when(mockCohoConnector.getOfficerAppointment(any())(any()))
+        .thenReturn(Future.successful(officerAppointmentJson))
+
+      val result = await(service.fetchOfficerListFromPublicAPI(crn))
+      result shouldBe expected
     }
   }
 }
