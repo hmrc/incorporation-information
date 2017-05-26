@@ -26,9 +26,11 @@ sealed trait FeatureSwitch {
   def enabled: Boolean
 }
 
-case class BooleanFeatureSwitch(name: String, enabled: Boolean) extends FeatureSwitch
+trait TimedFeatureSwitch extends FeatureSwitch {
 
-case class TimedFeatureSwitch(name: String, start: Option[DateTime], end: Option[DateTime], target: DateTime) extends FeatureSwitch {
+  def start: Option[DateTime]
+  def end: Option[DateTime]
+  def target: DateTime
 
   override def enabled: Boolean = (start, end) match {
     case (Some(s), Some(e)) => !target.isBefore(s) && !target.isAfter(e)
@@ -38,9 +40,18 @@ case class TimedFeatureSwitch(name: String, start: Option[DateTime], end: Option
   }
 }
 
+case class BooleanFeatureSwitch(name: String, enabled: Boolean) extends FeatureSwitch
+
+case class EnabledTimedFeatureSwitch(name: String, start: Option[DateTime], end: Option[DateTime], target: DateTime) extends TimedFeatureSwitch
+case class DisabledTimedFeatureSwitch(name: String, start: Option[DateTime], end: Option[DateTime], target: DateTime) extends TimedFeatureSwitch {
+  override def enabled = !super.enabled
+}
+
+
 object FeatureSwitch {
 
-  val DatesIntervalExtractor = """(\S+)_(\S+)""".r
+  val DisabledIntervalExtractor = """!(\S+)_(\S+)""".r
+  val EnabledIntervalExtractor = """(\S+)_(\S+)""".r
   val UNSPECIFIED = "X"
   val dateFormat = ISODateTimeFormat.dateTimeNoMillis()
 
@@ -49,7 +60,8 @@ object FeatureSwitch {
 
     value match {
       case Some("true") => BooleanFeatureSwitch(name, enabled = true)
-      case Some(DatesIntervalExtractor(start, end)) => TimedFeatureSwitch(name, toDate(start), toDate(end), DateTime.now(DateTimeZone.UTC))
+      case Some(DisabledIntervalExtractor(start, end)) => DisabledTimedFeatureSwitch(name, toDate(start), toDate(end), DateTime.now(DateTimeZone.UTC))
+      case Some(EnabledIntervalExtractor(start, end)) => EnabledTimedFeatureSwitch(name, toDate(start), toDate(end), DateTime.now(DateTimeZone.UTC))
       case _ => BooleanFeatureSwitch(name, enabled = false)
     }
   }
