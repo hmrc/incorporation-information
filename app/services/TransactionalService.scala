@@ -19,6 +19,7 @@ package services
 import javax.inject.Inject
 
 import connectors._
+import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.json._
 import repositories.{IncorpUpdateMongo, IncorpUpdateRepository}
@@ -118,6 +119,15 @@ trait TransactionalService {
 
     val reads: Reads[JsObject] = (
       (__ \ "date_of_birth").json.pickBranch and
+      (__ \ "officer_role").json.pick.map{ role =>
+        Json.obj("officer_role" -> role.as[JsString])
+      } and
+      (__ \ "resigned_on").json.pick.map{ date =>
+        Json.obj("resigned_on" -> date)
+      } and
+      (__ \ "links" \ "officer" \ "appointments").json.pick.map{ link =>
+        Json.obj("appointment_link" -> link.as[JsString])
+      } and
       (__ \ "address").json.pickBranch.map{ addr =>
         Json.obj("address" -> Json.obj(
           "address_line_1" -> (addr \ "address" \ "address_line_1").as[String],

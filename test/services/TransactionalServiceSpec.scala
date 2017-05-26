@@ -19,6 +19,7 @@ package services
 import Helpers.SCRSSpec
 import connectors.{FailedTransactionalAPIResponse, IncorporationAPIConnector, PublicCohoApiConnector, SuccessfulTransactionalAPIResponse}
 import models.IncorpUpdate
+import org.joda.time.DateTime
 import org.mockito.Matchers
 import org.mockito.Matchers.{any, eq => eqTo}
 import play.api.libs.json._
@@ -200,7 +201,8 @@ class TransactionalServiceSpec extends SCRSSpec {
       |    "name" : "TESTINGTON, Test Tester",
       |    "nationality" : "British",
       |    "occupation" : "Consultant",
-      |    "officer_role" : "director"
+      |    "officer_role" : "director",
+      |    "resigned_on" : "$dateTime"
       |  } ],
       |  "items_per_page" : 35,
       |  "kind" : "officer-list",
@@ -224,6 +226,8 @@ class TransactionalServiceSpec extends SCRSSpec {
     """.stripMargin)
 
   val transactionId = "tx-12345"
+
+  val dateTime = Json.toJson(DateTime.parse("2017-05-15T17:45:45Z"))
 
   "extractJson" should {
 
@@ -319,7 +323,7 @@ class TransactionalServiceSpec extends SCRSSpec {
         .thenReturn(Future.successful(officerAppointmentJson))
 
       val expected = Json.parse(
-        """
+        s"""
           |{
           |  "officers" : [
           |    {
@@ -339,7 +343,10 @@ class TransactionalServiceSpec extends SCRSSpec {
           |        "title" : "Mr",
           |        "surname" : "TESTERSON",
           |        "forename" : "Test"
-          |      }
+          |      },
+          |        "officer_role" : "director",
+          |        "resigned_on" : "$dateTime",
+          |        "appointment_link":"/test/link"
           |    }
           |  ]
           |}
@@ -667,7 +674,7 @@ class TransactionalServiceSpec extends SCRSSpec {
   "transformOfficerList" should {
 
     val publicOfficerJson = Json.parse(
-      """
+      s"""
         |{
         |   "address" : {
         |      "premises" : "14",
@@ -693,14 +700,15 @@ class TransactionalServiceSpec extends SCRSSpec {
         |    "name" : "TESTINGTON, Test Tester",
         |    "nationality" : "British",
         |    "occupation" : "Consultant",
-        |    "officer_role" : "director"
+        |    "officer_role" : "director",
+        |    "resigned_on" : "$dateTime"
         | }
       """.stripMargin)
 
     "transform the supplied json into the pre-incorp officer list json structure" in new Setup {
 
       val expected = Json.parse(
-        """
+        s"""
           |{
           |  "date_of_birth": {
           |    "month": 3,
@@ -713,7 +721,10 @@ class TransactionalServiceSpec extends SCRSSpec {
           |    "premises": "14",
           |    "postal_code": "TE1 1ST",
           |    "locality" : "testville"
-          |  }
+          |  },
+          |  "officer_role": "director",
+          |  "resigned_on" : "$dateTime",
+          |  "appointment_link": "/test/link"
           |}
         """.stripMargin)
 
@@ -725,12 +736,12 @@ class TransactionalServiceSpec extends SCRSSpec {
   "fetchOfficerListFromPublicAPI" should {
 
     val crn = "crn-0123456789"
-    val url = "test/url"
+    val url = "/test/link"
 
     "return a fully formed officer list json structure when 1 officer is retrieved" in new Setup {
 
       val expected = Json.parse(
-        """
+        s"""
           |{
           |  "officers" : [
           |    {
@@ -750,8 +761,12 @@ class TransactionalServiceSpec extends SCRSSpec {
           |        "title" : "Mr",
           |        "surname" : "TESTERSON",
           |        "forename" : "Test"
-          |      }
+          |      },
+          |       "officer_role" : "director",
+          |       "resigned_on" : "$dateTime",
+          |       "appointment_link":"/test/link"
           |    }
+          |
           |  ]
           |}
         """.stripMargin)
@@ -792,13 +807,14 @@ class TransactionalServiceSpec extends SCRSSpec {
            |      "former_names" : [ ],
            |      "links" : {
            |        "officer" : {
-           |          "appointments" : "test/url"
+           |          "appointments" : "/test/link"
            |        }
            |      },
            |      "name" : "TESTINGTON, Test Tester",
            |      "nationality" : "British",
            |      "occupation" : "Consultant",
-           |      "officer_role" : "director"
+           |      "officer_role" : "director",
+           |      "resigned_on": "$dateTime"
            |    },
            |    {
            |      "address" : {
@@ -818,13 +834,14 @@ class TransactionalServiceSpec extends SCRSSpec {
            |      "former_names" : [ ],
            |      "links" : {
            |        "officer" : {
-           |          "appointments" : "test/url"
+           |          "appointments" : "/test/link"
            |        }
            |      },
            |      "name" : "TESTINGTON, Test Tester",
            |      "nationality" : "British",
            |      "occupation" : "Consultant",
-           |      "officer_role" : "director"
+           |      "officer_role" : "director",
+           |      "resigned_on": "$dateTime"
            |    }
            |  ],
            |  "items_per_page" : 35,
@@ -839,7 +856,7 @@ class TransactionalServiceSpec extends SCRSSpec {
     """.stripMargin)
 
       val expected = Json.parse(
-        """
+        s"""
           |{
           |  "officers" : [
           |    {
@@ -859,7 +876,10 @@ class TransactionalServiceSpec extends SCRSSpec {
           |        "title" : "Mr",
           |        "surname" : "TESTERSON",
           |        "forename" : "Test"
-          |      }
+          |      },
+          |      "officer_role" : "director",
+          |      "resigned_on" : "$dateTime",
+          |      "appointment_link": "/test/link"
           |    },
           |    {
           |      "date_of_birth" : {
@@ -878,7 +898,10 @@ class TransactionalServiceSpec extends SCRSSpec {
           |        "title" : "Mr",
           |        "surname" : "TESTERSON",
           |        "forename" : "Test"
-          |      }
+          |      },
+          |        "officer_role" : "director",
+          |        "resigned_on" : "$dateTime",
+          |        "appointment_link": "/test/link"
           |    }
           |  ]
           |}
