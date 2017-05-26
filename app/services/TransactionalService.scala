@@ -97,6 +97,7 @@ trait TransactionalService {
           Json.obj("officers" -> Json.toJson(listTransformedOfficers).as[JsArray])
         }
       case None =>
+
         Logger.info(s"[TransactionalService][fetchCompanyProfileFromCoho] Service failed to fetch a company that appeared incorporated in INCORPORATION_INFORMATION with the crn number: $crn")
         fetchOfficerListFromTxAPI(transactionId)
     }

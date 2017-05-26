@@ -16,26 +16,30 @@
 
 package connectors
 
-import helpers.IntegrationSpecBase
+import helpers.{IntegrationSpecBase, SCRSMongoSpec}
 import models.IncorpUpdate
+import org.joda.time.DateTime
 import play.api.libs.json.{JsObject, Json}
 import play.api.test.FakeApplication
 import play.modules.reactivemongo.ReactiveMongoComponent
-import repositories.IncorpUpdateMongo
+import repositories.{IncorpUpdateMongo, IncorpUpdateMongoRepository}
+
 import scala.concurrent.ExecutionContext.Implicits.global
-class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
+class TransactionalAndPublicAPIISpec extends IntegrationSpecBase with SCRSMongoSpec {
+
+  val publicCohoStubUri = "/cohoFrontEndStubs"
 
   //todo: set feature switch to false
   override implicit lazy val app = FakeApplication(additionalConfiguration = Map(
     "microservice.services.incorp-update-api.stub-url" -> s"http://${wiremockHost}:${wiremockPort}/incorporation-frontend-stubs",
     "microservice.services.incorp-update-api.url" -> s"http://${wiremockHost}:${wiremockPort}",
-    "microservice.services.public-coho-api.stub-url" -> s"http://${wiremockHost}:${wiremockPort}/cohoFrontEndStubs"
+    "microservice.services.public-coho-api.stub-url" -> s"http://${wiremockHost}:${wiremockPort}$publicCohoStubUri"
   ))
 
-  lazy val reactiveMongoComponent = app.injector.instanceOf[ReactiveMongoComponent]
   class Setup {
     val incRepo = new IncorpUpdateMongo(reactiveMongoComponent).repo
-    incRepo.drop
+    await(incRepo.drop)
+    await(incRepo.ensureIndexes)
     def insert(update: IncorpUpdate) = await(incRepo.insert(update))
   }
 
@@ -205,7 +209,10 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
            |  ]
          |}
     """.stripMargin
+
     "return 200 if a company is incorporated and can be found in Public API" in new Setup {
+
+      println("=============================cxvxcvxcvx")
 
       val expected =
         s"""
@@ -224,13 +231,13 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
                         "company_status":"foo"}
     """.stripMargin
 
-      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn1"), None, "tp", Some("description"))
-      insert(incorpUpdate)
       val crn = "crn1"
+      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some(crn), None, "tp", Some("description"))
+      insert(incorpUpdate)
 
       val clientUrl = s"/incorporation-information/$transactionId/company-profile"
 
-      val cohoDestinationUrl = s"/cohoFrontEndStubs/company-profile/$crn"
+      val cohoDestinationUrl = s"$publicCohoStubUri/company-profile/$crn"
 
       stubGet(cohoDestinationUrl, 200, input)
 
@@ -437,39 +444,123 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
            |  ]
          |}
          |    """.stripMargin
+    val dateTime = Json.toJson(DateTime.parse("2017-05-15T17:45:45Z"))
+    val officerListInput =
+      s"""
+                                |{ "items":[{
+                                |   "address" : {
+                                |      "premises" : "14",
+                                |      "address_line_1" : "test avenue",
+                                |      "address_line_2" : "test line 2",
+                                |      "locality" : "testville",
+                                |      "country" : "United Kingdom",
+                                |      "postal_code" : "TE1 1ST",
+                                |      "region" : "testshire"
+                                |    },
+                                |    "appointed_on" : 1494866745000,
+                                |    "country_of_residence" : "England",
+                                |    "date_of_birth" : {
+                                |      "month" : 3,
+                                |      "year" : 1990
+                                |    },
+                                |    "former_names" : [ ],
+                                |    "links" : {
+                                |      "officer" : {
+                                |        "appointments" : "/test/link"
+                                |      }
+                                |    },
+                                |    "name" : "TESTINGTON, Test Tester",
+                                |    "nationality" : "British",
+                                |    "occupation" : "Consultant",
+                                |    "officer_role" : "director",
+                                |    "resigned_on" : "$dateTime"
+                                |
+                                | }
+                                | ]}
+      """.stripMargin
 
-    val officerListInput = ""
 
+    val names =
+      s"""|{
+        |  "name": "test testy TESTERSON",
+        |  "kind": "personal-appointment",
+        |  "items": [
+        |    {
+          |      "links": {
+            |        "company": "/company/SC999999"
+            |      },
+          |      "occupation": "Consultant",
+          |      "country_of_residence": "Scotland",
+          |      "address": {
+            |        "premises": "14",
+            |        "address_line_1": "Test Avenue",
+            |        "region": "Testshire",
+            |        "postal_code": "TE0 1ST",
+            |        "locality": "testkirk",
+            |        "country": "United Kingdom"
+            |      },
+          |      "appointed_on": "2017-02-10",
+          |      "officer_role": "director",
+          |      "nationality": "British",
+          |      "name": "test testy TESTERSON",
+          |      "name_elements": {
+            |        "other_forenames": "Testy",
+            |        "title": "Mr",
+            |        "surname": "TESTERSON",
+            |        "forename": "Test"
+            |      },
+          |      "appointed_to": {
+            |        "company_name": "TEST CONSULTANCY SERVICES LIMITED",
+            |        "company_number": "SC999999",
+            |        "company_status": "active"
+            |      }
+          |    }
+        |  ],
+        |  "date_of_birth": {
+          |    "month": 3,
+          |    "year": 1964
+          |  },
+        |  "is_corporate_officer": false,
+        |  "start_index": 0,
+        |  "total_results": 1,
+        |  "items_per_page": 35,
+        |  "links": {
+          |    "self": "/officers/zzzV2JvcOvjFzi5f6Te05SbuWS1/appointments"
+          |  },
+        |  "etag": "1db68f787d91310e659ab22690d504363aeb9361"
+        |}
+    """.stripMargin
     val cohoDestinationUrl = s"/cohoFrontEndStubs/company-profile/$crn"
     val  cohOfficerListUrl = s"/cohoFrontEndStubs/company/$crn/officers"
-    "return 404 if no officer list exists but company is incorporated and public profile exists in public api + no data in tx api" in new Setup {
+
+    "return 404 if no officer list exists but company is incorporated  no data in tx api /public api" in new Setup {
       val transactionId = "12345"
+
+      await(incRepo.drop)
       // insert into incorp info db -> company is registered so dont go to tx api
       val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), None, "tp", Some("description"))
       insert(incorpUpdate)
-      //get comp profile data successfully
-      stubGet(cohoDestinationUrl, 200, input)
       //fail to get officer list can be 404 / 500 etc, as long as not 200 this test is valid
-      stubGet(cohOfficerListUrl, 500, "")
+      stubGet(cohOfficerListUrl, 404, "")
       //nothing is in tx api. so overall we will get 404
-      val clientUrl = s"/incorporation-information/$transactionId/company-profile"
+      val clientUrl = s"/incorporation-information/$transactionId/officer-list"
       val response = buildClient(clientUrl).get().futureValue
       response.status shouldBe 404
     }
 
-    "return 200 if company incorporated, company exists in public api + officer list exists in public api" in new Setup {
+    "return 200 if company incorporated, officer list exists in public api" in new Setup {
       val transactionId = "12345"
+      await(incRepo.drop)
       // insert into incorp info db -> company is registered so dont go to tx api
       val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), None, "tp", Some("description"))
       insert(incorpUpdate)
-      //get comp profile data successfully
-      stubGet(cohoDestinationUrl, 200, input)
-      //fail to get officer list can be 404 / 500 etc, as long as not 200 this test is valid
-      stubGet(cohOfficerListUrl, 200, "")
-      //nothing is in tx api. so overall we will get 404
-      val clientUrl = s"/incorporation-information/$transactionId/company-profile"
+      //succeed in getting officer list
+      stubGet(cohOfficerListUrl, 200, officerListInput)
+      stubGet("/cohoFrontEndStubs/get-officer-appointment?.*", 200,names)
+      val clientUrl = s"/incorporation-information/$transactionId/officer-list"
       val response = buildClient(clientUrl).get().futureValue
-      response.status shouldBe 404
+      println(response.body)
+      response.status shouldBe 200
     }
   }
 }
