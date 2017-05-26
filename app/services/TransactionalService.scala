@@ -119,12 +119,10 @@ trait TransactionalService {
 
     val reads: Reads[JsObject] = (
       (__ \ "date_of_birth").json.pickBranch and
-      (__ \ "officer_role").json.pick.map{ role =>
-        Json.obj("officer_role" -> role.as[JsString])
-      } and
-      (__ \ "resigned_on").json.pick.map{ date =>
-        Json.obj("resigned_on" -> date)
-      } and
+      (__ \ "officer_role").read[String].map(role => Json.obj("officer_role" -> role)) and
+      (__ \ "resigned_on").readNullable[String].map(date =>
+        date.fold(Json.obj())(d => Json.obj("resigned_on" -> d))
+      ) and
       (__ \ "links" \ "officer" \ "appointments").json.pick.map{ link =>
         Json.obj("appointment_link" -> link.as[JsString])
       } and

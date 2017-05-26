@@ -840,8 +840,7 @@ class TransactionalServiceSpec extends SCRSSpec {
            |      "name" : "TESTINGTON, Test Tester",
            |      "nationality" : "British",
            |      "occupation" : "Consultant",
-           |      "officer_role" : "director",
-           |      "resigned_on": "$dateTime"
+           |      "officer_role" : "director"
            |    }
            |  ],
            |  "items_per_page" : 35,
@@ -900,7 +899,6 @@ class TransactionalServiceSpec extends SCRSSpec {
           |        "forename" : "Test"
           |      },
           |        "officer_role" : "director",
-          |        "resigned_on" : "$dateTime",
           |        "appointment_link": "/test/link"
           |    }
           |  ]
