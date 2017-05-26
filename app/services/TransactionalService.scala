@@ -19,13 +19,12 @@ package services
 import javax.inject.Inject
 
 import connectors._
-import org.joda.time.DateTime
 import play.api.Logger
+import play.api.libs.functional.syntax._
+import play.api.libs.json.Reads._
 import play.api.libs.json._
 import repositories.{IncorpUpdateMongo, IncorpUpdateRepository}
 import uk.gov.hmrc.play.http.HeaderCarrier
-import play.api.libs.json.Reads._
-import play.api.libs.functional.syntax._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -167,13 +166,14 @@ trait TransactionalService {
     Some(finalJsonResult)
   }
 
-  private[services] def sicCodesConverter(sicCodes:Option[JsValue]):Option[List[JsObject]] = {
-    sicCodes match {
-      case Some(_) => Some(sicCodes.get.as[List[String]]
-        .map(sicCode => Json.obj("sic_code" -> sicCode, "sic_description" -> "")))
-      case None => None
+  private[services] def sicCodesConverter(sicCodes: Option[JsValue]): Option[List[JsObject]] = {
+    sicCodes map { codes =>
+      codes.as[List[String]] map { sicCode =>
+        Json.obj("sic_code" -> sicCode, "sic_description" -> "")
+      }
     }
   }
+
 
   private[services] def checkIfCompIncorporated(transactionId:String): Future[Option[String]] = {
     incorpRepo.getIncorpUpdate(transactionId) map {
