@@ -93,8 +93,8 @@ trait PublicCohoApiConn {
     import play.api.http.Status.NO_CONTENT
 
     val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/officers/$officerAppointmentUrl/appointments?items_per_page=1")
-      case false => (httpNoProxy, hc, s"$officerAppointmentUrl")
+      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl$officerAppointmentUrl")
+      case false => (httpNoProxy, hc, s"$cohoStubbedUrl/get-officer-appointment?fn=testFirstNae&sn=testSurname")
     }
 
     http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
