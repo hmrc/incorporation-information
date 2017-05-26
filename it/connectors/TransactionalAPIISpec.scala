@@ -366,5 +366,110 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
       }
 
     }
+  "getOfficerList" should {
+    val crn = "crn5"
+    val input =
+      s"""
+         |{
+         |  "transaction_id": "12345",
+         |  "company_number": "crn5",
+         |  "company_name": "MOOO LIMITED",
+         |  "company_type": "ltd",
+         |    "type": "ltd",
+         |    "company_status":"foo",
+         |  "registered_office_address": {
+         |    "country": "United Kingdom",
+         |    "address_line_2": "foo2",
+         |    "premises": "98",
+         |    "po_box": "po1",
+         |    "region":"region1",
+         |    "care_of": "care of 1",
+         |    "postal_code": "post1",
+         |    "address_line_1": "lim1",
+         |    "locality": "WORTHING"
+         |  },
+         |  "officers": [
+         |    {
+         |      "date_of_birth": {
+         |        "month": "11",
+         |        "day": "12",
+         |        "year": "1973"
+         |      },
+         |      "name_elements": {
+         |        "forename": "Bob",
+         |        "surname": "Bobbings",
+         |        "other_forenames": "Bimbly Bobblous"
+         |      },
+         |      "address": {
+         |        "country": "United Kingdom",
+         |        "address_line_2": "add2",
+         |        "premises": "98",
+         |        "postal_code": "post1",
+         |        "address_line_1": "lim1",
+         |        "locality": "WORTHING"
+         |      }
+         |    },
+         |    {
+         |      "date_of_birth": {
+         |        "month": "00",
+         |        "day": "01",
+         |        "year": "0002"
+         |      },
+         |      "name_elements": {
+         |        "title": "Mx",
+         |        "forename": "Jingly",
+         |        "surname": "Jingles"
+         |      },
+         |      "address": {
+         |        "country": "England",
+         |        "premises": "111",
+         |        "postal_code": "post2",
+         |        "address_line_1": "add11",
+         |        "locality": "local1"
+         |      }
+         |    }
+         |  ],
+         | "sic_codes": [
+         |
+           |  "84240",
+         |   "01410"
+         |
+           |  ]
+         |}
+         |    """.stripMargin
 
+    val officerListInput = ""
+
+    val cohoDestinationUrl = s"/cohoFrontEndStubs/company-profile/$crn"
+    val  cohOfficerListUrl = s"/cohoFrontEndStubs/company/$crn/officers"
+    "return 404 if no officer list exists but company is incorporated and public profile exists in public api + no data in tx api" in new Setup {
+      val transactionId = "12345"
+      // insert into incorp info db -> company is registered so dont go to tx api
+      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), None, "tp", Some("description"))
+      insert(incorpUpdate)
+      //get comp profile data successfully
+      stubGet(cohoDestinationUrl, 200, input)
+      //fail to get officer list can be 404 / 500 etc, as long as not 200 this test is valid
+      stubGet(cohOfficerListUrl, 500, "")
+      //nothing is in tx api. so overall we will get 404
+      val clientUrl = s"/incorporation-information/$transactionId/company-profile"
+      val response = buildClient(clientUrl).get().futureValue
+      response.status shouldBe 404
+    }
+
+    "return 200 if company incorporated, company exists in public api + officer list exists in public api" in new Setup {
+      val transactionId = "12345"
+      // insert into incorp info db -> company is registered so dont go to tx api
+      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), None, "tp", Some("description"))
+      insert(incorpUpdate)
+      //get comp profile data successfully
+      stubGet(cohoDestinationUrl, 200, input)
+      //fail to get officer list can be 404 / 500 etc, as long as not 200 this test is valid
+      stubGet(cohOfficerListUrl, 200, "")
+      //nothing is in tx api. so overall we will get 404
+      val clientUrl = s"/incorporation-information/$transactionId/company-profile"
+      val response = buildClient(clientUrl).get().futureValue
+      response.status shouldBe 404
+    }
+  }
 }
