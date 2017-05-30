@@ -26,6 +26,7 @@ import org.mockito.Mockito._
 import org.mockito.{ArgumentCaptor, Matchers}
 import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.play.http._
+import uk.gov.hmrc.play.http.logging.Authorization
 import uk.gov.hmrc.play.http.ws.{WSHttp, WSProxy}
 import utils.{FeatureSwitch, SCRSFeatureSwitches}
 
@@ -320,6 +321,13 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
       intercept[Throwable](await(connector.getOfficerAppointment(testOfficerId)))
 
       urlCaptor.getValue shouldBe "stubbed/get-officer-appointment?fn=testFirstNae&sn=testSurname"
+    }
+  }
+
+  "appendAPIAuthHeader" should {
+
+    "return a HeaderCarrier with the correct Basic auth token" in new Setup {
+      connector.appendAPIAuthHeader(hc).authorization shouldBe Some(Authorization("Basic Q29ob1B1YmxpY1Rva2Vu"))
     }
   }
 }
