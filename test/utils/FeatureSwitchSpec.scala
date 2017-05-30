@@ -40,31 +40,32 @@ class FeatureSwitchSpec extends UnitSpec with BeforeAndAfterEach {
       FeatureSwitch("test") shouldBe a[BooleanFeatureSwitch]
     }
 
-    "create an instance of TimedFeatureSwitch which inherits FeatureSwitch" in {
+    "create an instance of EnabledTimedFeatureSwitch which inherits FeatureSwitch" in {
       System.setProperty("feature.test", "2016-05-05T14:30:00Z_2016-05-08T14:30:00Z")
 
       FeatureSwitch("test") shouldBe a[FeatureSwitch]
       FeatureSwitch("test") shouldBe a[TimedFeatureSwitch]
+      FeatureSwitch("test") shouldBe a[EnabledTimedFeatureSwitch]
     }
 
-    "return an enabled TimedFeatureSwitch when only the end datetime is specified and is in the future" in {
+    "return an enabled EnabledTimedFeatureSwitch when only the end datetime is specified and is in the future" in {
       System.setProperty("feature.test", "X_9999-05-08T14:30:00Z")
 
-      FeatureSwitch("test") shouldBe a[TimedFeatureSwitch]
+      FeatureSwitch("test") shouldBe a[EnabledTimedFeatureSwitch]
       FeatureSwitch("test").enabled shouldBe true
     }
 
-    "return a disabled TimedFeatureSwitch when only the end datetime is specified and is in the past" in {
+    "return a disabled EnabledTimedFeatureSwitch when only the end datetime is specified and is in the past" in {
       System.setProperty("feature.test", "X_2000-05-08T14:30:00Z")
 
-      FeatureSwitch("test") shouldBe a[TimedFeatureSwitch]
+      FeatureSwitch("test") shouldBe a[EnabledTimedFeatureSwitch]
       FeatureSwitch("test").enabled shouldBe false
     }
 
-    "return an enabled TimedFeatureSwitch when only the start datetime is specified and is in the past" in {
+    "return an enabled EnabledTimedFeatureSwitch when only the start datetime is specified and is in the past" in {
       System.setProperty("feature.test", "2000-05-05T14:30:00Z_X")
 
-      FeatureSwitch("test") shouldBe a[TimedFeatureSwitch]
+      FeatureSwitch("test") shouldBe a[EnabledTimedFeatureSwitch]
       FeatureSwitch("test").enabled shouldBe true
     }
 
@@ -72,6 +73,41 @@ class FeatureSwitchSpec extends UnitSpec with BeforeAndAfterEach {
       System.setProperty("feature.test", "X_X")
 
       FeatureSwitch("test").enabled shouldBe false
+    }
+
+    "create an instance of DisabledTimedFeatureSwitch which inherits FeatureSwitch" in {
+      System.setProperty("feature.test", "!2016-05-05T14:30:00Z_2016-05-08T14:30:00Z")
+
+      FeatureSwitch("test") shouldBe a[FeatureSwitch]
+      FeatureSwitch("test") shouldBe a[TimedFeatureSwitch]
+      FeatureSwitch("test") shouldBe a[DisabledTimedFeatureSwitch]
+    }
+
+    "return an enabled DisabledTimedFeatureSwitch when only the end datetime is specified and is in the future" in {
+      System.setProperty("feature.test", "!X_9999-05-08T14:30:00Z")
+
+      FeatureSwitch("test") shouldBe a[DisabledTimedFeatureSwitch]
+      FeatureSwitch("test").enabled shouldBe false
+    }
+
+    "return a disabled DisabledTimedFeatureSwitch when only the end datetime is specified and is in the past" in {
+      System.setProperty("feature.test", "!X_2000-05-08T14:30:00Z")
+
+      FeatureSwitch("test") shouldBe a[DisabledTimedFeatureSwitch]
+      FeatureSwitch("test").enabled shouldBe true
+    }
+
+    "return an enabled DisabledTimedFeatureSwitch when only the start datetime is specified and is in the past" in {
+      System.setProperty("feature.test", "!2000-05-05T14:30:00Z_X")
+
+      FeatureSwitch("test") shouldBe a[DisabledTimedFeatureSwitch]
+      FeatureSwitch("test").enabled shouldBe false
+    }
+
+    "return an enabled DisabledTimedFeatureSwitch when neither date is specified" in {
+      System.setProperty("feature.test", "!X_X")
+
+      FeatureSwitch("test").enabled shouldBe true
     }
   }
 
@@ -123,10 +159,16 @@ class FeatureSwitchSpec extends UnitSpec with BeforeAndAfterEach {
       FeatureSwitch.getProperty("test") shouldBe BooleanFeatureSwitch("test", enabled = false)
     }
 
-    "return a TimedFeatureSwitch when the set system property is a date" in {
+    "return a EnabledTimedFeatureSwitch when the set system property is a date" in {
       System.setProperty("feature.test", "2016-05-05T14:30:00Z_2016-05-08T14:30:00Z")
 
-      FeatureSwitch.getProperty("test") shouldBe a[TimedFeatureSwitch]
+      FeatureSwitch.getProperty("test") shouldBe a[EnabledTimedFeatureSwitch]
+    }
+
+    "return a DisabledTimedFeatureSwitch when the set system property is a date" in {
+      System.setProperty("feature.test", "!2016-05-05T14:30:00Z_2016-05-08T14:30:00Z")
+
+      FeatureSwitch.getProperty("test") shouldBe a[DisabledTimedFeatureSwitch]
     }
   }
 
@@ -183,61 +225,71 @@ class FeatureSwitchSpec extends UnitSpec with BeforeAndAfterEach {
     "be enabled when within the specified time range" in {
       val now = new DateTime("2000-01-23T14:30:00.00Z")
 
-      TimedFeatureSwitch("test", startDateTime, endDatetime, now).enabled shouldBe true
+      EnabledTimedFeatureSwitch("test", startDateTime, endDatetime, now).enabled shouldBe true
+      DisabledTimedFeatureSwitch("test", startDateTime, endDatetime, now).enabled shouldBe false
     }
 
     "be enabled when current time is equal to the start time" in {
       val now = new DateTime(START)
 
-      TimedFeatureSwitch("test", startDateTime, endDatetime, now).enabled shouldBe true
+      EnabledTimedFeatureSwitch("test", startDateTime, endDatetime, now).enabled shouldBe true
+      DisabledTimedFeatureSwitch("test", startDateTime, endDatetime, now).enabled shouldBe false
     }
 
     "be enabled when current time is equal to the end time" in {
       val now = new DateTime(END)
 
-      TimedFeatureSwitch("test", startDateTime, endDatetime, now).enabled shouldBe true
+      EnabledTimedFeatureSwitch("test", startDateTime, endDatetime, now).enabled shouldBe true
+      DisabledTimedFeatureSwitch("test", startDateTime, endDatetime, now).enabled shouldBe false
     }
 
     "be disabled when current time is outside the specified time range" in {
       val now = new DateTime("1900-01-23T12:00:00Z")
 
-      TimedFeatureSwitch("test", startDateTime, endDatetime, now).enabled shouldBe false
+      EnabledTimedFeatureSwitch("test", startDateTime, endDatetime, now).enabled shouldBe false
+      DisabledTimedFeatureSwitch("test", startDateTime, endDatetime, now).enabled shouldBe true
     }
 
     "be disabled when current time is in the future of the specified time range with an unspecified start" in {
       val now = new DateTime("2100-01-23T12:00:00Z")
 
-      TimedFeatureSwitch("test", None, endDatetime, now).enabled shouldBe false
+      EnabledTimedFeatureSwitch("test", None, endDatetime, now).enabled shouldBe false
+      DisabledTimedFeatureSwitch("test", None, endDatetime, now).enabled shouldBe true
     }
 
     "be enabled when current time is in the past of the specified time range with an unspecified start" in {
       val now = new DateTime("1900-01-23T12:00:00Z")
 
-      TimedFeatureSwitch("test", None, endDatetime, now).enabled shouldBe true
+      EnabledTimedFeatureSwitch("test", None, endDatetime, now).enabled shouldBe true
+      DisabledTimedFeatureSwitch("test", None, endDatetime, now).enabled shouldBe false
     }
 
     "be enabled when current time is in the range of the specified time range with an unspecified start" in {
       val now = new DateTime("2000-01-23T14:30:00.00Z")
 
-      TimedFeatureSwitch("test", None, endDatetime, now).enabled shouldBe true
+      EnabledTimedFeatureSwitch("test", None, endDatetime, now).enabled shouldBe true
+      DisabledTimedFeatureSwitch("test", None, endDatetime, now).enabled shouldBe false
     }
 
     "be enabled when current time is in the future of the specified time range with an unspecified end" in {
       val now = new DateTime("2100-01-23T12:00:00Z")
 
-      TimedFeatureSwitch("test", startDateTime, None, now).enabled shouldBe true
+      EnabledTimedFeatureSwitch("test", startDateTime, None, now).enabled shouldBe true
+      DisabledTimedFeatureSwitch("test", startDateTime, None, now).enabled shouldBe false
     }
 
     "be disabled when current time is in the past of the specified time range with an unspecified end" in {
       val now = new DateTime("1900-01-23T12:00:00Z")
 
-      TimedFeatureSwitch("test", startDateTime, None, now).enabled shouldBe false
+      EnabledTimedFeatureSwitch("test", startDateTime, None, now).enabled shouldBe false
+      DisabledTimedFeatureSwitch("test", startDateTime, None, now).enabled shouldBe true
     }
 
     "be enabled when current time is in the range of the specified time range with an unspecified end" in {
       val now = new DateTime("2000-01-23T14:30:00.00Z")
 
-      TimedFeatureSwitch("test", None, endDatetime, now).enabled shouldBe true
+      EnabledTimedFeatureSwitch("test", None, endDatetime, now).enabled shouldBe true
+      DisabledTimedFeatureSwitch("test", None, endDatetime, now).enabled shouldBe false
     }
   }
 

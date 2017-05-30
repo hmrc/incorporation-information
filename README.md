@@ -115,7 +115,8 @@ Responds with:
 
 A ```200``` response:
 ```json
-  [
+{
+  "officers": [
     {
       "officer_role": "director",
       "date_of_birth": {
@@ -139,6 +140,7 @@ A ```200``` response:
       }
     }
   ]
+}
 ```
 
 A ```404``` response: ```no body```
