@@ -9,7 +9,7 @@ This is a placeholder README.md for a new repository
 This code is open source software licensed under the [Apache 2.0 License]("http://www.apache.org/licenses/LICENSE-2.0.html")
 
 ### API
-
+ 
 | Path                                                                                      | Supported Methods | Description |
 | ----------------------------------------------------------------------------------------- | ----------------- | ----------- |
 |```/incorporation-information/subscribe/:transactionId/regime/:regime/subscriber/:sub```   |       POST        | Attempts to fetch incorporation data keyed on the transactionId and if it can't be found the service registers an interest in the incorporation with the transaction id provided and when retrieved, will fire the incorporation data to the provided callback url
