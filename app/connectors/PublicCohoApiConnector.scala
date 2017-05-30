@@ -18,6 +18,7 @@ package connectors
 
 import javax.inject.Inject
 
+import com.ning.http.util.Base64
 import config.{MicroserviceConfig, WSHttp, WSHttpProxy}
 import play.api.Logger
 import play.api.libs.json.JsValue
@@ -144,10 +145,11 @@ trait PublicCohoApiConn {
       throw ex
   }
 
-
   private[connectors] def useProxy: Boolean = featureSwitch.transactionalAPI.enabled
 
   private[connectors] def appendAPIAuthHeader(hc: HeaderCarrier): HeaderCarrier = {
-    hc.copy(authorization = Some(Authorization(s"Bearer $cohoPublicApiAuthToken")))
+    val encodedToken = Base64.encode(cohoPublicApiAuthToken.getBytes())
+    Logger.debug(s"[Public API auth token] - $encodedToken")
+    hc.copy(authorization = Some(Authorization(s"Basic $encodedToken")))
   }
 }
