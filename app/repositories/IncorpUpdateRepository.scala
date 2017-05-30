@@ -62,7 +62,7 @@ class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])
   }
 
   def getIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]] = {
-    collection.find(selector(transactionId)).one[IncorpUpdate].map{s => print("======== repo" + s); s}
+    collection.find(selector(transactionId)).one[IncorpUpdate]
   }
 }
 
