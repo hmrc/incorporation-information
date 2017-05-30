@@ -1,5 +1,5 @@
 # incorporation-information
- 
+
 [![Build Status](https://travis-ci.org/hmrc/incorporation-information.svg)](https://travis-ci.org/hmrc/incorporation-information) [ ![Download](https://api.bintray.com/packages/hmrc/releases/incorporation-information/images/download.svg) ](https://bintray.com/hmrc/releases/incorporation-information/_latestVersion)
 
 This is a placeholder README.md for a new repository 
