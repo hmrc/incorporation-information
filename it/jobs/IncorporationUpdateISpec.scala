@@ -59,16 +59,14 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
     val queueRepo = app.injector.instanceOf[QueueMongo].repo
 
     def insert(u: QueuedIncorpUpdate) = await(queueRepo.collection.insert(u)(QueuedIncorpUpdate.format, global))
-  }
 
-  override def beforeEach() = new Setup {
-    Seq(incorpRepo, timepointRepo, queueRepo) map { r =>
-      await(r.drop)
-      await(r.ensureIndexes)
-    }
-  }
+    await(incorpRepo.drop)
+    await(timepointRepo.drop)
+    await(queueRepo.drop)
 
-  override def afterEach() = new Setup {
+    await(incorpRepo.ensureIndexes)
+    await(timepointRepo.ensureIndexes)
+    await(queueRepo.ensureIndexes)
   }
 
   def setupAuditMocks() = {

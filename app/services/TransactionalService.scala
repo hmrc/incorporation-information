@@ -28,12 +28,13 @@ import uk.gov.hmrc.play.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.util.control.NoStackTrace
 
 sealed trait TransactionalServiceException extends Throwable {
   val message = this.getMessage
 }
 case class NoItemsFoundException() extends TransactionalServiceException
-case class FailedToFetchOfficerListFromTxAPI() extends TransactionalServiceException
+case class FailedToFetchOfficerListFromTxAPI() extends TransactionalServiceException with NoStackTrace
 
 class TransactionalServiceImpl @Inject()(val connector: IncorporationAPIConnector,
                                          val incorpMongo: IncorpUpdateMongo,
@@ -146,12 +147,10 @@ trait TransactionalService {
       val companyStatus = (js \ "company_status").toOption
       val companyNumber = (js \ "company_number").as[String]
       val sicCodes = (js \ "sic_codes").toOption
-      val registeredOffice = (js \ "registered_office_address").as[JsObject]
-      val registeredOfficeAddressPruned = (registeredOffice - ("care_of")
-      - ("region") - ("po_box"))
+      val registeredOffice = (js \ "registered_office_address").toOption
       val initialRes = (Json.obj("company_type" -> Json.toJson(companyType))
       + ("type" -> Json.toJson(companyType))
-      + ("registered_office_address" -> registeredOfficeAddressPruned)
+
       + ("company_name" -> Json.toJson(companyName))
       + ("company_number" -> Json.toJson(companyNumber)))
     val res = sicCodesConverter(sicCodes) match {
@@ -159,9 +158,15 @@ trait TransactionalService {
        case None => initialRes
      }
 
-    val finalJsonResult = companyStatus match {
+    val res2 = companyStatus match {
       case Some(s) => res + ("company_status" -> Json.toJson(s.as[String]))
       case _ => res
+    }
+    val finalJsonResult = registeredOffice match {
+      case Some(s) => {val registeredOfficeAddressPruned = (s.as[JsObject] - ("care_of")
+    - ("region") - ("po_box"))
+        res2 + ("registered_office_address" -> registeredOfficeAddressPruned)}
+      case None => res2
     }
     Some(finalJsonResult)
   }

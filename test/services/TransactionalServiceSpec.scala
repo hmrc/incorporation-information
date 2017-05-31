@@ -408,98 +408,131 @@ class TransactionalServiceSpec extends SCRSSpec {
       "return JSValue containing formatted data successfully" in new Setup {
         val input = Json.parse(
           s"""
-             |{
-             |  "transaction_id": "fef",
-             |  "company_name": "MOOO LIMITED",
-             |  "type": "ltd",
-             |  "company_status": "foo",
-             |  "company_number": "number",
-             |  "registered_office_address": {
-             |    "country": "United Kingdom",
-             |    "address_line_2": "foo2",
-             |    "premises": "prem1",
-             |    "postal_code": "post1",
-             |    "address_line_1": "address1",
-             |    "locality": "locality1",
-             |    "care_of": "caring1",
-             |    "po_box": "poB",
-             |    "region": "region1"
-             |  },
-             |  "officers": [
-             |    {
-             |      "date_of_birth": {
-             |        "month": "11",
-             |        "day": "12",
-             |        "year": "1973"
+             {
+             |   "accounts" : {
+             |      "accounting_reference_date" : {
+             |         "day" : "integer",
+             |         "month" : "integer"
              |      },
-             |      "name_elements": {
-             |        "forename": "Bob",
-             |        "surname": "Bobbings",
-             |        "other_forenames": "Bimbly Bobblous"
+             |      "last_accounts" : {
+             |         "made_up_to" : "date",
+             |         "period_end_on" : "date",
+             |         "period_start_on" : "date",
+             |         "type" : "string"
              |      },
-             |      "address": {
-             |        "country": "United Kingdom",
-             |        "address_line_2": "address22",
-             |        "premises": "Prem2",
-             |        "postal_code": "post2",
-             |        "address_line_1": "add11",
-             |        "locality": "locality2"
+             |      "next_accounts" : {
+             |         "due_on" : "date",
+             |         "overdue" : "boolean",
+             |         "period_end_on" : "date",
+             |         "period_start_on" : "date"
+             |      },
+             |      "next_due" : "date",
+             |      "next_made_up_to" : "date",
+             |      "overdue" : "boolean"
+             |   },
+             |   "annual_return" : {
+             |      "last_made_up_to" : "date",
+             |      "next_due" : "date",
+             |      "next_made_up_to" : "date",
+             |      "overdue" : "boolean"
+             |   },
+             |   "branch_company_details" : {
+             |      "business_activity" : "string",
+             |      "parent_company_name" : "string",
+             |      "parent_company_number" : "string"
+             |   },
+             |   "can_file" : "boolean",
+             |   "company_name" : "string",
+             |   "company_number" : "string",
+             |   "company_status" : "string",
+             |   "company_status_detail" : "string",
+             |   "confirmation_statement" : {
+             |      "last_made_up_to" : "date",
+             |      "next_due" : "date",
+             |      "next_made_up_to" : "date",
+             |      "overdue" : "boolean"
+             |   },
+             |   "date_of_cessation" : "date",
+             |   "date_of_creation" : "date",
+             |   "etag" : "string",
+             |   "foreign_company_details" : {
+             |      "accounting_requirement" : {
+             |         "foreign_account_type" : "string",
+             |         "terms_of_account_publication" : "string"
+             |      },
+             |      "accounts" : {
+             |         "account_period_from" : {
+             |            "day" : "integer",
+             |            "month" : "integer"
+             |         },
+             |         "account_period_to" : {
+             |            "day" : "integer",
+             |            "month" : "integer"
+             |         },
+             |         "must_file_within" : {
+             |            "months" : "integer"
+             |         }
+             |      },
+             |      "business_activity" : "string",
+             |      "company_type" : "string",
+             |      "governed_by" : "string",
+             |      "is_a_credit_finance_institution" : "boolean",
+             |      "originating_registry" : {
+             |         "country" : "string",
+             |         "name" : "string"
+             |      },
+             |      "registration_number" : "string"
+             |   },
+             |   "has_been_liquidated" : "boolean",
+             |   "has_charges" : "boolean",
+             |   "has_insolvency_history" : "boolean",
+             |   "is_community_interest_company" : "boolean",
+             |   "jurisdiction" : "string",
+             |   "last_full_members_list_date" : "date",
+             |   "links" : {
+             |      "charges" : "string",
+             |      "filing_history" : "string",
+             |      "insolvency" : "string",
+             |      "officers" : "string",
+             |      "persons_with_significant_control" : "string",
+             |      "persons_with_significant_control_statements" : "string",
+             |      "registers" : "string",
+             |      "self" : "string"
+             |   },
+             |   "partial_data_available" : "string",
+             |   "previous_company_names" : [
+             |      {
+             |         "ceased_on" : "date",
+             |         "effective_from" : "date",
+             |         "name" : "string"
              |      }
-             |    },
-             |    {
-             |      "date_of_birth": {
-             |        "month": "07",
-             |        "day": "12",
-             |        "year": "1988"
-             |      },
-             |      "name_elements": {
-             |        "title": "Mx",
-             |        "forename": "Jingly",
-             |        "surname": "Jingles"
-             |      },
-             |      "address": {
-             |        "country": "England",
-             |        "premises": "Prem3",
-             |        "postal_code": "post3",
-             |        "address_line_1": "Add111",
-             |        "locality": "locality3"
-             |      }
-             |    }
-             |  ],
-             |  "sic_codes": [
-             |    "84240","01410"
-             |  ]
-             |             }
+             |   ],
+             |   "registered_office_is_in_dispute" : "boolean",
+             |   "sic_codes" : [
+             |      "string"
+             |   ],
+             |   "type" : "string",
+             |   "undeliverable_registered_office_address" : "boolean"
+             |}
     """.stripMargin).as[JsObject]
 
 
         val expected = Json.parse(
           s"""
              |{
-             |  "company_name": "MOOO LIMITED",
-             |  "type": "ltd",
-             |  "company_type": "ltd",
-             |  "company_number": "number",
-             |  "company_status": "foo",
+             |  "company_name": "string",
+             |  "type": "string",
+             |  "company_type": "string",
+             |  "company_number": "string",
+             |  "company_status": "string",
              |
-             |  "registered_office_address": {
-             |    "country": "United Kingdom",
-             |    "address_line_2": "foo2",
-             |    "premises": "prem1",
-             |    "postal_code": "post1",
-             |    "address_line_1": "address1",
-             |    "locality": "locality1"
-             |  },
              |
              |   "sic_codes": [
              |    {
              |      "sic_description": "",
-             |      "sic_code": "84240"
-             |    },
-             |    {
-             |      "sic_description": "",
-             |      "sic_code": "01410"
+             |      "sic_code": "string"
              |    }
+             |
              |  ]
              |             }
     """.stripMargin).as[JsObject]
