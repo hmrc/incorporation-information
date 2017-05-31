@@ -130,11 +130,11 @@ trait TransactionalService {
         (__ \ "address").json.pickBranch.map{ addr =>
         Json.obj("address" -> Json.obj(
           "address_line_1" -> (addr \ "address" \ "address_line_1").as[String],
-          "country" -> (addr \ "address" \ "country").as[String],
           "locality" -> (addr \ "address" \"locality").as[String]
         )).deepMerge(extractAndFold(addr, "address_line_2"))
           .deepMerge(extractAndFold(addr, "premises"))
           .deepMerge(extractAndFold(addr, "postal_code"))
+          .deepMerge(extractAndFold(addr, "country"))
       }
     ) reduce
 

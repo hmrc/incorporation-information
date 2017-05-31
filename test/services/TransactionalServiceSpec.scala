@@ -764,6 +764,63 @@ class TransactionalServiceSpec extends SCRSSpec {
       val result = service.transformOfficerList(publicOfficerJson)
       result shouldBe expected
     }
+
+    "transform the supplied json into the pre-incorp officer list json structure when an officers address does not contain a country" in new Setup {
+
+      val publicOfficerJsonWithoutCountry = Json.parse(
+        s"""
+           |{
+           |   "address" : {
+           |      "premises" : "14",
+           |      "address_line_1" : "test avenue",
+           |      "address_line_2" : "test line 2",
+           |      "locality" : "testville",
+           |      "postal_code" : "TE1 1ST",
+           |      "region" : "testshire"
+           |    },
+           |    "appointed_on" : 1494866745000,
+           |    "country_of_residence" : "England",
+           |    "date_of_birth" : {
+           |      "month" : 3,
+           |      "year" : 1990
+           |    },
+           |    "former_names" : [ ],
+           |    "links" : {
+           |      "officer" : {
+           |        "appointments" : "/test/link"
+           |      }
+           |    },
+           |    "name" : "TESTINGTON, Test Tester",
+           |    "nationality" : "British",
+           |    "occupation" : "Consultant",
+           |    "officer_role" : "director",
+           |    "resigned_on" : "$dateTime"
+           | }
+      """.stripMargin)
+
+      val expected = Json.parse(
+        s"""
+           |{
+           |  "date_of_birth": {
+           |    "month": 3,
+           |    "year": 1990
+           |  },
+           |  "address": {
+           |    "address_line_1": "test avenue",
+           |    "address_line_2": "test line 2",
+           |    "premises": "14",
+           |    "postal_code": "TE1 1ST",
+           |    "locality" : "testville"
+           |  },
+           |  "officer_role": "director",
+           |  "resigned_on" : "$dateTime",
+           |  "appointment_link": "/test/link"
+           |}
+        """.stripMargin)
+
+      val result = service.transformOfficerList(publicOfficerJsonWithoutCountry)
+      result shouldBe expected
+    }
   }
 
   "fetchOfficerListFromPublicAPI" should {
