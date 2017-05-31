@@ -109,6 +109,7 @@ trait TransactionalService {
 
   private[services] def transformOfficerAppointment(publicAppointment: JsValue): JsObject = {
     Json.obj("name_elements" -> ((publicAppointment \ "items").head.getOrElse(throw new NoItemsFoundException) \ "name_elements").get.as[JsObject])
+
   }
 
   private[services] def transformOfficerList(publicOfficerList: JsValue): JsObject = {
@@ -126,7 +127,9 @@ trait TransactionalService {
         (__ \ "links" \ "officer" \ "appointments").json.pick.map{ link =>
             Json.obj("appointment_link" -> link.as[JsString])
         } and
-        (__ \ "date_of_birth").json.pickBranch and
+        (__ \ "date_of_birth").readNullable[JsObject].map { oDOB =>
+          oDOB.fold(Json.obj())(dob => Json.obj("date_of_birth" -> dob))
+        } and
         (__ \ "address").json.pickBranch.map{ addr =>
         Json.obj("address" -> Json.obj(
           "address_line_1" -> (addr \ "address" \ "address_line_1").as[String],
