@@ -668,12 +668,16 @@ class TransactionalServiceSpec extends SCRSSpec {
 
     "transform and return the supplied json correctly" in new Setup {
       val result = await(service.transformOfficerAppointment(officerAppointmentJson))
-      result shouldBe expected
+      result shouldBe Some(expected)
     }
 
     "return a None if the key 'name_elements' cannot be found in the supplied Json" in new Setup {
       val incorrectJson = Json.parse("""{"test":"json"}""")
       intercept[NoItemsFoundException](await(service.transformOfficerAppointment(incorrectJson)))
+    }
+    "correctly return None if items can be found but Name elements cannot be found" in new Setup {
+      val res = await(service.transformOfficerAppointment(Json.parse("""{"items":[{"foo":"bar"}]}""")))
+      res shouldBe None
     }
   }
 
