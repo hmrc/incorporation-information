@@ -484,42 +484,55 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase with SCRSMongoS
                                 | ]}
       """.stripMargin
 
+    val naturalName =
+      s"""
+         |      "name": "test testy TESTERSON",
+         |      "name_elements": {
+         |        "other_forenames": "Testy",
+         |        "title": "Mr",
+         |        "surname": "TESTERSON",
+         |        "forename": "Test"
+         |      }
+       """.stripMargin
 
-    val names =
+    val corporateName =
+      s"""
+         |      "name": "test testy TESTERSON"
+       """.stripMargin
+
+    def appointment1(nameJson: String, role: String) =
+      s"""|{
+          |      "links": {
+          |        "company": "/company/SC999999"
+          |      },
+          |      "occupation": "Consultant",
+          |      "country_of_residence": "Scotland",
+          |      "address": {
+          |        "premises": "14",
+          |        "address_line_1": "Test Avenue",
+          |        "region": "Testshire",
+          |        "postal_code": "TE0 1ST",
+          |        "locality": "testkirk",
+          |        "country": "United Kingdom"
+          |      },
+          |      "appointed_on": "2017-02-10",
+          |      "officer_role": "${role}",
+          |      "nationality": "British",
+          |      ${nameJson},
+          |      "appointed_to": {
+          |        "company_name": "TEST CONSULTANCY SERVICES LIMITED",
+          |        "company_number": "SC999999",
+          |        "company_status": "active"
+          |      }
+          |}
+    """.stripMargin
+
+    def appointments(appointmentJson: String) =
       s"""|{
         |  "name": "test testy TESTERSON",
         |  "kind": "personal-appointment",
         |  "items": [
-        |    {
-          |      "links": {
-            |        "company": "/company/SC999999"
-            |      },
-          |      "occupation": "Consultant",
-          |      "country_of_residence": "Scotland",
-          |      "address": {
-            |        "premises": "14",
-            |        "address_line_1": "Test Avenue",
-            |        "region": "Testshire",
-            |        "postal_code": "TE0 1ST",
-            |        "locality": "testkirk",
-            |        "country": "United Kingdom"
-            |      },
-          |      "appointed_on": "2017-02-10",
-          |      "officer_role": "director",
-          |      "nationality": "British",
-          |      "name": "test testy TESTERSON",
-          |      "name_elements": {
-            |        "other_forenames": "Testy",
-            |        "title": "Mr",
-            |        "surname": "TESTERSON",
-            |        "forename": "Test"
-            |      },
-          |      "appointed_to": {
-            |        "company_name": "TEST CONSULTANCY SERVICES LIMITED",
-            |        "company_number": "SC999999",
-            |        "company_status": "active"
-            |      }
-          |    }
+        |  ${appointmentJson}
         |  ],
         |  "date_of_birth": {
           |    "month": 3,
@@ -553,7 +566,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase with SCRSMongoS
       response.status shouldBe 404
     }
 
-    "return 200 if company incorporated, officer list exists in public api" in new Setup {
+    "return 200 if company incorporated, officer list exists in public api with natural director" in new Setup {
       val transactionId = "12345"
       await(incRepo.drop)
       // insert into incorp info db -> company is registered so dont go to tx api
@@ -561,11 +574,26 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase with SCRSMongoS
       insert(incorpUpdate)
       //succeed in getting officer list
       stubGet(cohOfficerListUrl, 200, officerListInput)
-      stubGet("/cohoFrontEndStubs/get-officer-appointment?.*", 200,names)
+      stubGet("/cohoFrontEndStubs/get-officer-appointment?.*", 200,appointments(appointment1(naturalName, "director")))
       val clientUrl = s"/incorporation-information/$transactionId/officer-list"
       val response = buildClient(clientUrl).get().futureValue
-      println(response.body)
       response.status shouldBe 200
+      // TODO - Add assertions for response
+    }
+
+    "return 200 if company incorporated, officer list exists in public api with corporate director" in new Setup {
+      val transactionId = "12345"
+      await(incRepo.drop)
+      // insert into incorp info db -> company is registered so dont go to tx api
+      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), None, "tp", Some("description"))
+      insert(incorpUpdate)
+      //succeed in getting officer list
+      stubGet(cohOfficerListUrl, 200, officerListInput)
+      stubGet("/cohoFrontEndStubs/get-officer-appointment?.*", 200,appointments(appointment1(corporateName, "corporate-director")))
+      val clientUrl = s"/incorporation-information/$transactionId/officer-list"
+      val response = buildClient(clientUrl).get().futureValue
+      response.status shouldBe 200
+      // TODO - Add assertions for response
     }
   }
 }

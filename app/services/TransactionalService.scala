@@ -91,7 +91,10 @@ trait TransactionalService {
         Future.sequence(listOfOfficers map { officer =>
           val appointmentUrl = (officer \ "links" \ "officer" \ "appointments").as[String]
           fetchOfficerAppointment(appointmentUrl) map { officerAppointment =>
-            transformOfficerList(officer) ++ transformOfficerAppointment(officerAppointment)
+            transformOfficerAppointment(officerAppointment) match {
+              case Some(oA) => oA ++ transformOfficerList(officer)
+              case _ => transformOfficerList(officer)
+            }
           }
         }) map { listTransformedOfficers =>
           Json.obj("officers" -> Json.toJson(listTransformedOfficers).as[JsArray])
@@ -107,9 +110,11 @@ trait TransactionalService {
     publicCohoConnector.getOfficerAppointment(url) map (_.as[JsObject])
   }
 
-  private[services] def transformOfficerAppointment(publicAppointment: JsValue): JsObject = {
-    Json.obj("name_elements" -> ((publicAppointment \ "items").head.getOrElse(throw new NoItemsFoundException) \ "name_elements").get.as[JsObject])
-
+  private[services] def transformOfficerAppointment(publicAppointment: JsValue): Option[JsObject] = {
+    ((publicAppointment \ "items").head.getOrElse(throw new NoItemsFoundException) \ "name_elements").toOption match {
+    case Some(a) => Some(Json.obj("name_elements" -> a.as[JsObject]))
+    case _ => None
+ }
   }
 
   private[services] def transformOfficerList(publicOfficerList: JsValue): JsObject = {

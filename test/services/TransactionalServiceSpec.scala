@@ -668,12 +668,16 @@ class TransactionalServiceSpec extends SCRSSpec {
 
     "transform and return the supplied json correctly" in new Setup {
       val result = await(service.transformOfficerAppointment(officerAppointmentJson))
-      result shouldBe expected
+      result shouldBe Some(expected)
     }
 
     "return a None if the key 'name_elements' cannot be found in the supplied Json" in new Setup {
       val incorrectJson = Json.parse("""{"test":"json"}""")
       intercept[NoItemsFoundException](await(service.transformOfficerAppointment(incorrectJson)))
+    }
+    "correctly return None if items can be found but Name elements cannot be found" in new Setup {
+      val res = await(service.transformOfficerAppointment(Json.parse("""{"items":[{"foo":"bar"}]}""")))
+      res shouldBe None
     }
   }
 
@@ -865,6 +869,46 @@ class TransactionalServiceSpec extends SCRSSpec {
         .thenReturn(Future.successful(Some(publicOfficerListJson(url))))
       when(mockCohoConnector.getOfficerAppointment(any())(any()))
         .thenReturn(Future.successful(officerAppointmentJson))
+
+      val result = await(service.fetchOfficerListFromPublicAPI(transactionId, crn))
+      result shouldBe expected
+    }
+
+    "return an officer list without name elements when none are provided by the public API" in new Setup {
+
+      val expected = Json.parse(
+        s"""
+           |{
+           |  "officers" : [
+           |    {
+           |      "date_of_birth" : {
+           |        "month" : 3,
+           |        "year" : 1990
+           |      },
+           |      "address" : {
+           |        "address_line_1" : "test avenue",
+           |        "country" : "United Kingdom",
+           |        "locality" : "testville",
+           |        "premises" : "14",
+           |        "postal_code" : "TE1 1ST"
+           |      },
+           |      "officer_role" : "director",
+           |      "resigned_on" : "$dateTime",
+           |      "appointment_link":"/test/link"
+           |    }
+           |  ]
+           |}
+        """.stripMargin)
+
+      val officerAppointmentJsonWithoutNameElements = {
+        val items = Json.obj("items" -> JsArray((officerAppointmentJson \ "items").as[Seq[JsObject]].map(_ - "name_elements")))
+        officerAppointmentJson.as[JsObject] deepMerge items
+      }
+
+      when(mockCohoConnector.getOfficerList(any())(any()))
+        .thenReturn(Future.successful(Some(publicOfficerListJson(url))))
+      when(mockCohoConnector.getOfficerAppointment(any())(any()))
+        .thenReturn(Future.successful(officerAppointmentJsonWithoutNameElements))
 
       val result = await(service.fetchOfficerListFromPublicAPI(transactionId, crn))
       result shouldBe expected
