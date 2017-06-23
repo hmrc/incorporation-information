@@ -91,8 +91,8 @@ trait TransactionalService {
         Future.sequence(listOfOfficers map { officer =>
           val appointmentUrl = (officer \ "links" \ "officer" \ "appointments").as[String]
           fetchOfficerAppointment(appointmentUrl) map { officerAppointment =>
-            transformOfficerAppointment(officerAppointment).map{
-              case a:JsObject => a ++ transformOfficerList(officer)
+            transformOfficerAppointment(officerAppointment) match {
+              case Some(oA) => oA ++ transformOfficerList(officer)
               case _ => transformOfficerList(officer)
             }
           }

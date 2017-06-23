@@ -874,6 +874,46 @@ class TransactionalServiceSpec extends SCRSSpec {
       result shouldBe expected
     }
 
+    "return an officer list without name elements when none are provided by the public API" in new Setup {
+
+      val expected = Json.parse(
+        s"""
+           |{
+           |  "officers" : [
+           |    {
+           |      "date_of_birth" : {
+           |        "month" : 3,
+           |        "year" : 1990
+           |      },
+           |      "address" : {
+           |        "address_line_1" : "test avenue",
+           |        "country" : "United Kingdom",
+           |        "locality" : "testville",
+           |        "premises" : "14",
+           |        "postal_code" : "TE1 1ST"
+           |      },
+           |      "officer_role" : "director",
+           |      "resigned_on" : "$dateTime",
+           |      "appointment_link":"/test/link"
+           |    }
+           |  ]
+           |}
+        """.stripMargin)
+
+      val officerAppointmentJsonWithoutNameElements = {
+        val items = Json.obj("items" -> JsArray((officerAppointmentJson \ "items").as[Seq[JsObject]].map(_ - "name_elements")))
+        officerAppointmentJson.as[JsObject] deepMerge items
+      }
+
+      when(mockCohoConnector.getOfficerList(any())(any()))
+        .thenReturn(Future.successful(Some(publicOfficerListJson(url))))
+      when(mockCohoConnector.getOfficerAppointment(any())(any()))
+        .thenReturn(Future.successful(officerAppointmentJsonWithoutNameElements))
+
+      val result = await(service.fetchOfficerListFromPublicAPI(transactionId, crn))
+      result shouldBe expected
+    }
+
     "return a fully formed officer list json structure when 2 officers are retrieved" in new Setup {
 
       val listWith2Officers = Json.parse(
