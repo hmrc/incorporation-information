@@ -78,7 +78,7 @@ trait IncorpUpdateService {
           Future.successful(ir)
         }
         case ir@InsertResult(i, d, Seq()) => {
-          copyToQueue(createQueuedIncorpUpdate(items)) flatMap {
+          copyToQueue(createQueuedIncorpUpdates(items)) flatMap {
             case true =>
               timepointRepository.updateTimepoint(latestTimepoint(items)).map(tp => {
                 val message = s"$i incorp updates were inserted, $d incorp updates were duplicates, and the timepoint has been updated to $tp"
@@ -97,10 +97,13 @@ trait IncorpUpdateService {
     }
   }
 
-  def createQueuedIncorpUpdate(incorpUpdates: Seq[IncorpUpdate]): Seq[QueuedIncorpUpdate] = {
-    incorpUpdates map { incorp =>
-      QueuedIncorpUpdate(DateTime.now, incorp)
-    }
+  def createQueuedIncorpUpdates(incorpUpdates: Seq[IncorpUpdate], delayInMinutes: Option[Int] = None): Seq[QueuedIncorpUpdate] = {
+    incorpUpdates map (incorp => createQueuedIncorpUpdate(incorp, delayInMinutes))
+  }
+
+  def createQueuedIncorpUpdate(incorpUpdate: IncorpUpdate, delayInMinutes: Option[Int] = None): QueuedIncorpUpdate = {
+    val dateTime = delayInMinutes.fold(DateTime.now())(delay => DateTime.now().plusMinutes(delay))
+    QueuedIncorpUpdate(dateTime, incorpUpdate)
   }
 
   def copyToQueue(queuedIncorpUpdates: Seq[QueuedIncorpUpdate]): Future[Boolean] = {
@@ -109,6 +112,13 @@ trait IncorpUpdateService {
       Logger.info(s"Incorp updates to be copied to queue = $queuedIncorpUpdates")
       Logger.info(s"result = $r")
       r.inserted == queuedIncorpUpdates.length
+    }
+  }
+
+  def upsertToQueue(queuedUpdate: QueuedIncorpUpdate): Future[Boolean] = {
+    queueRepository.upsertIncorpUpdate(queuedUpdate) map { res =>
+      Logger.info(s"[IncorpUpdateService] [upsertToQueue] upsert result for transaction id : ${queuedUpdate.incorpUpdate.transactionId} - ${res.toString}")
+      res.errors.isEmpty
     }
   }
 }

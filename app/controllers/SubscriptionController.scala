@@ -34,21 +34,19 @@ trait SubscriptionController extends BaseController {
 
   protected val service: SubscriptionService
 
-  def checkSubscription(transactionId: String, regime: String, subscriber: String) = Action.async(parse.json) {
+  def checkSubscription(transactionId: String, regime: String, subscriber: String, force: Boolean = false) = Action.async(parse.json) {
     implicit request =>
       withJsonBody[JsObject] { js =>
         val callbackUrl = (js \ "SCRSIncorpSubscription" \ "callbackUrl").as[String]
-        service.checkForSubscription(transactionId, regime, subscriber, callbackUrl).map {
+        service.checkForSubscription(transactionId, regime, subscriber, callbackUrl, forced = force).map {
           case IncorpExists(update) =>
             val response = toResponse(regime, subscriber, callbackUrl, update)
             Ok(Json.toJson(response)(IncorpUpdateResponse.writes))
-          case SuccessfulSub => Accepted
+          case SuccessfulSub => Accepted(if(force) Json.parse("""{"forced":"true"}""") else Json.obj())
           case _ => InternalServerError
         }
       }
-
   }
-
 
   def removeSubscription(transactionId: String, regime: String, subscriber: String) = Action.async {
     implicit request =>

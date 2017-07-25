@@ -17,7 +17,8 @@
 package services
 
 import Helpers.SCRSSpec
-import models.{IncorpUpdate, Subscription}
+import models.{QueuedIncorpUpdate, IncorpUpdate, Subscription}
+import org.joda.time.DateTime
 import repositories._
 import org.mockito.Mockito._
 import org.mockito.Matchers.{eq => eqTo, _}
@@ -31,13 +32,35 @@ class SubscriptionServiceSpec extends SCRSSpec {
 
   val mockSubRepo = mock[SubscriptionsMongoRepository]
   val mockIncorpRepo = mock[IncorpUpdateMongoRepository]
+  val mockIncorpUpdateService = mock[IncorpUpdateService]
+
+  val now = DateTime.now()
+  val subDelay = 5
 
   trait Setup {
+
+    reset(mockSubRepo, mockIncorpRepo, mockIncorpUpdateService)
 
     val service = new SubscriptionService {
       override val subRepo = mockSubRepo
       override val incorpRepo = mockIncorpRepo
-   }
+      override val incorpUpdateService = mockIncorpUpdateService
+      override protected val forcedSubDelay = subDelay
+    }
+
+    def mockGetIncorpUpdate(transactionId: String, returnedIncorpUpdate: Option[IncorpUpdate]) = {
+      when(mockIncorpRepo.getIncorpUpdate(eqTo(transactionId))).thenReturn(Future.successful(returnedIncorpUpdate))
+    }
+
+    def mockInsertSubscription(sub: Subscription, upsertResult: UpsertResult) = {
+      when(mockSubRepo.insertSub(eqTo(sub))).thenReturn(Future.successful(upsertResult))
+    }
+
+    def mockUpsertToQueue(success: Boolean) = when(mockIncorpUpdateService.upsertToQueue(any())).thenReturn(Future.successful(success))
+
+    implicit class incorpUpdateImplicits(iu: IncorpUpdate) {
+      def toQueuedIncorpUpdate: QueuedIncorpUpdate = QueuedIncorpUpdate(now, iu)
+    }
   }
 
   val transId = "transId123"
@@ -48,7 +71,8 @@ class SubscriptionServiceSpec extends SCRSSpec {
   val sub = Subscription(transId, regime, subscriber, url)
 
 
-  "checkForSubscription" should {
+  "checkForIncorpUpdate" should {
+
     "return an incorp update for a subscription that exists" in new Setup {
       when(mockIncorpRepo.getIncorpUpdate(eqTo(transId))).thenReturn(Future.successful(Some(incorpUpdate)))
 
@@ -64,8 +88,87 @@ class SubscriptionServiceSpec extends SCRSSpec {
     }
   }
 
+  "checkForSubscription" should {
+
+    "return a SuccessfulSub" when {
+
+      "an incorp update does not exist for the supplied transaction id and a subscription is placed" in new Setup {
+        val upsertResult = UpsertResult(0, 1, Seq())
+
+        mockGetIncorpUpdate(transId, None)
+        mockInsertSubscription(sub, upsertResult)
+
+        val result = await(service.checkForSubscription(transId, regime, subscriber, "www.test.com", forced = false))
+
+        result shouldBe SuccessfulSub
+      }
+
+      "an incorp update exists for the supplied transaction id but the forced flag is set to true" in new Setup {
+        val upsertResult = UpsertResult(0, 1, Seq())
+        val queuedIncorpUpdate = incorpUpdate.toQueuedIncorpUpdate
+
+        mockGetIncorpUpdate(transId, Some(incorpUpdate))
+        mockInsertSubscription(sub, upsertResult)
+        when(mockIncorpUpdateService.createQueuedIncorpUpdate(any(), any())).thenReturn(queuedIncorpUpdate)
+        mockUpsertToQueue(true)
+
+        val result = await(service.checkForSubscription(transId, regime, subscriber, "www.test.com", forced = true))
+
+        result shouldBe SuccessfulSub
+      }
+    }
+
+    "return an IncorpExists if an incorp update exists for the supplied transaction id and the forced flag is set to false" in new Setup {
+      val upsertResult = UpsertResult(0, 1, Seq())
+
+      mockGetIncorpUpdate(transId, Some(incorpUpdate))
+
+      val result = await(service.checkForSubscription(transId, regime, subscriber, "www.test.com", forced = false))
+
+      result shouldBe IncorpExists(incorpUpdate)
+    }
+
+    "return a FailedSub" when {
+
+      "an incorp update does not exist for the supplied transaction id and the subscription fails to get inserted" in new Setup {
+        val upsertResult = UpsertResult(0, 0, Seq(WriteError(0, 11111, "fail")))
+
+        mockGetIncorpUpdate(transId, None)
+        mockInsertSubscription(sub, upsertResult)
+
+        val result = await(service.checkForSubscription(transId, regime, subscriber, "www.test.com", forced = true))
+
+        result shouldBe FailedSub
+      }
+
+      "an incorp update exists for the supplied transaction id but the forced flag is set to true and and fails to insert a subscription" in new Setup {
+        val upsertResult = UpsertResult(0, 0, Seq(WriteError(0, 11111, "fail")))
+
+        mockGetIncorpUpdate(transId, Some(incorpUpdate))
+        mockInsertSubscription(sub, upsertResult)
+        mockUpsertToQueue(false)
+
+        val result = await(service.checkForSubscription(transId, regime, subscriber, "www.test.com", forced = true))
+
+        result shouldBe FailedSub
+      }
+
+      "an incorp update exists for the supplied transaction id but the forced flag is set to true and and fails to copy the incorp update to the queue" in new Setup {
+        val upsertResult = UpsertResult(1, 0, Seq())
+
+        mockGetIncorpUpdate(transId, Some(incorpUpdate))
+        mockInsertSubscription(sub, upsertResult)
+        mockUpsertToQueue(false)
+
+        val result = await(service.checkForSubscription(transId, regime, subscriber, "www.test.com", forced = true))
+
+        result shouldBe FailedSub
+      }
+    }
+  }
 
   "addSubscription" should {
+
     "return a SuccessfulSub when a new subscription has been added" in new Setup {
        val ur: UpsertResult = UpsertResult(0, 0, Seq())
       when(mockSubRepo.insertSub(sub)).thenReturn(Future(ur))
@@ -105,20 +208,19 @@ class SubscriptionServiceSpec extends SCRSSpec {
 
 
   "getSubscription" should {
+
     "return a Subscription when a Subscription exists" in new Setup {
       when(mockSubRepo.getSubscription(transId, regime, subscriber)).thenReturn(Future(Some(sub)))
 
       val result = service.getSubscription(transId, regime, subscriber)
-      result.map(res => res == sub)
+      await(result) shouldBe Some(sub)
     }
 
     "return None when a Subscription does not exist" in new Setup {
       when(mockSubRepo.getSubscription(transId, regime, subscriber)).thenReturn(Future(None))
 
       val result = service.getSubscription(transId, regime, subscriber)
-      result.map(res => res == None)
+      await(result) shouldBe None
     }
   }
-
-
 }

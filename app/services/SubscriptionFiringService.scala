@@ -20,7 +20,7 @@ import javax.inject.{Inject, Singleton}
 
 import config.MicroserviceConfig
 import connectors.FiringSubscriptionsConnector
-import models.{IncorpUpdateResponse, QueuedIncorpUpdate}
+import models.{Subscription, IncorpUpdateResponse, QueuedIncorpUpdate}
 import org.joda.time.DateTime
 import play.api.Logger
 import reactivemongo.api.commands.DefaultWriteResult
@@ -126,7 +126,4 @@ trait SubscriptionFiringService {
       }
     }
   }
-
-
-
 }

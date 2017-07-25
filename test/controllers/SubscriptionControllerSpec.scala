@@ -16,8 +16,6 @@
 
 package controllers
 
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import models.{IncorpUpdate, Subscription}
 import Helpers.{JSONhelpers, SCRSSpec}
 import org.joda.time.DateTime
@@ -33,8 +31,7 @@ import repositories._
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
-
-class SubscriptionControllerImplSpec extends SCRSSpec with JSONhelpers {
+class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
 
   val mockService = mock[SubscriptionService]
 
@@ -51,69 +48,68 @@ class SubscriptionControllerImplSpec extends SCRSSpec with JSONhelpers {
   val crn = "crn12345"
   val status = "accepted"
   val incDate = DateTime.parse("2000-12-12")
-    //val testIncorpUpdate = IncorpUpdate(transactionId,"held",Some("123456789"),None,"20170327093004787",None)
-    val sub = Subscription(transactionId, regime, subscriber, "www.test.com")
+  val sub = Subscription(transactionId, regime, subscriber, "www.test.com")
   val testIncorpUpdate = IncorpUpdate(transactionId, status, Some(crn), Some(incDate), "20170327093004787", None)
 
-    "check Subscription" should {
+  "check Subscription" should {
 
-      val requestBody = Json.parse(
-        s"""
-           |{
-           | "SCRSIncorpSubscription":{
-           |   "callbackUrl":"$callbackUrl"
-           | }
-           |}
-          """.stripMargin)
+    val requestBody = Json.parse(
+      s"""
+         |{
+         | "SCRSIncorpSubscription":{
+         |   "callbackUrl":"$callbackUrl"
+         | }
+         |}
+         |""".stripMargin)
 
-     val json = Json.parse(
-       s"""
-          |{
-          |  "SCRSIncorpStatus":{
-          |    "IncorpSubscriptionKey":{
-          |      "subscriber":"$subscriber",
-          |      "discriminator":"$regime",
-          |      "transactionId":"$transactionId"
-          |    },
-          |    "SCRSIncorpSubscription":{
-          |      "callbackUrl":"$callbackUrl"
-          |    },
-          |    "IncorpStatusEvent":{
-          |      "status":"$status",
-          |      "crn":"$crn",
-          |      "incorporationDate":${incDate.getMillis}
-          |    }
-          |  }
-          |}
-      """.stripMargin)
+    val json = Json.parse(
+     s"""
+        |{
+        |  "SCRSIncorpStatus":{
+        |    "IncorpSubscriptionKey":{
+        |      "subscriber":"$subscriber",
+        |      "discriminator":"$regime",
+        |      "transactionId":"$transactionId"
+        |    },
+        |    "SCRSIncorpSubscription":{
+        |      "callbackUrl":"$callbackUrl"
+        |    },
+        |    "IncorpStatusEvent":{
+        |      "status":"$status",
+        |      "crn":"$crn",
+        |      "incorporationDate":${incDate.getMillis}
+        |    }
+        |  }
+        |}
+        |""".stripMargin)
 
-      "return a 200(Ok) when an incorp update is returned for an existing subscription" in new Setup {
-        when(mockService.checkForSubscription(any(),any(),any(),any())(any()))
-          .thenReturn(Future(IncorpExists(testIncorpUpdate)))
+    "return a 200(Ok) when an incorp update is returned for an existing subscription" in new Setup {
+      when(mockService.checkForSubscription(eqTo(transactionId), any(),any(),any(), any())(any()))
+        .thenReturn(Future(IncorpExists(testIncorpUpdate)))
 
-        val response = FakeRequest().withBody(requestBody)
+      val response = FakeRequest().withBody(requestBody)
 
-        val fResult = call(controller.checkSubscription(transactionId,regime,subscriber), response)
-        val result = await(fResult)
+      val fResult = call(controller.checkSubscription(transactionId,regime,subscriber), response)
+      val result = await(fResult)
 
-        val (generatedTS, jsonNoTS) = extractTimestamp(jsonBodyOf(result).as[JsObject])
+      val (generatedTS, jsonNoTS) = extractTimestamp(jsonBodyOf(result).as[JsObject])
 
-        status(result) shouldBe 200
-        jsonNoTS shouldBe json
-      }
+      status(result) shouldBe 200
+      jsonNoTS shouldBe json
+    }
 
-      "return a 202(Accepted) when a new subscription is created" in new Setup {
-        when(mockService.checkForSubscription(any(),any(),any(),any())(any()))
-          .thenReturn(Future.successful(SuccessfulSub))
+    "return a 202(Accepted) when a new subscription is created" in new Setup {
+      when(mockService.checkForSubscription(eqTo(transactionId), any(), any(), any(), any())(any()))
+        .thenReturn(Future.successful(SuccessfulSub))
 
-        val response = FakeRequest().withBody(requestBody)
+      val response = FakeRequest().withBody(requestBody)
 
-        val fResult = call(controller.checkSubscription(transactionId,regime,subscriber), response)
-        val result = await(fResult)
+      val fResult = call(controller.checkSubscription(transactionId, regime, subscriber), response)
+      val result = await(fResult)
 
-        status(result) shouldBe 202
-      }
-   }
+      status(result) shouldBe 202
+    }
+  }
 
 
   "Remove subscription" should {

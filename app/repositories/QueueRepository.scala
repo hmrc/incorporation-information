@@ -43,6 +43,8 @@ trait QueueRepository {
 
   def storeIncorpUpdates(updates: Seq[QueuedIncorpUpdate]): Future[InsertResult]
 
+  def upsertIncorpUpdate(update: QueuedIncorpUpdate): Future[InsertResult]
+
   def getIncorpUpdate(transactionId: String): Future[Option[QueuedIncorpUpdate]]
 
   def getIncorpUpdates: Future[Seq[QueuedIncorpUpdate]]
@@ -84,6 +86,12 @@ class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate]) 
         Logger.info(s"Failed to store incorp update with transactionId: ${ex.originalDocument.get.get("incorp_update.transaction_id").get.toString} due to error: $ex")
         throw new Exception
     }
+  }
+
+  override def upsertIncorpUpdate(update: QueuedIncorpUpdate): Future[InsertResult] = {
+    val selector = txSelector(update.incorpUpdate.transactionId)
+    implicit val formatter = QueuedIncorpUpdate.format
+    collection.update(selector, update, upsert = true) map (res => InsertResult(res.nModified, res.upserted.size, res.writeErrors))
   }
 
   override def getIncorpUpdate(transactionId: String): Future[Option[QueuedIncorpUpdate]] = {

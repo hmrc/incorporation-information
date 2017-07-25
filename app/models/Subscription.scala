@@ -18,11 +18,10 @@ package models
 
 import play.api.libs.json.Json
 
-case class Subscription(
-    transactionId : String,
-    regime: String,
-    subscriber: String,
-    callbackUrl: String)
+case class Subscription(transactionId : String,
+                        regime: String,
+                        subscriber: String,
+                        callbackUrl: String)
 
 object Subscription {
   implicit val format = Json.format[Subscription]

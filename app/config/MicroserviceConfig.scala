@@ -25,7 +25,10 @@ class MicroserviceConfigImpl @Inject()(val config: ServicesConfig) extends Micro
 trait MicroserviceConfig {
   protected val config: ServicesConfig
 
+  private def getConfigInt(configKey: String) = config.getConfInt(configKey, throw new Exception(s"$configKey key not found"))
+
   lazy val incorpFrontendStubUrl = config.getConfString("incorp-update-api.stub-url", throw new Exception("incorp-update-api.stub-url not found"))
+
   lazy val companiesHouseUrl = config.getConfString("incorp-update-api.url", throw new Exception("incorp-update-api.url not found"))
 
   lazy val incorpUpdateCohoApiAuthToken = config.getConfString("incorp-update-api.token", throw new Exception("incorp-update-api.token not found"))
@@ -40,7 +43,6 @@ trait MicroserviceConfig {
 
   lazy val cohoStubbedUrl = config.getConfString("public-coho-api.stub-url", throw new Exception("public-coho-api.stub-url not found"))
 
-
-
+  lazy val forcedSubscriptionDelay = getConfigInt("forced-submission-delay")
 }
 
