@@ -100,7 +100,7 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
 
     "return a 202(Accepted) when a new subscription is created" in new Setup {
       when(mockService.checkForSubscription(eqTo(transactionId), any(), any(), any(), any())(any()))
-        .thenReturn(Future.successful(SuccessfulSub))
+        .thenReturn(Future.successful(SuccessfulSub()))
 
       val response = FakeRequest().withBody(requestBody)
 

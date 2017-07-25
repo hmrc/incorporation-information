@@ -100,7 +100,7 @@ class SubscriptionServiceSpec extends SCRSSpec {
 
         val result = await(service.checkForSubscription(transId, regime, subscriber, "www.test.com", forced = false))
 
-        result shouldBe SuccessfulSub
+        result shouldBe SuccessfulSub(false)
       }
 
       "an incorp update exists for the supplied transaction id but the forced flag is set to true" in new Setup {
@@ -114,7 +114,7 @@ class SubscriptionServiceSpec extends SCRSSpec {
 
         val result = await(service.checkForSubscription(transId, regime, subscriber, "www.test.com", forced = true))
 
-        result shouldBe SuccessfulSub
+        result shouldBe SuccessfulSub(true)
       }
     }
 
@@ -174,7 +174,7 @@ class SubscriptionServiceSpec extends SCRSSpec {
       when(mockSubRepo.insertSub(sub)).thenReturn(Future(ur))
 
       val result = await(service.addSubscription(transId, regime, subscriber, url))
-      result shouldBe SuccessfulSub
+      result shouldBe SuccessfulSub(false)
     }
 
     "return a FailedSub when a new subscription fails to be added" in new Setup {

@@ -43,6 +43,6 @@ trait MicroserviceConfig {
 
   lazy val cohoStubbedUrl = config.getConfString("public-coho-api.stub-url", throw new Exception("public-coho-api.stub-url not found"))
 
-  lazy val forcedSubscriptionDelay = getConfigInt("forced-submission-delay")
+  lazy val forcedSubscriptionDelay = getConfigInt("forced-submission-delay-minutes")
 }
 

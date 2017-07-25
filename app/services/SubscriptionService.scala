@@ -58,12 +58,13 @@ trait SubscriptionService {
                                          (implicit hc: HeaderCarrier) = {
     val queuedItem = incorpUpdateService.createQueuedIncorpUpdate(incorpUpdate, Some(forcedSubDelay))
     addSubscription(transactionId, regime, subscriber, callBackUrl) flatMap {
-      case SuccessfulSub =>
+      case SuccessfulSub(_) =>
         Logger.info(s"[SubscriptionService] [forceSubscription] subscription for transaction id : $transactionId forced successfully for regime : $regime")
         incorpUpdateService.upsertToQueue(queuedItem) map {
-        if(_) SuccessfulSub else FailedSub
+          case true => SuccessfulSub(forced = true)
+          case _ => FailedSub
       }
-      case FailedSub => Future.successful(FailedSub)
+      case _ => Future.successful(FailedSub)
     }
   }
 
@@ -72,7 +73,7 @@ trait SubscriptionService {
     subRepo.insertSub(sub) map {
       case UpsertResult(a, b, Seq()) =>
         Logger.info(s"[MongoSubscriptionsRepository] [insertSub] $a was updated and $b was upserted for transactionId: $transactionId")
-        SuccessfulSub
+        SuccessfulSub()
       case UpsertResult(_, _, errs) if errs.nonEmpty =>
         Logger.error(s"[SubscriptionService] [addSubscription] Error encountered when attempting to add a subscription - ${errs.toString()}")
         FailedSub

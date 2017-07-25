@@ -42,7 +42,7 @@ trait SubscriptionController extends BaseController {
           case IncorpExists(update) =>
             val response = toResponse(regime, subscriber, callbackUrl, update)
             Ok(Json.toJson(response)(IncorpUpdateResponse.writes))
-          case SuccessfulSub => Accepted(if(force) Json.parse("""{"forced":"true"}""") else Json.obj())
+          case SuccessfulSub(wasForced) => Accepted(Json.obj("forced" -> wasForced))
           case _ => InternalServerError
         }
       }

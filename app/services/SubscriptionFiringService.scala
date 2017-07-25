@@ -20,7 +20,7 @@ import javax.inject.{Inject, Singleton}
 
 import config.MicroserviceConfig
 import connectors.FiringSubscriptionsConnector
-import models.{Subscription, IncorpUpdateResponse, QueuedIncorpUpdate}
+import models.{IncorpUpdateResponse, QueuedIncorpUpdate}
 import org.joda.time.DateTime
 import play.api.Logger
 import reactivemongo.api.commands.DefaultWriteResult
@@ -31,11 +31,10 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
 @Singleton
-class SubscriptionFiringServiceImpl @Inject()(
-                                               fsConnector: FiringSubscriptionsConnector,
-                                               injQueueRepo: QueueMongo,
-                                               injSubRepo: SubscriptionsMongo,
-                                               config: MicroserviceConfig
+class SubscriptionFiringServiceImpl @Inject()(fsConnector: FiringSubscriptionsConnector,
+                                              injQueueRepo: QueueMongo,
+                                              injSubRepo: SubscriptionsMongo,
+                                              config: MicroserviceConfig
                                              ) extends SubscriptionFiringService {
   override val firingSubsConnector = fsConnector
   override val queueRepository = injQueueRepo.repo

@@ -195,7 +195,7 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
       queueCount shouldBe 1
 
       response.status shouldBe 202
-      response.json shouldBe Json.parse("""{"forced":"true"}""")
+      response.json shouldBe Json.parse("""{"forced":true}""")
     }
 
     "force a subscription even if the corresponding incorp update and queued update exist" in new Setup {
@@ -212,7 +212,7 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
       subCount shouldBe 1
 
       response.status shouldBe 202
-      response.json shouldBe Json.parse("""{"forced":"true"}""")
+      response.json shouldBe Json.parse("""{"forced":true}""")
     }
 
     "still insert a subscription when an incorp update does not exist yet" in new Setup {
@@ -226,7 +226,6 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
       subCount shouldBe 1
 
       response.status shouldBe 202
-      response.json shouldBe Json.parse("""{"forced":"true"}""")
     }
 
     "force a subscription that will be processed 5 minutes in the future if an incorp update exists but no queued incorp" in new Setup {
