@@ -18,7 +18,7 @@ package apis
 
 import helpers.IntegrationSpecBase
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
-import org.joda.time.DateTime
+import org.joda.time.{Minutes, DateTime}
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.modules.reactivemongo.ReactiveMongoComponent
@@ -48,7 +48,6 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
 
   lazy val reactiveMongoComponent = app.injector.instanceOf[ReactiveMongoComponent]
 
-
   class Setup {
     val incRepo = new IncorpUpdateMongo(reactiveMongoComponent).repo
     val repository = new SubscriptionsMongo(reactiveMongoComponent).repo
@@ -60,6 +59,7 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
     def subCount = await(repository.count)
     def incCount = await(incRepo.count)
     def queueCount = await(queueRepo.count)
+    def getQueuedIncorp(txid: String) = await(queueRepo.getIncorpUpdate(txid))
   }
 
   override def beforeEach() = new Setup {
@@ -86,8 +86,14 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
   val regime = "CT100"
   val subscriber = "abc123"
   val url = "www.test.com"
+  val crn = "crn-12345"
+  val incorpDate = DateTime.now()
+
   val sub = Subscription(transactionId, regime, subscriber, url)
   val incorpUpdate = IncorpUpdate(transactionId, "rejected", None, None, "tp", Some("description"))
+  val acceptedIncorpUpdate = IncorpUpdate(transactionId, "accepted", Some(crn), Some(incorpDate), "tp", Some("description"))
+  val acceptedQueuedIncorp = QueuedIncorpUpdate(incorpDate, acceptedIncorpUpdate)
+  val queuedIncorp = QueuedIncorpUpdate(incorpDate, incorpUpdate)
 
   val json = Json.parse(
     """
@@ -99,7 +105,7 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
     """.stripMargin
   )
 
-  val jsonUpdate = Json.parse(
+  val subscription = Json.parse(
     """
       |{
       |  "SCRSIncorpSubscription": {
@@ -149,7 +155,7 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
       insert(incorpUpdate)
       incCount shouldBe 1
 
-      val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").post(jsonUpdate).futureValue
+      val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").post(subscription).futureValue
       response.status shouldBe 200
 
       val (_, jsonNoTs) = extractTimestamp(response.json.as[JsObject])
@@ -175,8 +181,87 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
     }
   }
 
+  "forceSubscription" should {
 
+    "force a subscription into II even if the corresponding incorp update exists and insert an incorp update into the queue" in new Setup {
+      insert(acceptedIncorpUpdate)
+      incCount shouldBe 1
+      subCount shouldBe 0
+      queueCount shouldBe 0
 
+      val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber?force=true").post(subscription).futureValue
 
+      subCount shouldBe 1
+      queueCount shouldBe 1
+
+      response.status shouldBe 202
+      response.json shouldBe Json.parse("""{"forced":true}""")
+    }
+
+    "force a subscription even if the corresponding incorp update and queued update exist" in new Setup {
+
+      insert(acceptedIncorpUpdate)
+      insert(queuedIncorp)
+
+      incCount shouldBe 1
+      queueCount shouldBe 1
+      subCount shouldBe 0
+
+      val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber?force=true").post(subscription).futureValue
+
+      subCount shouldBe 1
+
+      response.status shouldBe 202
+      response.json shouldBe Json.parse("""{"forced":true}""")
+    }
+
+    "still insert a subscription when an incorp update does not exist yet" in new Setup {
+
+      incCount shouldBe 0
+      queueCount shouldBe 0
+      subCount shouldBe 0
+
+      val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber?force=true").post(subscription).futureValue
+
+      subCount shouldBe 1
+
+      response.status shouldBe 202
+    }
+
+    "force a subscription that will be processed 5 minutes in the future if an incorp update exists but no queued incorp" in new Setup {
+
+      val now = DateTime.now()
+
+      insert(incorpUpdate)
+
+      client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber?force=true").post(subscription).futureValue
+
+      queueCount shouldBe 1
+
+      val queuedIncorpTimestamp = getQueuedIncorp(transactionId).get.timestamp
+
+      Minutes.minutesBetween(now, queuedIncorpTimestamp).getMinutes shouldBe 5
+
+    }
+
+    "force a subscription where the queued update exists and is upserted to be processed 5 minutes in the future if an incorp update exists" in new Setup {
+
+      insert(acceptedIncorpUpdate)
+      insert(acceptedQueuedIncorp)
+
+      incCount shouldBe 1
+      queueCount shouldBe 1
+
+      val oldQueuedIncorpTimestamp = queuedIncorp.timestamp
+
+      client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber?force=true").post(subscription).futureValue
+
+      queueCount shouldBe 1
+
+      val updatedQueuedIncorpTimestamp = getQueuedIncorp(transactionId).get.timestamp
+
+      Minutes.minutesBetween(oldQueuedIncorpTimestamp, updatedQueuedIncorpTimestamp).getMinutes shouldBe 5
+
+    }
+  }
 }
-

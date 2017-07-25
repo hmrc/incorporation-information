@@ -53,7 +53,7 @@ trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
 }
 
 sealed trait SubscriptionStatus
-case object SuccessfulSub extends SubscriptionStatus
+case class SuccessfulSub(forced: Boolean = false) extends SubscriptionStatus
 case object FailedSub extends SubscriptionStatus
 case class IncorpExists(update: IncorpUpdate) extends SubscriptionStatus
 case class SubExists(update: IncorpUpdate) extends SubscriptionStatus

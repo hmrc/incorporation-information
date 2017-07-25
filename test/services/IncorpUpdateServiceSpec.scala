@@ -165,7 +165,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
   "createQueuedIncorpUpdate" should {
     "return a correctly formatted QueuedIncorpUpdate when given an IncorpUpdate" in new Setup {
 
-      val fResult = service.createQueuedIncorpUpdate(Seq(incorpUpdate))
+      val fResult = service.createQueuedIncorpUpdates(Seq(incorpUpdate))
       val result = await(fResult)
 
       result.head.copy(timestamp = queuedIncorpUpdate.timestamp) shouldBe queuedIncorpUpdate

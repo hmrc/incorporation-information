@@ -31,11 +31,10 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
 @Singleton
-class SubscriptionFiringServiceImpl @Inject()(
-                                               fsConnector: FiringSubscriptionsConnector,
-                                               injQueueRepo: QueueMongo,
-                                               injSubRepo: SubscriptionsMongo,
-                                               config: MicroserviceConfig
+class SubscriptionFiringServiceImpl @Inject()(fsConnector: FiringSubscriptionsConnector,
+                                              injQueueRepo: QueueMongo,
+                                              injSubRepo: SubscriptionsMongo,
+                                              config: MicroserviceConfig
                                              ) extends SubscriptionFiringService {
   override val firingSubsConnector = fsConnector
   override val queueRepository = injQueueRepo.repo
@@ -126,7 +125,4 @@ trait SubscriptionFiringService {
       }
     }
   }
-
-
-
 }

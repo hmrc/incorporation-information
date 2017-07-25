@@ -3,7 +3,7 @@
 GET        /:transactionId/company-profile                             @controllers.TransactionalController.fetchCompanyProfile(transactionId)
 GET        /:transactionId/officer-list                                @controllers.TransactionalController.fetchOfficerList(transactionId)
 
-POST       /subscribe/:transId/regime/:regime/subscriber/:sub          @controllers.SubscriptionController.checkSubscription(transId, regime, sub)
+POST       /subscribe/:transId/regime/:regime/subscriber/:sub          @controllers.SubscriptionController.checkSubscription(transId, regime, sub, force: Boolean ?= false)
 DELETE     /subscribe/:transId/regime/:regime/subscriber/:sub          @controllers.SubscriptionController.removeSubscription(transId, regime, sub)
 GET        /subscribe/:transId/regime/:regime/subscriber/:sub          @controllers.SubscriptionController.getSubscription(transId, regime, sub)
 
