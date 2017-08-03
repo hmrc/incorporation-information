@@ -3,3 +3,5 @@
 GET        /feature-switch/:featureName/:state                         @controllers.test.FeatureSwitchController.switch(featureName, state)
 GET        /manual-trigger/:jobName                                    @controllers.test.ManualTriggerController.triggerJob(jobName)
 POST       /callback                                                   @controllers.test.CallbackTestEndpointController.post
+
+GET      /add-incorp-update                                            @controllers.test.IncorpUpdateController.add(txId:String, date:Option[String] ?= None, crn:Option[String] ?= None, success:Boolean ?= false)
