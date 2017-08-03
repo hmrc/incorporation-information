@@ -40,6 +40,7 @@ class Module extends AbstractModule {
     bind(classOf[FeatureSwitchController]).to(classOf[FeatureSwitchControllerImpl])
     bind(classOf[ManualTriggerController]).to(classOf[ManualTriggerControllerImpl])
     bind(classOf[CallbackTestEndpointController]).to(classOf[CallbackTestEndpointControllerImpl])
+    bind(classOf[IncorpUpdateController]).to(classOf[IncorpUpdateControllerImpl])
 
     // connectors
     bind(classOf[IncorporationAPIConnector]).to(classOf[IncorporationAPIConnectorImpl])
