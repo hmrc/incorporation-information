@@ -16,15 +16,18 @@
 
 package services
 
-import javax.inject.{Inject, Singleton}
+import java.time.LocalTime
+import javax.inject.{Inject, Provider, Singleton}
 
+import config.MicroserviceConfig
 import connectors.IncorporationAPIConnector
-import models.{IncorpUpdate, QueuedIncorpUpdate}
+import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
 import play.api.Logger
 import repositories._
 import repositories.{IncorpUpdateRepository, InsertResult, TimepointRepository}
 import uk.gov.hmrc.play.http.HeaderCarrier
 import org.joda.time.DateTime
+import utils.DateCalculators
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -33,26 +36,35 @@ import scala.concurrent.Future
 class IncorpUpdateServiceImpl @Inject()(injConnector: IncorporationAPIConnector,
                                         injIncorpRepo: IncorpUpdateMongo,
                                         injTimepointRepo: TimepointMongo,
-                                        injQueueRepo: QueueMongo
+                                        injQueueRepo: QueueMongo,
+                                        injSubscriptionService : Provider[SubscriptionService],
+                                        config: MicroserviceConfig
                                        ) extends IncorpUpdateService {
   override val incorporationCheckAPIConnector = injConnector
   override val incorpUpdateRepository = injIncorpRepo.repo
   override val timepointRepository = injTimepointRepo.repo
   override val queueRepository = injQueueRepo.repo
+  override val subscriptionService = injSubscriptionService.get()
+  override val noRAILoggingDay = config.noRegisterAnInterestLoggingDay
+  override val noRAILoggingTime = config.noRegisterAnInterestLoggingTime
+
 }
 
-trait IncorpUpdateService {
+trait IncorpUpdateService extends {
 
   val incorporationCheckAPIConnector: IncorporationAPIConnector
   val incorpUpdateRepository: IncorpUpdateRepository
   val timepointRepository: TimepointRepository
   val queueRepository: QueueRepository
-
+  val subscriptionService : SubscriptionService
+  val noRAILoggingDay : String
+  val noRAILoggingTime : String
 
   private[services] def fetchIncorpUpdates(implicit hc: HeaderCarrier): Future[Seq[IncorpUpdate]] = {
     for {
       timepoint <- timepointRepository.retrieveTimePoint
       incorpUpdates <- incorporationCheckAPIConnector.checkForIncorpUpdate(timepoint)(hc)
+      _ <- checkForInterest(incorpUpdates)
     } yield {
       incorpUpdates
     }
@@ -65,6 +77,17 @@ trait IncorpUpdateService {
     } yield {
       result
     }
+  }
+
+  def checkForInterest(updates: Seq[IncorpUpdate]) = Future.sequence { updates.map(iu =>
+    subscriptionService.getSubscription(iu.transactionId, "CT", "SCRS").map {
+      _.fold {
+        Logger.error(s"NO_CT_REG_OF_INTEREST for txid ${iu.transactionId}")
+        if (inWorkingHours) {Logger.error("NO_CT_REG_OF_INTEREST")}
+        false
+      }
+      { _ => true}
+    })
   }
 
   private[services] def latestTimepoint(items: Seq[IncorpUpdate]): String = items.reverse.head.timepoint
@@ -95,6 +118,11 @@ trait IncorpUpdateService {
           Future.successful(ir)
       }
     }
+  }
+
+  def inWorkingHours: Boolean = {
+    DateCalculators.loggingDay(noRAILoggingDay, DateCalculators.getTheDay(DateTime.now)) &&
+      DateCalculators.loggingTime(noRAILoggingTime, LocalTime.now)
   }
 
   def createQueuedIncorpUpdates(incorpUpdates: Seq[IncorpUpdate], delayInMinutes: Option[Int] = None): Seq[QueuedIncorpUpdate] = {

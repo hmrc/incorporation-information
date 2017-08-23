@@ -18,7 +18,7 @@ package services
 
 import Helpers.JSONhelpers
 import connectors.IncorporationAPIConnector
-import models.{IncorpUpdate, QueuedIncorpUpdate}
+import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
 import org.joda.time.DateTime
 import org.mockito.{ArgumentCaptor, Matchers}
 import org.mockito.Mockito._
@@ -39,6 +39,9 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
   val mockIncorpUpdateRepository = mock[IncorpUpdateRepository]
   val mockTimepointRepository = mock[TimepointRepository]
   val mockQueueRepository = mock[QueueRepository]
+  val mockSubscriptionService = mock[SubscriptionService]
+  val mockSubRepo = mock[SubscriptionsMongoRepository]
+
 
   implicit val hc = HeaderCarrier()
 
@@ -51,6 +54,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
     reset(mockIncorpUpdateRepository)
     reset(mockTimepointRepository)
     reset(mockQueueRepository)
+    reset(mockSubRepo)
   }
 
   trait mockService extends IncorpUpdateService {
@@ -58,6 +62,10 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
     val incorpUpdateRepository = mockIncorpUpdateRepository
     val timepointRepository = mockTimepointRepository
     val queueRepository = mockQueueRepository
+    val subscriptionService = mockSubscriptionService
+    val noRAILoggingDay = "Mon"
+    val noRAILoggingTime = "08:00:00_17:00:00"
+
   }
 
   trait Setup {
@@ -68,13 +76,23 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
   val timepointOld = "old-timepoint"
   val timepointNew = "new-timepoint"
   val incorpUpdate = IncorpUpdate("transId", "accepted", None, None, timepointOld, None)
+  val incorpUpdate2 = IncorpUpdate("transId2", "accepted", None, None, timepointOld, None)
+  val incorpUpdate3 = IncorpUpdate("transId3", "rejected", None, None, timepointOld, None)
   val incorpUpdateNew = IncorpUpdate("transId", "accepted", None, None, timepointNew, None)
   val incorpUpdates = Seq(incorpUpdate, incorpUpdateNew)
+  val seqOfIncorpUpdates = Seq(incorpUpdate, incorpUpdate2, incorpUpdate3)
   val emptyUpdates = Seq()
   val queuedIncorpUpdate = QueuedIncorpUpdate(DateTime.now, incorpUpdate)
+  val transId = "transId123"
+  val regime = "CT"
+  val subscriber = "SCRS"
+  val url = "www.test.com"
+  val sub = Subscription(transId, regime, subscriber, url)
 
   "fetchIncorpUpdates" should {
     "return some updates" in new Setup {
+      when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
+        .thenReturn(Future(Some(sub)))
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
       when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(incorpUpdates))
 
@@ -142,7 +160,8 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
 
     "return a string stating that the timepoint has been updated to 'new timepoint'" in new Setup {
       val newTimepoint = timepointNew
-
+      when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
+        .thenReturn(Future(Some(sub)))
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepointOld)))
       when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Matchers.eq(Some(timepointOld)))(Matchers.any())).thenReturn(Future.successful(incorpUpdates))
 
@@ -188,6 +207,41 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
       result shouldBe false
     }
   }
+
+  "checkForInterest" should {
+
+
+    "return a true for each incorp that has an interested registered" in new Setup {
+      when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
+        .thenReturn(Future(Some(sub)))
+
+      val result = await(service.checkForInterest(seqOfIncorpUpdates))
+
+      result shouldBe List(true, true, true)
+    }
+    "return false if incorp have an interested registered" in new Setup {
+      when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
+        .thenReturn(Future(None))
+
+      val result = await(service.checkForInterest(incorpUpdates))
+
+      result shouldBe List(false, false)
+    }
+    "return mixture of true and false if incorp have an interested registered" in new Setup {
+      when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
+        .thenReturn(Future(Some(sub)), Future(None), Future(Some(sub)))
+
+      val result = await(service.checkForInterest(seqOfIncorpUpdates))
+
+      result shouldBe List(true, false, true)
+    }
+    "return Nil if no incorps are processed" in new Setup {
+      val result = await(service.checkForInterest(emptyUpdates))
+
+      result shouldBe List()
+    }
+  }
+
 }
 
 

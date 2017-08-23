@@ -44,5 +44,9 @@ trait MicroserviceConfig {
   lazy val cohoStubbedUrl = config.getConfString("public-coho-api.stub-url", throw new Exception("public-coho-api.stub-url not found"))
 
   lazy val forcedSubscriptionDelay = getConfigInt("forced-submission-delay-minutes")
+
+  lazy val noRegisterAnInterestLoggingDay = config.getConfString("rai-alert-logging-day", throw new Exception("rai-alert-logging-day not found"))
+
+  lazy val noRegisterAnInterestLoggingTime = config.getConfString("rai-alert-logging-time", throw new Exception("rai-alert-logging-time not found"))
 }
 
