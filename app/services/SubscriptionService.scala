@@ -16,7 +16,7 @@
 
 package services
 
-import javax.inject.Inject
+import javax.inject.{Inject, Provider}
 
 import config.MicroserviceConfig
 import models.{IncorpUpdate, Subscription}
@@ -32,8 +32,9 @@ import scala.concurrent.Future
 class SubscriptionServiceImpl @Inject()(injSubRepo: SubscriptionsMongo,
                                         injIncorpRepo: IncorpUpdateMongo,
                                         config: MicroserviceConfig,
-                                        val incorpUpdateService: IncorpUpdateService
+                                        incorpUpdateServiceInj: Provider[IncorpUpdateService]
                                        ) extends SubscriptionService {
+  lazy val incorpUpdateService = incorpUpdateServiceInj.get()
   override val subRepo = injSubRepo.repo
   override val incorpRepo = injIncorpRepo.repo
   override val forcedSubDelay = config.forcedSubscriptionDelay
