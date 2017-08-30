@@ -79,8 +79,8 @@ trait IncorpUpdateService extends {
     }
   }
 
-  def checkForInterest(updates: Seq[IncorpUpdate]) = Future.sequence { updates.map(iu =>
-    subscriptionService.getSubscription(iu.transactionId, "CT", "SCRS").map {
+  def checkForInterest(updates: Seq[IncorpUpdate]): Future[Seq[Boolean]] = Future.sequence { updates.map(iu =>
+    subscriptionService.getSubscription(iu.transactionId, "ct", "scrs").map {
       _.fold {
         Logger.error(s"NO_CT_REG_OF_INTEREST for txid ${iu.transactionId}")
         if (inWorkingHours) {Logger.error("NO_CT_REG_OF_INTEREST")}
