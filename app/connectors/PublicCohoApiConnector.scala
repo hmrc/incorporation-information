@@ -18,19 +18,22 @@ package connectors
 
 import javax.inject.Inject
 
+import com.codahale.metrics.Counter
 import com.ning.http.util.Base64
 import config.{MicroserviceConfig, WSHttp, WSHttpProxy}
 import play.api.Logger
 import play.api.libs.json.JsValue
+import services.MetricsService
 import uk.gov.hmrc.play.http.logging.Authorization
 import uk.gov.hmrc.play.http.{HttpException, _}
 import uk.gov.hmrc.play.http.ws.WSProxy
 import utils.SCRSFeatureSwitches
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 
-class PublicCohoApiConnector @Inject()(config: MicroserviceConfig) extends PublicCohoApiConn {
+class PublicCohoApiConnector @Inject()(config: MicroserviceConfig, injMetricsService: MetricsService) extends PublicCohoApiConn {
 
   def httpProxy = WSHttpProxy
   def httpNoProxy = WSHttp
@@ -40,6 +43,7 @@ class PublicCohoApiConnector @Inject()(config: MicroserviceConfig) extends Publi
   val cohoPublicUrl =  config.cohoPublicBaseUrl
   val cohoPublicApiAuthToken = config.cohoPublicApiAuthToken
   val cohoStubbedUrl = config.cohoStubbedUrl
+  val metricsService: MetricsService = injMetricsService
 
 
 }
@@ -54,6 +58,7 @@ trait PublicCohoApiConn {
   val cohoPublicUrl: String
   val cohoPublicApiAuthToken: String
   val cohoStubbedUrl:String
+  val metricsService: MetricsService
 
   def getCompanyProfile(crn: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
     import play.api.http.Status.NO_CONTENT

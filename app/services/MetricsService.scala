@@ -19,7 +19,7 @@ package services
 import javax.inject.Inject
 
 import com.kenshoo.play.metrics.{Metrics, MetricsDisabledException}
-import com.codahale.metrics.Gauge
+import com.codahale.metrics.{Counter, Gauge}
 import play.api.Logger
 import repositories._
 
@@ -33,12 +33,14 @@ class MetricsServiceImpl @Inject()(
                                        ) extends MetricsService {
   override val subRepo = injSubRepo.repo
   override val metrics = injMetrics
+  override val publicCohoApiCounter: Counter = metrics.defaultRegistry.counter("public-coho-api-counter")
 }
 
 trait MetricsService {
 
   protected val metrics: Metrics
   protected val subRepo: SubscriptionsRepository
+  val publicCohoApiCounter: Counter
 
   def updateSubscriptionMetrics(): Future[Map[String, Int]] = {
     subRepo.getSubscriptionStats() map {
