@@ -26,6 +26,7 @@ import uk.gov.hmrc.play.http.{BadRequestException, HeaderCarrier}
 class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
 
   val additionalConfiguration = Map(
+    "metrics.enabled" -> true,
     "microservice.services.incorp-update-api.stub-url" -> s"http://${wiremockHost}:${wiremockPort}/incorporation-frontend-stubs",
     "microservice.services.incorp-update-api.url" -> s"http://${wiremockHost}:${wiremockPort}",
     "microservice.services.incorp-update-api.token" -> "N/A"

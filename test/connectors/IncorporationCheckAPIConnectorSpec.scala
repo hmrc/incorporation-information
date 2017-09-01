@@ -19,12 +19,15 @@ package connectors
 import java.util.UUID
 
 import Helpers.SCRSSpec
+import com.codahale.metrics.Counter
+import mocks.MockMetrics
 import models.IncorpUpdate
 import org.joda.time.DateTime
 import org.mockito.Matchers.{any, eq => eqTo}
 import org.mockito.Mockito._
 import org.mockito.{ArgumentCaptor, Matchers}
 import play.api.libs.json.{JsValue, Json}
+import services.MetricsService
 import uk.gov.hmrc.play.http._
 import uk.gov.hmrc.play.http.ws.{WSHttp, WSProxy}
 import utils.{FeatureSwitch, SCRSFeatureSwitches}
@@ -41,6 +44,8 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
   val stubUrlValue = "testIIUrl/incorporation-frontend-stubs"
   val cohoUrlValue = "b"
+
+  val mockMetrics = new MockMetrics
 
   class Setup {
 
@@ -61,6 +66,9 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         override val transactionalAPI = FeatureSwitch(KEY_TX_API, false)
         override val scheduler = FeatureSwitch(KEY_INCORP_UPDATE, false)
       }
+      override val metrics: MetricsService = mockMetrics
+      override val successCounter: Counter = metrics.transactionApiSuccessCounter
+      override val failureCounter: Counter = metrics.transactionApiFailureCounter
     }
   }
 

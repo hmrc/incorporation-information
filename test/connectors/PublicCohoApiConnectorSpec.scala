@@ -19,12 +19,17 @@ package connectors
 import java.util.UUID
 
 import Helpers.SCRSSpec
+import com.codahale.metrics.{Counter, Timer}
+import com.kenshoo.play.metrics.Metrics
+import mocks.MockMetrics
 import models.IncorpUpdate
 import org.joda.time.DateTime
 import org.mockito.Matchers.{any, eq => eqTo}
 import org.mockito.Mockito._
 import org.mockito.{ArgumentCaptor, Matchers}
 import play.api.libs.json.{JsValue, Json}
+import repositories.SubscriptionsRepository
+import services.MetricsService
 import uk.gov.hmrc.play.http._
 import uk.gov.hmrc.play.http.logging.Authorization
 import uk.gov.hmrc.play.http.ws.{WSHttp, WSProxy}
@@ -39,6 +44,10 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
 
   val mockHttp = mock[WSHttp]
   val mockHttpProxy = mock[WSHttp with WSProxy]
+  val mockMetrics = new MockMetrics
+  val mockTimer = new Timer
+  val mockSuccessCounter = new Counter
+  val mockFailureCounter = new Counter
 
   val stubPublicUrlValue = "testIIUrl/incorporation-frontend-stubs"
   val cohoPublicUrlValue = "http://test.url.for.companieshouse.publicapi"
@@ -66,6 +75,9 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
         override val transactionalAPI = FeatureSwitch(KEY_TX_API, false)
         override val scheduler = FeatureSwitch(KEY_INCORP_UPDATE, false)
       }
+      override val metrics: MetricsService = mockMetrics
+      override val successCounter: Counter = metrics.publicCohoApiSuccessCounter
+      override val failureCounter: Counter = metrics.publicCohoApiFailureCounter
     }
   }
 
@@ -104,6 +116,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
 
       when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.successful(HttpResponse(200, Some(validCompanyProfileResourceJson))))
+
 
       val result = await(connector.getCompanyProfile(testCrn))
       result shouldBe Some(validCompanyProfileResourceJson)
@@ -275,6 +288,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
 
       when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
         .thenReturn(Future.successful(HttpResponse(200, Some(validOfficerAppointmentsResourceJson))))
+
 
       val result = await(connector.getOfficerAppointment(testOfficerId))
       result shouldBe validOfficerAppointmentsResourceJson

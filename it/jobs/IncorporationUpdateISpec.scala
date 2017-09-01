@@ -37,6 +37,7 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
   val mockUrl = s"http://$wiremockHost:$wiremockPort"
 
   val additionalConfiguration = Map(
+    "metrics.enabled" -> true,
     "auditing.consumer.baseUri.host" -> s"$wiremockHost",
     "auditing.consumer.baseUri.port" -> s"$wiremockPort",
     "Test.auditing.consumer.baseUri.host" -> s"$wiremockHost",

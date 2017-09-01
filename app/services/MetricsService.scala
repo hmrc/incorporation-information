@@ -19,7 +19,7 @@ package services
 import javax.inject.Inject
 
 import com.kenshoo.play.metrics.{Metrics, MetricsDisabledException}
-import com.codahale.metrics.{Counter, Gauge}
+import com.codahale.metrics.{Counter, Gauge, Timer}
 import play.api.Logger
 import repositories._
 
@@ -33,14 +33,20 @@ class MetricsServiceImpl @Inject()(
                                        ) extends MetricsService {
   override val subRepo = injSubRepo.repo
   override val metrics = injMetrics
-  override val publicCohoApiCounter: Counter = metrics.defaultRegistry.counter("public-coho-api-counter")
+  override lazy val publicCohoApiSuccessCounter: Counter = metrics.defaultRegistry.counter("public-coho-api-success-counter")
+  override lazy val publicCohoApiFailureCounter: Counter = metrics.defaultRegistry.counter("public-coho-api-failure-counter")
+  override lazy val transactionApiSuccessCounter: Counter = metrics.defaultRegistry.counter("transaction-api-success-counter")
+  override lazy val transactionApiFailureCounter: Counter = metrics.defaultRegistry.counter("transaction-api-failure-counter")
 }
 
 trait MetricsService {
 
   protected val metrics: Metrics
   protected val subRepo: SubscriptionsRepository
-  val publicCohoApiCounter: Counter
+  val publicCohoApiSuccessCounter: Counter
+  val publicCohoApiFailureCounter: Counter
+  val transactionApiSuccessCounter: Counter
+  val transactionApiFailureCounter: Counter
 
   def updateSubscriptionMetrics(): Future[Map[String, Int]] = {
     subRepo.getSubscriptionStats() map {
@@ -67,6 +73,19 @@ trait MetricsService {
       case ex: MetricsDisabledException => {
         Logger.warn(s"[MetricsService] [recordSubscriptionRegimeStat] Metrics disabled - ${metricName} -> ${count}")
       }
+    }
+  }
+
+  def processDataResponseWithMetrics[T](success: Option[Counter] = None, failed: Option[Counter] = None, timer: Option[Timer.Context] = None)(f: => Future[T]): Future[T] = {
+    f map { data =>
+      timer.map(_.stop())
+      success.map(_.inc(1))
+      data
+    } recover {
+      case e =>
+        timer.map(_.stop())
+        failed.map(_.inc(1))
+        throw e
     }
   }
 

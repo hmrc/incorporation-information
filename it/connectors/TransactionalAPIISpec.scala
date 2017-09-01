@@ -16,33 +16,31 @@
 
 package connectors
 
-import
-
-
-
-
-helpers.{IntegrationSpecBase, SCRSMongoSpec}
+import helpers.{IntegrationSpecBase, SCRSMongoSpec}
 import models.IncorpUpdate
 import org.joda.time.DateTime
+import play.api.Application
+import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsObject, Json}
-import play.api.test.FakeApplication
-import play.modules.reactivemongo.ReactiveMongoComponent
-import repositories.{IncorpUpdateMongo, IncorpUpdateMongoRepository}
+import repositories.IncorpUpdateMongo
 
 import scala.concurrent.ExecutionContext.Implicits.global
-class TransactionalAndPublicAPIISpec extends IntegrationSpecBase with SCRSMongoSpec {
+class TransactionalAndPublicAPIISpec extends IntegrationSpecBase { // with SCRSMongoSpec {
 
   val publicCohoStubUri = "/cohoFrontEndStubs"
 
-  //todo: set feature switch to false
-  override implicit lazy val app = FakeApplication(additionalConfiguration = Map(
+  val additionalConfiguration = Map(
+    "metrics.enabled" -> true,
     "microservice.services.incorp-update-api.stub-url" -> s"http://${wiremockHost}:${wiremockPort}/incorporation-frontend-stubs",
     "microservice.services.incorp-update-api.url" -> s"http://${wiremockHost}:${wiremockPort}",
     "microservice.services.public-coho-api.stub-url" -> s"http://${wiremockHost}:${wiremockPort}$publicCohoStubUri"
-  ))
+  )
+
+  //todo: set feature switch to false
+  override implicit lazy val app: Application = new GuiceApplicationBuilder().configure(additionalConfiguration).build()
 
   class Setup {
-    val incRepo = new IncorpUpdateMongo(reactiveMongoComponent).repo
+    val incRepo = app.injector.instanceOf[IncorpUpdateMongo].repo
     await(incRepo.drop)
     await(incRepo.ensureIndexes)
     def insert(update: IncorpUpdate) = await(incRepo.insert(update))

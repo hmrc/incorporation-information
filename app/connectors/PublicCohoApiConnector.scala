@@ -43,9 +43,10 @@ class PublicCohoApiConnector @Inject()(config: MicroserviceConfig, injMetricsSer
   val cohoPublicUrl =  config.cohoPublicBaseUrl
   val cohoPublicApiAuthToken = config.cohoPublicApiAuthToken
   val cohoStubbedUrl = config.cohoStubbedUrl
-  val metricsService: MetricsService = injMetricsService
 
-
+  val metrics: MetricsService = injMetricsService
+  lazy val successCounter: Counter = metrics.publicCohoApiSuccessCounter
+  lazy val failureCounter: Counter = metrics.publicCohoApiFailureCounter
 }
 
 trait PublicCohoApiConn {
@@ -58,61 +59,70 @@ trait PublicCohoApiConn {
   val cohoPublicUrl: String
   val cohoPublicApiAuthToken: String
   val cohoStubbedUrl:String
-  val metricsService: MetricsService
+  val metrics: MetricsService
+  val successCounter: Counter
+  val failureCounter: Counter
 
   def getCompanyProfile(crn: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
     import play.api.http.Status.NO_CONTENT
 
-    val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/company/$crn")
-      case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company-profile/$crn")
+    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
+
+      val (http, realHc, url) = useProxy match {
+        case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/company/$crn")
+        case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company-profile/$crn")
+      }
+
+
+      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
+        res =>
+          res.status match {
+            case NO_CONTENT => None
+            case _ => Some(res.json)
+          }
+      } recover handlegetCompanyProfileError(crn)
     }
-
-
-    http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
-      res =>
-        res.status match {
-          case NO_CONTENT => None
-          case _ => Some(res.json)
-        }
-    } recover handlegetCompanyProfileError(crn)
   }
 
   def getOfficerList(crn: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
     import play.api.http.Status.NO_CONTENT
 
-    val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/company/$crn/officers")
-      case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company/$crn/officers")
-    }
+    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
+      val (http, realHc, url) = useProxy match {
+        case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/company/$crn/officers")
+        case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company/$crn/officers")
+      }
 
-    http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
-      res =>
-        res.status match {
-          case NO_CONTENT => None
-          case _ => Some(res.json)
-        }
-    } recover handlegetOfficerListError(crn)
+      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
+        res =>
+          res.status match {
+            case NO_CONTENT => None
+            case _ => Some(res.json)
+          }
+      } recover handlegetOfficerListError(crn)
+    }
   }
 
   def getOfficerAppointment(officerAppointmentUrl: String)(implicit hc: HeaderCarrier): Future[JsValue] = {
     import play.api.http.Status.NO_CONTENT
 
-    val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl$officerAppointmentUrl")
-      case false => (httpNoProxy, hc, s"$cohoStubbedUrl/get-officer-appointment?fn=testFirstNae&sn=testSurname")
+    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
+      val (http, realHc, url) = useProxy match {
+        case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl$officerAppointmentUrl")
+        case false => (httpNoProxy, hc, s"$cohoStubbedUrl/get-officer-appointment?fn=testFirstNae&sn=testSurname")
+      }
+
+      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
+        res =>
+          res.status match {
+            case NO_CONTENT =>
+              Logger.info(s"[PublicCohoApiConnector] [getOfficerAppointments] - Could not find officer appointment for Officer url  - $officerAppointmentUrl")
+              throw new NotFoundException(s"No content for Officer url  - $officerAppointmentUrl")
+            case _ => res.json
+          }
+
+      } recover handleOfficerAppointmentsError(url)
     }
-
-    http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
-      res =>
-        res.status match {
-          case NO_CONTENT =>
-            Logger.info(s"[PublicCohoApiConnector] [getOfficerAppointments] - Could not find officer appointment for Officer url  - $officerAppointmentUrl")
-            throw new NotFoundException(s"No content for Officer url  - $officerAppointmentUrl")
-          case _ => res.json
-        }
-
-    } recover handleOfficerAppointmentsError(url)
   }
 
   private def handlegetCompanyProfileError(crn: String): PartialFunction[Throwable, Option[JsValue]] = {
