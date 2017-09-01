@@ -16,19 +16,14 @@
 
 package connectors
 
-import java.util.UUID
+
 
 import Helpers.SCRSSpec
 import com.codahale.metrics.{Counter, Timer}
-import com.kenshoo.play.metrics.Metrics
 import mocks.MockMetrics
-import models.IncorpUpdate
-import org.joda.time.DateTime
-import org.mockito.Matchers.{any, eq => eqTo}
 import org.mockito.Mockito._
 import org.mockito.{ArgumentCaptor, Matchers}
-import play.api.libs.json.{JsValue, Json}
-import repositories.SubscriptionsRepository
+import play.api.libs.json.Json
 import services.MetricsService
 import uk.gov.hmrc.play.http._
 import uk.gov.hmrc.play.http.logging.Authorization
@@ -57,14 +52,10 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
     reset(mockHttp, mockHttpProxy)
 
     val connector = new PublicCohoApiConn {
-      //      val stubBaseUrl = stubUrlValue
-      //      val cohoBaseUrl = cohoUrlValue
       val incorpFrontendStubUrl = "incorp FE Stub"
       val cohoPublicUrl = "Coho public url"
       val cohoPublicApiAuthToken = "CohoPublicToken"
       override val cohoStubbedUrl = "stubbed"
-      //      val cohoApiAuthToken = "c"
-      //      val itemsToFetch = "1"
       override val httpNoProxy = mockHttp
       override val httpProxy = mockHttpProxy
       override val featureSwitch: SCRSFeatureSwitches = new SCRSFeatureSwitches {

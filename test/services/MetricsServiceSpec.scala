@@ -21,14 +21,10 @@ import com.codahale.metrics.{Counter, Histogram, MetricRegistry, Timer}
 import com.kenshoo.play.metrics.Metrics
 import models.{IncorpUpdate, Subscription}
 import org.mockito.Matchers
-import org.mockito.Matchers.{eq => eqTo}
 import org.mockito.Mockito._
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
-import reactivemongo.api.commands.{DefaultWriteResult, WriteError}
+import org.scalatest.BeforeAndAfterEach
 import repositories._
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 
 
 class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {

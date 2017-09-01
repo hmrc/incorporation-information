@@ -16,7 +16,7 @@
 
 package connectors
 
-import helpers.{IntegrationSpecBase, SCRSMongoSpec}
+import helpers.{IntegrationSpecBase}
 import models.IncorpUpdate
 import org.joda.time.DateTime
 import play.api.Application
@@ -25,7 +25,7 @@ import play.api.libs.json.{JsObject, Json}
 import repositories.IncorpUpdateMongo
 
 import scala.concurrent.ExecutionContext.Implicits.global
-class TransactionalAndPublicAPIISpec extends IntegrationSpecBase { // with SCRSMongoSpec {
+class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
 
   val publicCohoStubUri = "/cohoFrontEndStubs"
 
