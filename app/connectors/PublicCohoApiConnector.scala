@@ -66,14 +66,12 @@ trait PublicCohoApiConn {
   def getCompanyProfile(crn: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
     import play.api.http.Status.NO_CONTENT
 
+    val (http, realHc, url) = useProxy match {
+      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/company/$crn")
+      case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company-profile/$crn")
+    }
+
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
-
-      val (http, realHc, url) = useProxy match {
-        case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/company/$crn")
-        case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company-profile/$crn")
-      }
-
-
       http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
         res =>
           res.status match {
@@ -87,12 +85,12 @@ trait PublicCohoApiConn {
   def getOfficerList(crn: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
     import play.api.http.Status.NO_CONTENT
 
-    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
-      val (http, realHc, url) = useProxy match {
-        case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/company/$crn/officers")
-        case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company/$crn/officers")
-      }
+    val (http, realHc, url) = useProxy match {
+      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/company/$crn/officers")
+      case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company/$crn/officers")
+    }
 
+    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
       http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
         res =>
           res.status match {
@@ -106,11 +104,12 @@ trait PublicCohoApiConn {
   def getOfficerAppointment(officerAppointmentUrl: String)(implicit hc: HeaderCarrier): Future[JsValue] = {
     import play.api.http.Status.NO_CONTENT
 
+    val (http, realHc, url) = useProxy match {
+      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl$officerAppointmentUrl")
+      case false => (httpNoProxy, hc, s"$cohoStubbedUrl/get-officer-appointment?fn=testFirstNae&sn=testSurname")
+    }
+
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
-      val (http, realHc, url) = useProxy match {
-        case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl$officerAppointmentUrl")
-        case false => (httpNoProxy, hc, s"$cohoStubbedUrl/get-officer-appointment?fn=testFirstNae&sn=testSurname")
-      }
 
       http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
         res =>

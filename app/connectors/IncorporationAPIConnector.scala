@@ -88,12 +88,12 @@ trait IncorporationAPIConnector {
   def checkForIncorpUpdate(timepoint: Option[String] = None)(implicit hc: HeaderCarrier): Future[Seq[IncorpUpdate]] = {
     import play.api.http.Status.NO_CONTENT
 
-    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
-      val (http, realHc, url) = useProxy match {
-        case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
-        case false => (httpNoProxy, hc, s"$stubBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
-      }
+    val (http, realHc, url) = useProxy match {
+      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
+      case false => (httpNoProxy, hc, s"$stubBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
+    }
 
+    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
       http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
         res =>
           res.status match {
@@ -105,14 +105,12 @@ trait IncorporationAPIConnector {
   }
 
   def fetchTransactionalData(transactionID: String)(implicit hc: HeaderCarrier): Future[TransactionalAPIResponse] = {
+    val (http, realHc, url) = useProxy match {
+      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoBaseUrl/submissionData/$transactionID")
+      case false => (httpNoProxy, hc, s"$stubBaseUrl/fetch-data/$transactionID")
+    }
+
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
-      val (http, realHc, url) = useProxy match {
-        case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoBaseUrl/submissionData/$transactionID")
-        case false => (httpNoProxy, hc, s"$stubBaseUrl/fetch-data/$transactionID")
-      }
-
-      Logger.info("============================ " + url)
-
       http.GET[JsValue](url)(implicitly[HttpReads[JsValue]], realHc) map { res =>
         Logger.warn("json - " + res)
         SuccessfulTransactionalAPIResponse(res)
