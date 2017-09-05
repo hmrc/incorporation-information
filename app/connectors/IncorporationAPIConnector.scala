@@ -100,8 +100,8 @@ trait IncorporationAPIConnector {
             case NO_CONTENT => Seq()
             case _ => res.json.as[IncorpUpdatesResponse].items
           }
-      } recover handleError(timepoint)
-    }
+      }
+    } recover handleError(timepoint)
   }
 
   def fetchTransactionalData(transactionID: String)(implicit hc: HeaderCarrier): Future[TransactionalAPIResponse] = {
@@ -114,8 +114,8 @@ trait IncorporationAPIConnector {
       http.GET[JsValue](url)(implicitly[HttpReads[JsValue]], realHc) map { res =>
         Logger.warn("json - " + res)
         SuccessfulTransactionalAPIResponse(res)
-      } recover handleError(transactionID)
-    }
+      }
+    } recover handleError(transactionID)
   }
 
   private def logError(ex: HttpException, timepoint: Option[String]) = {
