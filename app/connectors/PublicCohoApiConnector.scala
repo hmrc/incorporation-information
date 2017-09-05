@@ -18,19 +18,22 @@ package connectors
 
 import javax.inject.Inject
 
+import com.codahale.metrics.Counter
 import com.ning.http.util.Base64
 import config.{MicroserviceConfig, WSHttp, WSHttpProxy}
 import play.api.Logger
 import play.api.libs.json.JsValue
+import services.MetricsService
 import uk.gov.hmrc.play.http.logging.Authorization
 import uk.gov.hmrc.play.http.{HttpException, _}
 import uk.gov.hmrc.play.http.ws.WSProxy
 import utils.SCRSFeatureSwitches
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 
-class PublicCohoApiConnector @Inject()(config: MicroserviceConfig) extends PublicCohoApiConn {
+class PublicCohoApiConnector @Inject()(config: MicroserviceConfig, injMetricsService: MetricsService) extends PublicCohoApiConn {
 
   def httpProxy = WSHttpProxy
   def httpNoProxy = WSHttp
@@ -41,7 +44,9 @@ class PublicCohoApiConnector @Inject()(config: MicroserviceConfig) extends Publi
   val cohoPublicApiAuthToken = config.cohoPublicApiAuthToken
   val cohoStubbedUrl = config.cohoStubbedUrl
 
-
+  val metrics: MetricsService = injMetricsService
+  lazy val successCounter: Counter = metrics.publicCohoApiSuccessCounter
+  lazy val failureCounter: Counter = metrics.publicCohoApiFailureCounter
 }
 
 trait PublicCohoApiConn {
@@ -54,6 +59,9 @@ trait PublicCohoApiConn {
   val cohoPublicUrl: String
   val cohoPublicApiAuthToken: String
   val cohoStubbedUrl:String
+  val metrics: MetricsService
+  val successCounter: Counter
+  val failureCounter: Counter
 
   def getCompanyProfile(crn: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
     import play.api.http.Status.NO_CONTENT
@@ -63,14 +71,15 @@ trait PublicCohoApiConn {
       case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company-profile/$crn")
     }
 
-
-    http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
-      res =>
-        res.status match {
-          case NO_CONTENT => None
-          case _ => Some(res.json)
-        }
-    } recover handlegetCompanyProfileError(crn)
+    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
+      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
+        res =>
+          res.status match {
+            case NO_CONTENT => None
+            case _ => Some(res.json)
+          }
+      } recover handlegetCompanyProfileError(crn)
+    }
   }
 
   def getOfficerList(crn: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
@@ -81,13 +90,15 @@ trait PublicCohoApiConn {
       case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company/$crn/officers")
     }
 
-    http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
-      res =>
-        res.status match {
-          case NO_CONTENT => None
-          case _ => Some(res.json)
-        }
-    } recover handlegetOfficerListError(crn)
+    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
+      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
+        res =>
+          res.status match {
+            case NO_CONTENT => None
+            case _ => Some(res.json)
+          }
+      } recover handlegetOfficerListError(crn)
+    }
   }
 
   def getOfficerAppointment(officerAppointmentUrl: String)(implicit hc: HeaderCarrier): Future[JsValue] = {
@@ -98,16 +109,19 @@ trait PublicCohoApiConn {
       case false => (httpNoProxy, hc, s"$cohoStubbedUrl/get-officer-appointment?fn=testFirstNae&sn=testSurname")
     }
 
-    http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
-      res =>
-        res.status match {
-          case NO_CONTENT =>
-            Logger.info(s"[PublicCohoApiConnector] [getOfficerAppointments] - Could not find officer appointment for Officer url  - $officerAppointmentUrl")
-            throw new NotFoundException(s"No content for Officer url  - $officerAppointmentUrl")
-          case _ => res.json
-        }
+    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
 
-    } recover handleOfficerAppointmentsError(url)
+      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
+        res =>
+          res.status match {
+            case NO_CONTENT =>
+              Logger.info(s"[PublicCohoApiConnector] [getOfficerAppointments] - Could not find officer appointment for Officer url  - $officerAppointmentUrl")
+              throw new NotFoundException(s"No content for Officer url  - $officerAppointmentUrl")
+            case _ => res.json
+          }
+
+      } recover handleOfficerAppointmentsError(url)
+    }
   }
 
   private def handlegetCompanyProfileError(crn: String): PartialFunction[Throwable, Option[JsValue]] = {

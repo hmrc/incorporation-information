@@ -17,18 +17,14 @@
 package services
 
 import Helpers.SCRSSpec
-import com.codahale.metrics.{Histogram, MetricRegistry}
+import com.codahale.metrics.{Counter, Histogram, MetricRegistry, Timer}
 import com.kenshoo.play.metrics.Metrics
 import models.{IncorpUpdate, Subscription}
 import org.mockito.Matchers
-import org.mockito.Matchers.{eq => eqTo}
 import org.mockito.Mockito._
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
-import reactivemongo.api.commands.{DefaultWriteResult, WriteError}
+import org.scalatest.BeforeAndAfterEach
 import repositories._
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 
 
 class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
@@ -39,17 +35,24 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
   val mockSubRepo = mock[SubscriptionsMongoRepository]
   val mockRegistry = mock[MetricRegistry]
   val mockMetrics = mock[Metrics]
+  val mockCounter = mock[Counter]
+  val mockTimer = mock[Timer.Context]
+
 
   trait Setup {
 
     val service = new MetricsService {
       override val metrics = mockMetrics
       override val subRepo = mockSubRepo
+      override val publicCohoApiFailureCounter: Counter = mockCounter
+      override val publicCohoApiSuccessCounter: Counter = mockCounter
+      override val transactionApiFailureCounter: Counter = mockCounter
+      override val transactionApiSuccessCounter: Counter = mockCounter
    }
   }
 
   override def beforeEach() = {
-    Seq(mockMetrics, mockHisto1, mockHisto2, mockHisto3, mockSubRepo, mockRegistry) foreach { reset(_) }
+    Seq(mockMetrics, mockHisto1, mockHisto2, mockHisto3, mockSubRepo, mockRegistry, mockCounter, mockTimer) foreach { reset(_) }
   }
 
   val transId = "transId123"
@@ -101,6 +104,32 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
       verify(mockRegistry).remove(Matchers.contains("foo3"))
       verify(mockRegistry).register(Matchers.contains("foo3"), Matchers.any())
       verifyNoMoreInteractions(mockRegistry)
+    }
+  }
+
+  "calling processDataResponseWithMatrics" should {
+
+    "should return the resut of the input function if a timer and counters are passed through" in new Setup {
+      val result = await(service.processDataResponseWithMetrics[Int](Some(mockCounter),
+        Some(mockCounter),Some(mockTimer))(1 + 1))
+
+      result shouldBe 2
+    }
+    "should return the result of the input function when called with a success and failure counter" in new Setup {
+      val result = await(service.processDataResponseWithMetrics[Int](Some(mockCounter),
+        Some(mockCounter))(1 + 1))
+
+      result shouldBe 2
+    }
+    "should return the result of the input function when called with a success counter" in new Setup {
+      val result = await(service.processDataResponseWithMetrics[Int](Some(mockCounter))(1 + 1))
+
+      result shouldBe 2
+    }
+    "should return the result of the input function when called with no parameters" in new Setup {
+      val result = await(service.processDataResponseWithMetrics[Int]()(1 + 1))
+
+      result shouldBe 2
     }
   }
 }
