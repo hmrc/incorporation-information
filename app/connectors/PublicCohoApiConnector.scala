@@ -78,8 +78,8 @@ trait PublicCohoApiConn {
             case NO_CONTENT => None
             case _ => Some(res.json)
           }
-      } recover handlegetCompanyProfileError(crn)
-    }
+      }
+    } recover handlegetCompanyProfileError(crn)
   }
 
   def getOfficerList(crn: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
@@ -97,8 +97,8 @@ trait PublicCohoApiConn {
             case NO_CONTENT => None
             case _ => Some(res.json)
           }
-      } recover handlegetOfficerListError(crn)
-    }
+      }
+    } recover handlegetOfficerListError(crn)
   }
 
   def getOfficerAppointment(officerAppointmentUrl: String)(implicit hc: HeaderCarrier): Future[JsValue] = {
@@ -120,8 +120,8 @@ trait PublicCohoApiConn {
             case _ => res.json
           }
 
-      } recover handleOfficerAppointmentsError(url)
-    }
+      }
+    } recover handleOfficerAppointmentsError(url)
   }
 
   private def handlegetCompanyProfileError(crn: String): PartialFunction[Throwable, Option[JsValue]] = {
