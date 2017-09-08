@@ -101,12 +101,23 @@ trait PublicCohoApiConn {
     } recover handlegetOfficerListError(crn)
   }
 
+
+  def getFirstAndLastName(url: String): (String, String) = {
+    val nUrl = url.replace("appointments", "")
+    nUrl.length match {
+      case x if x > 15 => (nUrl.takeRight(15),nUrl.take(15))
+      case _ => ("testFirstName", "testLastName")
+    }
+  }
+
   def getOfficerAppointment(officerAppointmentUrl: String)(implicit hc: HeaderCarrier): Future[JsValue] = {
     import play.api.http.Status.NO_CONTENT
 
     val (http, realHc, url) = useProxy match {
       case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl$officerAppointmentUrl")
-      case false => (httpNoProxy, hc, s"$cohoStubbedUrl/get-officer-appointment?fn=testFirstNae&sn=testSurname")
+      case false =>
+        val (fName,lName) = getFirstAndLastName(officerAppointmentUrl)
+        (httpNoProxy, hc, s"$cohoStubbedUrl/get-officer-appointment?fn=$fName&sn=$lName")
     }
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
