@@ -269,7 +269,8 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
       |   ]
       |}""".stripMargin)
 
-  val testOfficerId = "123456"
+  val testOfficerId  = "123456"
+  val testOfficerUrl = "/officers/_Sdjhshdsnnsi-StreatMand-greattsfh/appointments"
   "getOfficerAppointmentList" should {
 
     "return some valid JSON when a valid Officer ID is provided" in new Setup {
@@ -284,7 +285,22 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
       val result = await(connector.getOfficerAppointment(testOfficerId))
       result shouldBe validOfficerAppointmentsResourceJson
 
-      urlCaptor.getValue shouldBe "stubbed/get-officer-appointment?fn=testFirstNae&sn=testSurname"
+      urlCaptor.getValue shouldBe "stubbed/get-officer-appointment?fn=testFirstName&sn=testSurname"
+    }
+
+    "generate a unique officer name when a url longer than 15 characters is passed" in new Setup {
+      val url = s"$cohoPublicUrlValue"
+
+      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
+
+      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+        .thenReturn(Future.successful(HttpResponse(200, Some(validOfficerAppointmentsResourceJson))))
+
+
+      val result = await(connector.getOfficerAppointment(testOfficerUrl))
+      result shouldBe validOfficerAppointmentsResourceJson
+
+      urlCaptor.getValue shouldBe "stubbed/get-officer-appointment?fn=tMand-greattsfh&sn=officersSdjhshd"
     }
 
     "report an error when receiving a 404" in new Setup {
@@ -297,7 +313,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
 
       intercept[NotFoundException](await(connector.getOfficerAppointment(testOfficerId)))
 
-      urlCaptor.getValue shouldBe  "stubbed/get-officer-appointment?fn=testFirstNae&sn=testSurname"
+      urlCaptor.getValue shouldBe  "stubbed/get-officer-appointment?fn=testFirstName&sn=testSurname"
     }
 
     "report an error when receiving a 400" in new Setup {
@@ -312,7 +328,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
 
       ex.responseCode shouldBe 400
 
-      urlCaptor.getValue shouldBe "stubbed/get-officer-appointment?fn=testFirstNae&sn=testSurname"
+      urlCaptor.getValue shouldBe "stubbed/get-officer-appointment?fn=testFirstName&sn=testSurname"
     }
 
     "report an error when receiving a Throwable exception" in new Setup {
@@ -325,7 +341,21 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
 
       intercept[Throwable](await(connector.getOfficerAppointment(testOfficerId)))
 
-      urlCaptor.getValue shouldBe "stubbed/get-officer-appointment?fn=testFirstNae&sn=testSurname"
+      urlCaptor.getValue shouldBe "stubbed/get-officer-appointment?fn=testFirstName&sn=testSurname"
+    }
+  }
+
+  "getStubbedFirstAndLastName" should {
+    "return testFirstName and testSurname if string is less than 15 characters" in new Setup{
+      val (firstname, lastname) =  await(connector.getStubbedFirstAndLastName(testOfficerId))
+      firstname shouldBe "testFirstName"
+      lastname shouldBe "testSurname"
+    }
+
+    "return a dynamic name if string is less than 15 characters" in new Setup{
+      val (firstname, lastname) =  await(connector.getStubbedFirstAndLastName(testOfficerUrl))
+      firstname shouldBe "tMand-greattsfh"
+      lastname shouldBe "officersSdjhshd"
     }
   }
 

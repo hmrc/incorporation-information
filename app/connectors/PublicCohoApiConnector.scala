@@ -102,11 +102,11 @@ trait PublicCohoApiConn {
   }
 
 
-  def getFirstAndLastName(url: String): (String, String) = {
-    val nUrl = url.replace("appointments", "")
+  def getStubbedFirstAndLastName(url: String): (String, String) = {
+    val nUrl = url.replace("appointments", "").replaceAll("[`*{}\\[\\]()>#+:~'%^&@<?;,\"!$=|./_]","")
     nUrl.length match {
       case x if x > 15 => (nUrl.takeRight(15),nUrl.take(15))
-      case _ => ("testFirstName", "testLastName")
+      case _ => ("testFirstName", "testSurname")
     }
   }
 
@@ -116,7 +116,7 @@ trait PublicCohoApiConn {
     val (http, realHc, url) = useProxy match {
       case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl$officerAppointmentUrl")
       case false =>
-        val (fName,lName) = getFirstAndLastName(officerAppointmentUrl)
+        val (fName,lName) = getStubbedFirstAndLastName(officerAppointmentUrl)
         (httpNoProxy, hc, s"$cohoStubbedUrl/get-officer-appointment?fn=$fName&sn=$lName")
     }
 
