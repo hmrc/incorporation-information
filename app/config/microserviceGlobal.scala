@@ -20,7 +20,8 @@ import javax.inject.{Inject, Named, Singleton}
 
 import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
-import play.api.{Application, Configuration, Play, Logger}
+import play.api.{Application, Configuration, Logger, Play}
+import repositories.TimepointMongo
 import uk.gov.hmrc.play.audit.filters.AuditFilter
 import uk.gov.hmrc.play.auth.controllers.AuthParamsControllerConfig
 import uk.gov.hmrc.play.auth.microservice.filters.AuthorisationFilter
@@ -29,6 +30,8 @@ import uk.gov.hmrc.play.filters.MicroserviceFilterSupport
 import uk.gov.hmrc.play.http.logging.filters.LoggingFilter
 import uk.gov.hmrc.play.microservice.bootstrap.DefaultMicroserviceGlobal
 import uk.gov.hmrc.play.scheduling.{RunningOfScheduledJobs, ScheduledJob}
+
+import scala.concurrent.{ExecutionContext, Future}
 
 
 object ControllerConfiguration extends ControllerConfig {
@@ -76,7 +79,22 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Mi
     val metricsEnabled = app.configuration.getString(metricsKey)
     Logger.info(s"[Config] ${metricsKey} = ${metricsEnabled}")
 
+    resetTimepoint(app)
+
     super.onStart(app)
+  }
+
+  private def resetTimepoint(app: Application): Future[Boolean] = {
+    implicit val ex: ExecutionContext = app.materializer.executionContext.prepare()
+
+    app.configuration.getString("microservice.services.reset-timepoint-to").fold{
+      Logger.info("[ResetTimepoint] Could not find a timepoint to reset to (config key microservice.services.reset-timepoint-to)")
+      Future(false)
+    }{
+      timepoint =>
+        Logger.info(s"[ResetTimepoint] Found timepoint from config - $timepoint")
+        app.injector.instanceOf[TimepointMongo].repo.resetTimepointTo(timepoint)
+    }
   }
 }
 

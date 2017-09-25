@@ -47,6 +47,7 @@ class TimepointMongo @Inject()(mongo: ReactiveMongoComponent) extends ReactiveMo
 trait TimepointRepository extends Repository[TimePoint, BSONObjectID] {
   def updateTimepoint(s: String) : Future[String]
   def retrieveTimePoint : Future[Option[String]]
+  def resetTimepointTo(timepoint: String): Future[Boolean]
 }
 
 class TimepointMongoRepository(mongo: () => DB)
@@ -72,4 +73,8 @@ class TimepointMongoRepository(mongo: () => DB)
     }
   }
 
+  def resetTimepointTo(timepoint: String): Future[Boolean] = {
+    val update = BSONDocument("$set" -> BSONDocument("_id" -> "CH-INCORPSTATUS-TIMEPOINT", "timepoint" -> timepoint))
+    collection.update(Json.obj(), update, upsert = true).map(_.ok)
+  }
 }
