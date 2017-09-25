@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package mongo
+package repositories
 
 import Helpers.SCRSSpec
 import controllers.SubscriptionController

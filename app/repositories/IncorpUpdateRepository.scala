@@ -19,6 +19,8 @@ package repositories
 import javax.inject.{Inject, Singleton}
 
 import models.IncorpUpdate
+import org.apache.commons.lang3.StringUtils
+import play.api.Logger
 import play.api.libs.json.Format
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DB
@@ -55,10 +57,20 @@ class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])
   def storeIncorpUpdates(updates: Seq[IncorpUpdate]): Future[InsertResult] = {
     bulkInsert(updates) map {
       wr =>
+        logUniqueIncorporations(updates, wr.writeErrors)
         val inserted = wr.n
         val (duplicates, errors) = wr.writeErrors.partition(_.code == ERR_DUPLICATE)
         InsertResult(inserted, duplicates.size, errors)
     }
+  }
+
+  private[repositories] def logUniqueIncorporations(updates: Seq[IncorpUpdate], errs: Seq[WriteError]) {
+    val duplicates = errs collect {
+      case WriteError(_, ERR_DUPLICATE, msg) => StringUtils.substringBetween(msg, "\"", "\"")
+    }
+
+    val uniques = updates.map(_.transactionId) diff duplicates
+    uniques foreach (u => Logger.info(s"[UniqueIncorp] transactionId : $u"))
   }
 
   def getIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]] = {
