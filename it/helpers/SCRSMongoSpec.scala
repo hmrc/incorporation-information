@@ -20,11 +20,18 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import play.modules.reactivemongo.ReactiveMongoComponentImpl
 import uk.gov.hmrc.mongo.MongoSpecSupport
-import uk.gov.hmrc.play.test.{WithFakeApplication, UnitSpec}
-import play.api.inject.{DefaultApplicationLifecycle, ApplicationLifecycle}
+import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
+import play.api.inject.DefaultApplicationLifecycle
+import play.api.libs.json._
 
-trait SCRSMongoSpec extends UnitSpec with MongoSpecSupport with BeforeAndAfterEach with ScalaFutures with Eventually with WithFakeApplication {
+trait SCRSMongoSpec extends UnitSpec with MongoSpecSupport with BeforeAndAfterEach
+  with ScalaFutures with Eventually with WithFakeApplication {
 
   lazy val applicationLifeCycle = new DefaultApplicationLifecycle
   val reactiveMongoComponent = new ReactiveMongoComponentImpl(fakeApplication, applicationLifeCycle)
+
+  implicit def formatToOFormat[T](implicit format: Format[T]): OFormat[T] = new OFormat[T] {
+    override def writes(o: T): JsObject = format.writes(o).as[JsObject]
+    override def reads(json: JsValue): JsResult[T] = format.reads(json)
+  }
 }
