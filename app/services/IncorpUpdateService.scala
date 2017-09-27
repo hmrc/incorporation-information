@@ -56,15 +56,14 @@ trait IncorpUpdateService extends {
   val incorpUpdateRepository: IncorpUpdateRepository
   val timepointRepository: TimepointRepository
   val queueRepository: QueueRepository
-  val subscriptionService : SubscriptionService
-  val noRAILoggingDay : String
-  val noRAILoggingTime : String
+  val subscriptionService: SubscriptionService
+  val noRAILoggingDay: String
+  val noRAILoggingTime: String
 
   private[services] def fetchIncorpUpdates(implicit hc: HeaderCarrier): Future[Seq[IncorpUpdate]] = {
     for {
       timepoint <- timepointRepository.retrieveTimePoint
       incorpUpdates <- incorporationCheckAPIConnector.checkForIncorpUpdate(timepoint)(hc)
-      _ <- checkForInterest(incorpUpdates)
     } yield {
       incorpUpdates
     }
@@ -73,21 +72,25 @@ trait IncorpUpdateService extends {
   private[services] def storeIncorpUpdates(updates: Seq[IncorpUpdate]): Future[InsertResult] = {
     for {
       result <- incorpUpdateRepository.storeIncorpUpdates(updates)
-
+      alerts <- alertOnNoCTInterest(result.insertedItems)
     } yield {
-      result
+      result.copy(alerts=alerts)
     }
   }
 
-  def checkForInterest(updates: Seq[IncorpUpdate]): Future[Seq[Boolean]] = Future.sequence { updates.map(iu =>
-    subscriptionService.getSubscription(iu.transactionId, "ct", "scrs").map {
-      _.fold {
-        Logger.error(s"NO_CT_REG_OF_INTEREST for txid ${iu.transactionId}")
-        if (inWorkingHours) {Logger.error("NO_CT_REG_OF_INTEREST")}
-        false
-      }
-      { _ => true}
-    })
+  private[services] def alertOnNoCTInterest(updates: Seq[IncorpUpdate]): Future[Int] = {
+    Future.sequence {
+      updates.map(iu =>
+        subscriptionService.getSubscription(iu.transactionId, "ct", "scrs").map {
+          _.fold {
+            Logger.error(s"NO_CT_REG_OF_INTEREST for txid ${iu.transactionId}")
+            if (inWorkingHours) {
+              Logger.error("NO_CT_REG_OF_INTEREST")
+            }
+            1
+          } { _ => 0 }
+        })
+    } map { _.sum }
   }
 
   private[services] def latestTimepoint(items: Seq[IncorpUpdate]): String = items.reverse.head.timepoint
@@ -96,15 +99,23 @@ trait IncorpUpdateService extends {
   def updateNextIncorpUpdateJobLot(implicit hc: HeaderCarrier): Future[InsertResult] = {
     fetchIncorpUpdates flatMap { items =>
       storeIncorpUpdates(items) flatMap {
-        case ir@InsertResult(0, _, Seq()) => {
+        case ir@InsertResult(0, 0, Seq(), 0, _) => {
           Logger.info("No Incorp updates were fetched")
           Future.successful(ir)
         }
-        case ir@InsertResult(i, d, Seq()) => {
-          copyToQueue(createQueuedIncorpUpdates(items)) flatMap {
+        case ir@InsertResult(0, d, Seq(), a, _) => {
+          Logger.info(s"All $d fetched updates were duplicates")
+          timepointRepository.updateTimepoint(latestTimepoint(items)).map(tp => {
+            val message = s"0 incorp updates were inserted, $d incorp updates were duplicates, $a alerts and the timepoint has been updated to $tp"
+            Logger.info(message)
+            ir
+          })
+        }
+        case ir@InsertResult(i, d, Seq(), a, insertedItems) => {
+          copyToQueue(createQueuedIncorpUpdates(insertedItems)) flatMap {
             case true =>
               timepointRepository.updateTimepoint(latestTimepoint(items)).map(tp => {
-                val message = s"$i incorp updates were inserted, $d incorp updates were duplicates, and the timepoint has been updated to $tp"
+                val message = s"$i incorp updates were inserted, $d incorp updates were duplicates, $a alerts and the timepoint has been updated to $tp"
                 Logger.info(message)
                 ir
               })
@@ -113,7 +124,7 @@ trait IncorpUpdateService extends {
               Future.successful(ir)
           }
         }
-        case ir@InsertResult(_, _, e) =>
+        case ir@InsertResult(_, _, e, _, _) =>
           Logger.info(s"There was an error when inserting incorp updates, message: $e")
           Future.successful(ir)
       }

@@ -52,6 +52,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
   def resetMocks() = {
     reset(mockIncorporationCheckAPIConnector)
     reset(mockIncorpUpdateRepository)
+    reset(mockSubscriptionService)
     reset(mockTimepointRepository)
     reset(mockQueueRepository)
     reset(mockSubRepo)
@@ -78,7 +79,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
   val incorpUpdate = IncorpUpdate("transId", "accepted", None, None, timepointOld, None)
   val incorpUpdate2 = IncorpUpdate("transId2", "accepted", None, None, timepointOld, None)
   val incorpUpdate3 = IncorpUpdate("transId3", "rejected", None, None, timepointOld, None)
-  val incorpUpdateNew = IncorpUpdate("transId", "accepted", None, None, timepointNew, None)
+  val incorpUpdateNew = IncorpUpdate("transIdNew", "accepted", None, None, timepointNew, None)
   val incorpUpdates = Seq(incorpUpdate, incorpUpdateNew)
   val seqOfIncorpUpdates = Seq(incorpUpdate, incorpUpdate2, incorpUpdate3)
   val emptyUpdates = Seq()
@@ -110,13 +111,39 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
   }
 
   "storeIncorpUpdates" should {
-    "return InsertResult(1, 0, Seq()) when one update has been inserted" in new Setup {
+    "return InsertResult(2, 0, Seq(), 0) when one update with 2 incorps has been inserted with CT subscriptions" in new Setup {
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
       when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
-      when(mockIncorpUpdateRepository.storeIncorpUpdates(incorpUpdates)).thenReturn(InsertResult(1, 0, Seq()))
+      when(mockIncorpUpdateRepository.storeIncorpUpdates(incorpUpdates)).thenReturn(InsertResult(2, 0, Seq(),0, incorpUpdates))
+      when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
+        .thenReturn(Future(Some(sub)))
 
-      val response = service.storeIncorpUpdates(Future.successful(incorpUpdates))
-      response.map(ir => ir shouldBe InsertResult(1, 0, Seq()))
+      val response = await(service.storeIncorpUpdates(Future.successful(incorpUpdates)))
+      response shouldBe InsertResult(2, 0, Seq(), 0, incorpUpdates)
+    }
+
+    "return InsertResult(2, 0, Seq(), 2) when one update with 2 incorps has been inserted without CT subscriptions" in new Setup {
+      when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
+      when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
+      when(mockIncorpUpdateRepository.storeIncorpUpdates(incorpUpdates)).thenReturn(InsertResult(2, 0, Seq(), 0, incorpUpdates))
+      when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
+        .thenReturn(Future(None))
+
+      val response = await(service.storeIncorpUpdates(Future.successful(incorpUpdates)))
+      response shouldBe InsertResult(2, 0, Seq(), 2, incorpUpdates)
+    }
+
+    "return InsertResult(2, 0, Seq(), 1) when one update with 2 incorps has been inserted one with one without CT subscriptions" in new Setup {
+      when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
+      when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
+      when(mockIncorpUpdateRepository.storeIncorpUpdates(incorpUpdates)).thenReturn(InsertResult(2, 0, Seq(), 0, incorpUpdates))
+      when(mockSubscriptionService.getSubscription(Matchers.eq("transId"), Matchers.anyString(), Matchers.anyString()))
+        .thenReturn(Future(Some(sub)))
+      when(mockSubscriptionService.getSubscription(Matchers.eq("transIdNew"), Matchers.anyString(), Matchers.anyString()))
+        .thenReturn(Future(None))
+
+      val response = await(service.storeIncorpUpdates(Future.successful(incorpUpdates)))
+      response shouldBe InsertResult(2, 0, Seq(), 1, incorpUpdates)
     }
 
     "return InsertResult(0, 0, Seq()) when there are no updates to store" in new Setup {
@@ -124,8 +151,8 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
       when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
       when(mockIncorpUpdateRepository.storeIncorpUpdates(emptyUpdates)).thenReturn(InsertResult(0, 0, Seq()))
 
-      val response = service.storeIncorpUpdates(Future.successful(emptyUpdates))
-      response.map(ir => ir shouldBe InsertResult(0, 0, Seq()))
+      val response = await(service.storeIncorpUpdates(Future.successful(emptyUpdates)))
+      response shouldBe InsertResult(0, 0, Seq(), 0)
     }
 
     "return an InsertResult containing errors, when a failure occurred whilst adding incorp updates to the main collection" in new Setup {
@@ -134,8 +161,8 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
       val writeError = WriteError(0, 121, "Invalid Incorp Update could not be stored")
       when(mockIncorpUpdateRepository.storeIncorpUpdates(emptyUpdates)).thenReturn(InsertResult(0, 0, Seq(writeError)))
 
-      val response = service.storeIncorpUpdates(emptyUpdates)
-      response.map(ir => ir shouldBe InsertResult(0, 0, Seq(writeError)))
+      val response = await(service.storeIncorpUpdates(emptyUpdates))
+      response shouldBe InsertResult(0, 0, Seq(writeError))
     }
   }
 
@@ -165,7 +192,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepointOld)))
       when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Matchers.eq(Some(timepointOld)))(Matchers.any())).thenReturn(Future.successful(incorpUpdates))
 
-      when(mockIncorpUpdateRepository.storeIncorpUpdates(Matchers.any())).thenReturn(Future.successful(InsertResult(2, 0, Seq())))
+      when(mockIncorpUpdateRepository.storeIncorpUpdates(Matchers.any())).thenReturn(Future.successful(InsertResult(2, 0, Seq(), 0, incorpUpdates)))
 
       when(mockQueueRepository.storeIncorpUpdates(Matchers.any())).thenReturn(Future.successful(InsertResult(2, 0, Seq())))
 
@@ -176,7 +203,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
       val response = await(service.updateNextIncorpUpdateJobLot)
       verify(mockTimepointRepository).updateTimepoint(captor.capture())
       captor.getValue shouldBe newTimepoint
-      response shouldBe InsertResult(2,0,Seq())
+      response shouldBe InsertResult(2,0,Seq(),0,incorpUpdates)
     }
   }
 
@@ -210,35 +237,36 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
 
   "checkForInterest" should {
 
-
-    "return a true for each incorp that has an interested registered" in new Setup {
+    "return the no alerts were raised where there's an interest registered" in new Setup {
       when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
         .thenReturn(Future(Some(sub)))
 
-      val result = await(service.checkForInterest(seqOfIncorpUpdates))
+      val result = await(service.alertOnNoCTInterest(seqOfIncorpUpdates))
 
-      result shouldBe List(true, true, true)
+      result shouldBe 0
     }
-    "return false if incorp have an interested registered" in new Setup {
+
+    "return 2 where there were two incorps without an interest registered" in new Setup {
       when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
         .thenReturn(Future(None))
 
-      val result = await(service.checkForInterest(incorpUpdates))
+      val result = await(service.alertOnNoCTInterest(incorpUpdates))
 
-      result shouldBe List(false, false)
+      result shouldBe 2
     }
-    "return mixture of true and false if incorp have an interested registered" in new Setup {
+    "return 1 alerts when 2 out of 3 incorps have an interested registered" in new Setup {
       when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
         .thenReturn(Future(Some(sub)), Future(None), Future(Some(sub)))
 
-      val result = await(service.checkForInterest(seqOfIncorpUpdates))
+      val result = await(service.alertOnNoCTInterest(seqOfIncorpUpdates))
 
-      result shouldBe List(true, false, true)
+      result shouldBe 1
     }
-    "return Nil if no incorps are processed" in new Setup {
-      val result = await(service.checkForInterest(emptyUpdates))
 
-      result shouldBe List()
+    "return 0 alerts if no incorps are processed" in new Setup {
+      val result = await(service.alertOnNoCTInterest(emptyUpdates))
+
+      result shouldBe 0
     }
   }
 
