@@ -48,7 +48,9 @@ class IncorpUpdateRepositorySpec extends UnitSpec with MongoSpecSupport with Log
           WriteError(1, ERR_DUPLICATE, duplicateErrorMessage("trans3"))
         )
 
-        repo.logUniqueIncorporations(incorps, errors)
+        val result = repo.nonDuplicateIncorporations(incorps, errors)
+
+        result shouldBe incorpUpdates("trans2")
 
         logEvents.size shouldBe 1
         logEvents.head.getLevel shouldBe Level.INFO
@@ -68,7 +70,9 @@ class IncorpUpdateRepositorySpec extends UnitSpec with MongoSpecSupport with Log
           WriteError(2, ERR_DUPLICATE, duplicateErrorMessage("trans3"))
         )
 
-        repo.logUniqueIncorporations(incorps, errors)
+        val result = repo.nonDuplicateIncorporations(incorps, errors)
+
+        result shouldBe incorpUpdates("trans2")
 
         logEvents.size shouldBe 1
         logEvents.head.getLevel shouldBe Level.INFO
@@ -87,7 +91,8 @@ class IncorpUpdateRepositorySpec extends UnitSpec with MongoSpecSupport with Log
           WriteError(1, ERR_DUPLICATE, duplicateErrorMessage("trans3"))
         )
 
-        repo.logUniqueIncorporations(incorps, errors)
+        val result = repo.nonDuplicateIncorporations(incorps, errors)
+        result shouldBe incorpUpdates()
 
         logEvents.size shouldBe 0
       }
@@ -97,7 +102,8 @@ class IncorpUpdateRepositorySpec extends UnitSpec with MongoSpecSupport with Log
       withCaptureOfLoggingFrom(Logger) { logEvents =>
         val incorps = incorpUpdates("trans1", "trans2", "trans3")
 
-        repo.logUniqueIncorporations(incorps, Seq.empty)
+        val result = repo.nonDuplicateIncorporations(incorps, Seq.empty)
+        result shouldBe incorps
 
         logEvents.size shouldBe 3
         logEvents.head.getLevel shouldBe Level.INFO

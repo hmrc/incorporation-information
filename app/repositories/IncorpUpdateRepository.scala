@@ -57,20 +57,22 @@ class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])
   def storeIncorpUpdates(updates: Seq[IncorpUpdate]): Future[InsertResult] = {
     bulkInsert(updates) map {
       wr =>
-        logUniqueIncorporations(updates, wr.writeErrors)
+        val nonDupIU = nonDuplicateIncorporations(updates, wr.writeErrors)
         val inserted = wr.n
         val (duplicates, errors) = wr.writeErrors.partition(_.code == ERR_DUPLICATE)
-        InsertResult(inserted, duplicates.size, errors)
+        InsertResult(inserted, duplicates.size, errors, insertedItems = nonDupIU)
     }
   }
 
-  private[repositories] def logUniqueIncorporations(updates: Seq[IncorpUpdate], errs: Seq[WriteError]) {
+  private[repositories] def nonDuplicateIncorporations(updates: Seq[IncorpUpdate], errs: Seq[WriteError]): Seq[IncorpUpdate] = {
     val duplicates = errs collect {
       case WriteError(_, ERR_DUPLICATE, msg) => StringUtils.substringBetween(msg, "\"", "\"")
     }
 
-    val uniques = updates.map(_.transactionId) diff duplicates
+    val uniques = (updates.map(_.transactionId) diff duplicates).toSet
     uniques foreach (u => Logger.info(s"[UniqueIncorp] transactionId : $u"))
+
+    updates.filter( i => uniques.contains(i.transactionId) )
   }
 
   def getIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]] = {
@@ -78,4 +80,10 @@ class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])
   }
 }
 
-case class InsertResult(inserted: Int, duplicate: Int, errors: Seq[WriteError])
+case class InsertResult(
+                         inserted: Int,
+                         duplicate: Int,
+                         errors: Seq[WriteError] = Seq(),
+                         alerts: Int = 0,
+                         insertedItems: Seq[IncorpUpdate] = Seq()
+                       )

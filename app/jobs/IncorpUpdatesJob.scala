@@ -59,9 +59,9 @@ trait IncorpUpdatesJob extends ExclusiveScheduledJob with JobConfig {
             Result(message)
           }
         } map {
-          case Some(x) =>
-            Logger.info(s"successfully acquired lock for $name - result ${x}")
-            Result(s"$name")
+          case Some(r) =>
+            Logger.info(s"successfully acquired lock for $name - result ${r}")
+            Result(s"$name - ${r.message}")
           case None =>
             Logger.info(s"failed to acquire lock for $name")
             Result(s"$name failed")
