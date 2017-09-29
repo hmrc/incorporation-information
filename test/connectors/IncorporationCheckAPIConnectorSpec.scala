@@ -65,10 +65,13 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         override val KEY_SCHED_METRICS = "z"
         override val transactionalAPI = FeatureSwitch(KEY_TX_API, false)
         override val scheduler = FeatureSwitch(KEY_INCORP_UPDATE, false)
+        override val KEY_PRO_MONITORING = "p"
       }
       override val metrics: MetricsService = mockMetrics
       override val successCounter: Counter = metrics.transactionApiSuccessCounter
       override val failureCounter: Counter = metrics.transactionApiFailureCounter
+      override protected val loggingDays = "MON,TUE,WED,THU,FRI"
+      override protected val loggingTimes = "08:00:00_17:00:00"
     }
   }
 

@@ -27,10 +27,9 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 
-class MetricsServiceImpl @Inject()(
-                                         val injSubRepo: SubscriptionsMongo,
-                                         val injMetrics: Metrics
-                                       ) extends MetricsService {
+class MetricsServiceImpl @Inject()(val injSubRepo: SubscriptionsMongo,
+                                   val injMetrics: Metrics
+                                  ) extends MetricsService {
   override val subRepo = injSubRepo.repo
   override val metrics = injMetrics
   override lazy val publicCohoApiSuccessCounter: Counter = metrics.defaultRegistry.counter("public-coho-api-success-counter")

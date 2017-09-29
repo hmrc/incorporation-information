@@ -40,7 +40,7 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
   )
 
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
-    .configure(additionalConfiguration)
+    .configure(fakeConfig(additionalConfiguration))
     .build
 
   class Setup {

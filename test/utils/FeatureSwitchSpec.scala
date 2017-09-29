@@ -19,11 +19,13 @@ package utils
 import org.joda.time.DateTime
 import org.scalatest.BeforeAndAfterEach
 import uk.gov.hmrc.play.test.UnitSpec
+import SCRSFeatureSwitches._
 
 class FeatureSwitchSpec extends UnitSpec with BeforeAndAfterEach {
 
   override def beforeEach() {
     System.clearProperty("feature.transactionalAPI")
+    System.clearProperty("feature.proactiveMonitoring")
     System.clearProperty("feature.test")
   }
 
@@ -310,7 +312,7 @@ class FeatureSwitchSpec extends UnitSpec with BeforeAndAfterEach {
       SCRSFeatureSwitches.transactionalAPI.enabled shouldBe false
     }
 
-    "return a submissionCheck feature if it exists" in {
+    "return a transactionalApi feature if it exists" in {
       System.setProperty("feature.transactionalAPI", "true")
 
       SCRSFeatureSwitches("transactionalAPI") shouldBe Some(BooleanFeatureSwitch("transactionalAPI", true))
@@ -318,6 +320,16 @@ class FeatureSwitchSpec extends UnitSpec with BeforeAndAfterEach {
 
     "return an empty option if the submissionCheck system property doesn't exist when using the apply function" in {
       SCRSFeatureSwitches("transactionalAPI") shouldBe Some(BooleanFeatureSwitch("transactionalAPI", false))
+    }
+
+    "return a proactiveMonitoring feature if it exists" in {
+      System.setProperty("feature.proactiveMonitoring", "true")
+
+      SCRSFeatureSwitches("proactiveMonitoring") shouldBe Some(BooleanFeatureSwitch(s"$KEY_PRO_MONITORING", true))
+    }
+
+    "return an empty option if the proactiveMonitoring system property doesn't exist when using the apply function" in {
+      SCRSFeatureSwitches("proactiveMonitoring") shouldBe Some(BooleanFeatureSwitch(s"$KEY_PRO_MONITORING", false))
     }
   }
 }

@@ -30,7 +30,7 @@ import services.MetricsService
 import uk.gov.hmrc.play.http._
 import uk.gov.hmrc.play.http.logging.Authorization
 import uk.gov.hmrc.play.http.ws.WSProxy
-import utils.SCRSFeatureSwitches
+import utils.{AlertLogging, SCRSFeatureSwitches}
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -52,7 +52,8 @@ object IncorpUpdatesResponse {
 }
 
 @Singleton
-class IncorporationAPIConnectorImpl @Inject()(config: MicroserviceConfig, injMetricsService: MetricsService) extends IncorporationAPIConnector {
+class IncorporationAPIConnectorImpl @Inject()(config: MicroserviceConfig,
+                                              injMetricsService: MetricsService) extends IncorporationAPIConnector {
   val stubBaseUrl = config.incorpFrontendStubUrl
   val cohoBaseUrl = config.companiesHouseUrl
   val cohoApiAuthToken = config.incorpUpdateCohoApiAuthToken
@@ -63,6 +64,9 @@ class IncorporationAPIConnectorImpl @Inject()(config: MicroserviceConfig, injMet
   override val metrics: MetricsService = injMetricsService
   override lazy val successCounter: Counter = metrics.transactionApiSuccessCounter
   override lazy val failureCounter: Counter = metrics.transactionApiFailureCounter
+
+  protected val loggingDays: String = config.noRegisterAnInterestLoggingDay
+  protected val loggingTimes: String = config.noRegisterAnInterestLoggingTime
 }
 
 case class IncorpUpdateAPIFailure(ex: Exception) extends NoStackTrace
@@ -71,7 +75,7 @@ sealed trait TransactionalAPIResponse
 case class SuccessfulTransactionalAPIResponse(js: JsValue) extends TransactionalAPIResponse
 case object FailedTransactionalAPIResponse extends TransactionalAPIResponse
 
-trait IncorporationAPIConnector {
+trait IncorporationAPIConnector extends AlertLogging {
 
   def httpProxy: HttpGet with WSProxy
   def httpNoProxy: HttpGet
@@ -112,7 +116,7 @@ trait IncorporationAPIConnector {
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
       http.GET[JsValue](url)(implicitly[HttpReads[JsValue]], realHc) map { res =>
-        Logger.warn("json - " + res)
+        Logger.debug("[TransactionalData] json - " + res)
         SuccessfulTransactionalAPIResponse(res)
       }
     } recover handleError(transactionID)
@@ -143,11 +147,24 @@ trait IncorporationAPIConnector {
   }
 
   private def handleError(transactionID: String): PartialFunction[Throwable, TransactionalAPIResponse] = {
-    case ex: NotFoundException =>
+    case _: NotFoundException =>
+      alertCohoTxAPINotFound()
       Logger.info(s"[TransactionalConnector] [fetchTransactionalData] - Could not find incorporation data for transaction ID - $transactionID")
       FailedTransactionalAPIResponse
-    case ex: HttpException =>
-      Logger.info(s"[TransactionalConnector] [fetchTransactionalData] - Returned status code: ${ex.responseCode} for $transactionID - reason: ${ex.getMessage}")
+    case ex: Upstream4xxResponse =>
+      alertCohoTxAPI4xx()
+      Logger.info(s"[TransactionalConnector] [fetchTransactionalData] - ${ex.upstreamResponseCode} returned for transaction id - $transactionID")
+      FailedTransactionalAPIResponse
+    case _: GatewayTimeoutException =>
+      alertCohoTxAPIGatewayTimeout()
+      Logger.error(s"[TransactionalConnector] [fetchTransactionalData] - Gateway timeout for transaction id - $transactionID")
+      FailedTransactionalAPIResponse
+    case _: ServiceUnavailableException =>
+      alertCohoTxAPIServiceUnavailable()
+      FailedTransactionalAPIResponse
+    case ex: Upstream5xxResponse =>
+      alertCohoTxAPI5xx()
+      Logger.info(s"[TransactionalConnector] [fetchTransactionalData] - Returned status code: ${ex.upstreamResponseCode} for $transactionID - reason: ${ex.getMessage}")
       FailedTransactionalAPIResponse
     case ex: Throwable =>
       Logger.info(s"[TransactionalConnector] [fetchTransactionalData] - Failed for $transactionID - reason: ${ex.getMessage}")

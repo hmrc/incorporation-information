@@ -27,7 +27,7 @@ import services.MetricsService
 import uk.gov.hmrc.play.http.logging.Authorization
 import uk.gov.hmrc.play.http.{HttpException, _}
 import uk.gov.hmrc.play.http.ws.WSProxy
-import utils.SCRSFeatureSwitches
+import utils.{AlertLogging, SCRSFeatureSwitches}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -35,33 +35,37 @@ import scala.concurrent.Future
 
 class PublicCohoApiConnector @Inject()(config: MicroserviceConfig, injMetricsService: MetricsService) extends PublicCohoApiConn {
 
-  def httpProxy = WSHttpProxy
-  def httpNoProxy = WSHttp
+  protected def httpProxy: WSHttpProxy.type = WSHttpProxy
+  protected def httpNoProxy: WSHttp.type = WSHttp
 
-  val featureSwitch = SCRSFeatureSwitches
-  val incorpFrontendStubUrl =  config.incorpFrontendStubUrl
-  val cohoPublicUrl =  config.cohoPublicBaseUrl
-  val cohoPublicApiAuthToken = config.cohoPublicApiAuthToken
-  val cohoStubbedUrl = config.cohoStubbedUrl
+  protected val featureSwitch: SCRSFeatureSwitches.type = SCRSFeatureSwitches
 
-  val metrics: MetricsService = injMetricsService
-  lazy val successCounter: Counter = metrics.publicCohoApiSuccessCounter
-  lazy val failureCounter: Counter = metrics.publicCohoApiFailureCounter
+  protected val incorpFrontendStubUrl: String =  config.incorpFrontendStubUrl
+  protected val cohoPublicUrl: String =  config.cohoPublicBaseUrl
+  protected val cohoPublicApiAuthToken:String = config.cohoPublicApiAuthToken
+  protected val cohoStubbedUrl: String = config.cohoStubbedUrl
+
+  protected lazy val metrics: MetricsService = injMetricsService
+  protected lazy val successCounter: Counter = metrics.publicCohoApiSuccessCounter
+  protected lazy val failureCounter: Counter = metrics.publicCohoApiFailureCounter
+
+  protected val loggingDays: String = config.noRegisterAnInterestLoggingDay
+  protected val loggingTimes: String = config.noRegisterAnInterestLoggingTime
 }
 
-trait PublicCohoApiConn {
+trait PublicCohoApiConn extends AlertLogging {
 
-  def httpProxy: HttpGet with WSProxy
-  def httpNoProxy: HttpGet
+  protected def httpProxy: HttpGet with WSProxy
+  protected def httpNoProxy: HttpGet
 
-  val featureSwitch: SCRSFeatureSwitches
-  val incorpFrontendStubUrl : String
-  val cohoPublicUrl: String
-  val cohoPublicApiAuthToken: String
-  val cohoStubbedUrl:String
-  val metrics: MetricsService
-  val successCounter: Counter
-  val failureCounter: Counter
+  protected val featureSwitch: SCRSFeatureSwitches
+  protected val incorpFrontendStubUrl : String
+  protected val cohoPublicUrl: String
+  protected val cohoPublicApiAuthToken: String
+  protected val cohoStubbedUrl:String
+  protected val metrics: MetricsService
+  protected val successCounter: Counter
+  protected val failureCounter: Counter
 
   def getCompanyProfile(crn: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
     import play.api.http.Status.NO_CONTENT
@@ -79,7 +83,7 @@ trait PublicCohoApiConn {
             case _ => Some(res.json)
           }
       }
-    } recover handlegetCompanyProfileError(crn)
+    } recover handleGetCompanyProfileError(crn)
   }
 
   def getOfficerList(crn: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
@@ -98,7 +102,7 @@ trait PublicCohoApiConn {
             case _ => Some(res.json)
           }
       }
-    } recover handlegetOfficerListError(crn)
+    } recover handleGetOfficerListError(crn)
   }
 
 
@@ -135,20 +139,32 @@ trait PublicCohoApiConn {
     } recover handleOfficerAppointmentsError(url)
   }
 
-  private def handlegetCompanyProfileError(crn: String): PartialFunction[Throwable, Option[JsValue]] = {
-    case ex: NotFoundException =>
+  private def handleGetCompanyProfileError(crn: String): PartialFunction[Throwable, Option[JsValue]] = {
+    case _: NotFoundException =>
       Logger.info(s"[PublicCohoApiConnector] [getCompanyProfile] - Could not find company data for CRN - $crn")
       None
-    case ex: HttpException =>
-      Logger.info(s"[PublicCohoApiConnector] [getCompanyProfile] - Returned status code: ${ex.responseCode} for $crn - reason: ${ex.getMessage}")
+    case ex: Upstream4xxResponse =>
+      alertCohoPublicAPI4xx()
+      Logger.info(s"[PublicCohoApiConnector] [getCompanyProfile] - Returned status code: ${ex.upstreamResponseCode} for $crn - reason: ${ex.getMessage}")
+      None
+    case _: GatewayTimeoutException =>
+      Logger.info(s"[PublicCohoApiConnector] [getCompanyProfile] - Gateway timeout for $crn")
+      alertCohoPublicAPIGatewayTimeout()
+      None
+    case _: ServiceUnavailableException =>
+      alertCohoPublicAPIServiceUnavailable()
+      None
+    case ex: Upstream5xxResponse =>
+      alertCohoPublicAPI5xx()
+      Logger.info(s"[PublicCohoApiConnector] [getCompanyProfile] - Returned status code: ${ex.upstreamResponseCode} for $crn - reason: ${ex.getMessage}")
       None
     case ex: Throwable =>
       Logger.info(s"[PublicCohoApiConnector] [getCompanyProfile] - Failed for $crn - reason: ${ex.getMessage}")
       None
   }
 
-  private def handlegetOfficerListError(crn: String): PartialFunction[Throwable, Option[JsValue]] = {
-    case ex: NotFoundException =>
+  private def handleGetOfficerListError(crn: String): PartialFunction[Throwable, Option[JsValue]] = {
+    case _: NotFoundException =>
       Logger.info(s"[PublicCohoApiConnector] [getOfficerList] - Could not find officer list for CRN - $crn")
       None
     case ex: HttpException =>

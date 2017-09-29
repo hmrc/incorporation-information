@@ -26,6 +26,7 @@ trait MicroserviceConfig {
   protected val config: ServicesConfig
 
   private def getConfigInt(configKey: String) = config.getConfInt(configKey, throw new Exception(s"$configKey key not found"))
+  private def getConfigString(configKey: String) = config.getConfString(configKey, throw new Exception(s"$configKey key not found"))
 
   lazy val incorpFrontendStubUrl = config.getConfString("incorp-update-api.stub-url", throw new Exception("incorp-update-api.stub-url not found"))
 
@@ -48,5 +49,8 @@ trait MicroserviceConfig {
   lazy val noRegisterAnInterestLoggingDay = config.getConfString("rai-alert-logging-day", throw new Exception("rai-alert-logging-day not found"))
 
   lazy val noRegisterAnInterestLoggingTime = config.getConfString("rai-alert-logging-time", throw new Exception("rai-alert-logging-time not found"))
+
+  lazy val transactionIdToPoll: String = getConfigString("transaction-id-to-poll")
+  lazy val crnToPoll: String = getConfigString("crn-to-poll")
 }
 

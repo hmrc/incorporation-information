@@ -35,7 +35,7 @@ import scala.concurrent.Future
 
 @Singleton
 class SubscriptionsMongo @Inject()(mongo: ReactiveMongoComponent) extends ReactiveMongoFormats {
-  val repo = new SubscriptionsMongoRepository(mongo.mongoConnector.db)
+  lazy val repo = new SubscriptionsMongoRepository(mongo.mongoConnector.db)
 }
 
 trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {

@@ -21,7 +21,7 @@ import com.google.inject.name.Names
 import connectors._
 import controllers.test._
 import controllers.{SubscriptionController, SubscriptionControllerImpl, TransactionalController, TransactionalControllerImpl}
-import jobs.{FireSubscriptionsJobImpl, IncorpUpdatesJobImpl, MetricsJobImpl}
+import jobs.{FireSubscriptionsJobImpl, IncorpUpdatesJobImpl, MetricsJobImpl, ProactiveMonitoringJobImpl}
 import repositories._
 import services._
 import uk.gov.hmrc.play.config.inject.{DefaultServicesConfig, ServicesConfig}
@@ -52,10 +52,12 @@ class Module extends AbstractModule {
     bind(classOf[SubscriptionService]).to(classOf[SubscriptionServiceImpl])
     bind(classOf[SubscriptionFiringService]).to(classOf[SubscriptionFiringServiceImpl])
     bind(classOf[MetricsService]).to(classOf[MetricsServiceImpl])
+    bind(classOf[ProactiveMonitoringService]).to(classOf[ProactiveMonitoringServiceImpl])
 
     // jobs
     bind(classOf[ScheduledJob]).annotatedWith(Names.named("incorp-update-job")).to(classOf[IncorpUpdatesJobImpl])
     bind(classOf[ScheduledJob]).annotatedWith(Names.named("fire-subs-job")).to(classOf[FireSubscriptionsJobImpl])
     bind(classOf[ScheduledJob]).annotatedWith(Names.named("metrics-job")).to(classOf[MetricsJobImpl])
+    bind(classOf[ScheduledJob]).annotatedWith(Names.named("proactive-monitoring-job")).to(classOf[ProactiveMonitoringJobImpl])
   }
 }
