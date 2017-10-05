@@ -37,22 +37,8 @@ class   IncorporationUpdateISpec extends IntegrationSpecBase {
 
   val mockUrl = s"http://$wiremockHost:$wiremockPort"
 
-  val additionalConfiguration = Map(
-    "metrics.enabled" -> true,
-    "auditing.consumer.baseUri.host" -> s"$wiremockHost",
-    "auditing.consumer.baseUri.port" -> s"$wiremockPort",
-    "Test.auditing.consumer.baseUri.host" -> s"$wiremockHost",
-    "Test.auditing.consumer.baseUri.port" -> s"$wiremockPort",
-    "microservice.services.incorp-update-api.stub-url" -> s"http://${wiremockHost}:${wiremockPort}/incorporation-frontend-stubs",
-    "microservice.services.incorp-update-api.url" -> "N/A",
-    "microservice.services.incorp-update-api.token" -> "N/A",
-    "microservice.services.incorp-update-api.itemsToFetch" -> "3",
-    "microservice.services.incorp-frontend-stubs.host" -> wiremockHost,
-    "microservice.services.incorp-frontend-stubs.port" -> wiremockPort
-  )
-
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
-    .configure(additionalConfiguration)
+    .configure(fakeConfig())
     .build
 
   class Setup {

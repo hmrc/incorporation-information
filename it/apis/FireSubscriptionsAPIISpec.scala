@@ -42,7 +42,7 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
   )
 
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
-    .configure(additionalConfiguration)
+    .configure(fakeConfig(additionalConfiguration))
     .build
 
   lazy val reactiveMongoComponent = app.injector.instanceOf[ReactiveMongoComponent]

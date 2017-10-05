@@ -15,6 +15,7 @@
  */
 package helpers
 
+import com.github.tomakehurst.wiremock.stubbing.StubMapping
 import org.scalatest._
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatestplus.play.OneServerPerSuite
@@ -26,16 +27,14 @@ import utils.{FeatureSwitch, SCRSFeatureSwitches}
 trait IntegrationSpecBase extends UnitSpec
   with GivenWhenThen
   with OneServerPerSuite with ScalaFutures with IntegrationPatience with Matchers
-  with WiremockHelper with BeforeAndAfterEach with BeforeAndAfterAll {
+  with WiremockHelper with BeforeAndAfterEach with BeforeAndAfterAll with FakeAppConfig {
 
-  def ws(implicit app: Application) = app.injector.instanceOf[WSClient]
+  def ws(implicit app: Application): WSClient = app.injector.instanceOf[WSClient]
 
-  def setupFeatures(
-                     submissionCheck: Boolean = false,
-                     transactionalAPI: Boolean = false,
-                     fireSubscriptions: Boolean = false,
-                     scheduledMetrics: Boolean = false
-                   ) = {
+  def setupFeatures(submissionCheck: Boolean = false,
+                    transactionalAPI: Boolean = false,
+                    fireSubscriptions: Boolean = false,
+                    scheduledMetrics: Boolean = false): Unit = {
     def enableFeature(fs: FeatureSwitch, enabled: Boolean) = {
       enabled match {
         case true => FeatureSwitch.enable(fs)
@@ -48,6 +47,8 @@ trait IntegrationSpecBase extends UnitSpec
     enableFeature(SCRSFeatureSwitches.fireSubs, fireSubscriptions)
     enableFeature(SCRSFeatureSwitches.scheduledMetrics, scheduledMetrics)
   }
+
+  def stubAuditEvents: StubMapping = stubPost("/write/audit/merged", 200, "")
 
   override def beforeEach() = {
     resetWiremock()

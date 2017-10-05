@@ -18,10 +18,22 @@ package utils
 
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import org.joda.time.DateTime
+
+import org.joda.time.{DateTime, DateTimeZone}
 
 
 object DateCalculators {
+
+  def getCurrentDay: String = {
+    DateTime
+      .now(DateTimeZone.UTC)
+      .dayOfWeek()
+      .getAsText()
+      .substring(0,3)
+      .toUpperCase
+  }
+
+  def getCurrentTime: LocalTime = LocalTime.now
 
   def getTheDay(nowDateTime: DateTime): String = {
     nowDateTime.dayOfWeek().getAsText().substring(0,3).toUpperCase
@@ -37,5 +49,4 @@ object DateCalculators {
 
     (validTimes.head isBefore now) && (now isBefore validTimes.last)
   }
-
 }

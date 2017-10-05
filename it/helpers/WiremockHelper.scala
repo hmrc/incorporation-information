@@ -23,11 +23,17 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig
 import org.scalatestplus.play.OneServerPerSuite
 import play.api.libs.ws.WS
 
+object WiremockHelper {
+  val wiremockPort = 11111
+  val wiremockHost = "localhost"
+  val wiremockUrl = s"http://$wiremockHost:$wiremockPort"
+}
+
 trait WiremockHelper {
   self: OneServerPerSuite =>
 
-  val wiremockPort = 11111
-  val wiremockHost = "localhost"
+  val wiremockPort = WiremockHelper.wiremockPort
+  val wiremockHost = WiremockHelper.wiremockHost
   val wiremockUrl = s"http://$wiremockHost:$wiremockPort"
 
   val wmConfig = wireMockConfig().port(wiremockPort) //.notifier(new ConsoleNotifier(true))

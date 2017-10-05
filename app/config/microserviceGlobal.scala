@@ -103,15 +103,16 @@ trait JobsList {
 }
 
 @Singleton
-class Jobs @Inject()(
-                      @Named("incorp-update-job") injIncUpdJob: ScheduledJob,
-                      @Named("fire-subs-job") injFireSubsJob: ScheduledJob,
-                      @Named("metrics-job") injMetricsJob: ScheduledJob
+class Jobs @Inject()(@Named("incorp-update-job") injIncUpdJob: ScheduledJob,
+                     @Named("fire-subs-job") injFireSubsJob: ScheduledJob,
+                     @Named("metrics-job") injMetricsJob: ScheduledJob,
+                     @Named("proactive-monitoring-job") injProMonitoringJob: ScheduledJob
                     ) extends JobsList {
   override def lookupJobs(): Seq[ScheduledJob] =
     Seq(
       injIncUpdJob,
       injFireSubsJob,
-      injMetricsJob
+      injMetricsJob,
+      injProMonitoringJob
     )
 }

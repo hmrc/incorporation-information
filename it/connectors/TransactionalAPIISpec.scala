@@ -37,7 +37,9 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
   )
 
   //todo: set feature switch to false
-  override implicit lazy val app: Application = new GuiceApplicationBuilder().configure(additionalConfiguration).build()
+  override implicit lazy val app: Application = new GuiceApplicationBuilder()
+    .configure(fakeConfig(additionalConfiguration))
+    .build()
 
   class Setup {
     val incRepo = app.injector.instanceOf[IncorpUpdateMongo].repo
