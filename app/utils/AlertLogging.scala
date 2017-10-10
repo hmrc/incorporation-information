@@ -35,6 +35,7 @@ trait AlertLogging {
   def alertCohoTxAPIGatewayTimeout(): Unit = ifInWorkingHours(Logger.error("COHO_TX_API_GATEWAY_TIMEOUT"))
   def alertCohoTxAPI5xx(): Unit = ifInWorkingHours(Logger.error("COHO_TX_API_5XX"))
 
+  def alertCohoPublicAPINotFound(): Unit = ifInWorkingHours(Logger.error("COHO_PUBLIC_API_NOT_FOUND"))
   def alertCohoPublicAPI4xx(): Unit = ifInWorkingHours(Logger.error("COHO_PUBLIC_API_4XX"))
   def alertCohoPublicAPIServiceUnavailable(): Unit = ifInWorkingHours(Logger.error("COHO_PUBLIC_API_SERVICE_UNAVAILABLE"))
   def alertCohoPublicAPIGatewayTimeout(): Unit = ifInWorkingHours(Logger.error("COHO_PUBLIC_API_GATEWAY_TIMEOUT"))

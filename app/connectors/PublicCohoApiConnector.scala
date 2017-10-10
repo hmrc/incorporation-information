@@ -141,6 +141,7 @@ trait PublicCohoApiConn extends AlertLogging {
 
   private def handleGetCompanyProfileError(crn: String): PartialFunction[Throwable, Option[JsValue]] = {
     case _: NotFoundException =>
+      alertCohoPublicAPINotFound()
       Logger.info(s"[PublicCohoApiConnector] [getCompanyProfile] - Could not find company data for CRN - $crn")
       None
     case ex: Upstream4xxResponse =>
