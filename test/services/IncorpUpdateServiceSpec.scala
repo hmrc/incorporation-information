@@ -28,11 +28,11 @@ import play.api.libs.json.{JsObject, Json}
 import reactivemongo.api.commands.{UpdateWriteResult, Upserted, WriteError}
 import reactivemongo.bson.{BSONString, BSONValue}
 import repositories._
-import uk.gov.hmrc.play.http.HeaderCarrier
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import uk.gov.hmrc.http.HeaderCarrier
 
 class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEach with JSONhelpers{
 

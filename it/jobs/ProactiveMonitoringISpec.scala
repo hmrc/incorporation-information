@@ -23,7 +23,7 @@ import play.api.{Application, Logger}
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
 import services.ProactiveMonitoringService
-import uk.gov.hmrc.play.http.HeaderCarrier
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.test.LogCapturing
 
 class ProactiveMonitoringISpec extends IntegrationSpecBase with FakeAppConfig

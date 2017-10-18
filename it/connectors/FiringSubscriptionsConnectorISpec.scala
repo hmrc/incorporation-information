@@ -22,7 +22,7 @@ import models.{IncorpStatusEvent, IncorpUpdate, IncorpUpdateResponse}
 import org.joda.time.DateTime
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
-import uk.gov.hmrc.play.http.HeaderCarrier
+import uk.gov.hmrc.http.HeaderCarrier
 
 /**
   * Created by jackie on 05/04/17.

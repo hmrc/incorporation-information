@@ -22,12 +22,12 @@ import org.joda.time.Duration
 import play.api.Logger
 import services.IncorpUpdateService
 import uk.gov.hmrc.lock.{LockKeeper, LockRepository}
-import uk.gov.hmrc.play.http.HeaderCarrier
 import uk.gov.hmrc.play.scheduling.ExclusiveScheduledJob
 import utils.SCRSFeatureSwitches
 import play.modules.reactivemongo.MongoDbConnection
 
 import scala.concurrent.{ExecutionContext, Future}
+import uk.gov.hmrc.http.HeaderCarrier
 
 @Singleton
 class IncorpUpdatesJobImpl @Inject()(injService: IncorpUpdateService) extends IncorpUpdatesJob {

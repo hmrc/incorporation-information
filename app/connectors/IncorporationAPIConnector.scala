@@ -28,13 +28,14 @@ import play.api.libs.json.{JsValue, Reads, __}
 import play.api.libs.functional.syntax._
 import services.MetricsService
 import uk.gov.hmrc.play.http._
-import uk.gov.hmrc.play.http.logging.Authorization
 import uk.gov.hmrc.play.http.ws.WSProxy
 import utils.{AlertLogging, SCRSFeatureSwitches}
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.control.NoStackTrace
+import uk.gov.hmrc.http._
+import uk.gov.hmrc.http.logging.Authorization
 
 case class IncorpUpdatesResponse(items: Seq[IncorpUpdate], nextLink: String)
 object IncorpUpdatesResponse {
@@ -77,8 +78,8 @@ case object FailedTransactionalAPIResponse extends TransactionalAPIResponse
 
 trait IncorporationAPIConnector extends AlertLogging {
 
-  def httpProxy: HttpGet with WSProxy
-  def httpNoProxy: HttpGet
+  def httpProxy: CoreGet with WSProxy
+  def httpNoProxy: CoreGet
 
   val featureSwitch: SCRSFeatureSwitches
   val stubBaseUrl: String
@@ -98,7 +99,7 @@ trait IncorporationAPIConnector extends AlertLogging {
     }
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
-      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
+      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc, implicitly) map {
         res =>
           res.status match {
             case NO_CONTENT => Seq()
@@ -117,7 +118,7 @@ trait IncorporationAPIConnector extends AlertLogging {
     }
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
-      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
+      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc, implicitly) map {
         res =>
           res.status match {
             case NO_CONTENT => Seq()
@@ -135,7 +136,7 @@ trait IncorporationAPIConnector extends AlertLogging {
     }
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
-      http.GET[JsValue](url)(implicitly[HttpReads[JsValue]], realHc) map { res =>
+      http.GET[JsValue](url)(implicitly[HttpReads[JsValue]], realHc, implicitly) map { res =>
         Logger.debug("[TransactionalData] json - " + res)
         SuccessfulTransactionalAPIResponse(res)
       }

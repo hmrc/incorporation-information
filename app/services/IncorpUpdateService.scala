@@ -25,13 +25,13 @@ import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
 import play.api.Logger
 import repositories._
 import repositories.{IncorpUpdateRepository, InsertResult, TimepointRepository}
-import uk.gov.hmrc.play.http.HeaderCarrier
 import org.joda.time.DateTime
 import reactivemongo.api.commands.UpdateWriteResult
 import utils.DateCalculators
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import uk.gov.hmrc.http.HeaderCarrier
 
 @Singleton
 class IncorpUpdateServiceImpl @Inject()(injConnector: IncorporationAPIConnector,

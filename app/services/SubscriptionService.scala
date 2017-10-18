@@ -23,10 +23,10 @@ import models.{IncorpUpdate, Subscription}
 import play.api.Logger
 import reactivemongo.api.commands.DefaultWriteResult
 import repositories._
-import uk.gov.hmrc.play.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import uk.gov.hmrc.http.HeaderCarrier
 
 
 class SubscriptionServiceImpl @Inject()(injSubRepo: SubscriptionsMongo,

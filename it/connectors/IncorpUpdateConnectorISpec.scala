@@ -21,7 +21,7 @@ import models.IncorpUpdate
 import org.joda.time.DateTime
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
-import uk.gov.hmrc.play.http.{BadRequestException, HeaderCarrier}
+import uk.gov.hmrc.http.{BadRequestException, HeaderCarrier}
 
 class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
 

@@ -23,9 +23,9 @@ import uk.gov.hmrc.play.scheduling.ExclusiveScheduledJob
 import utils.SCRSFeatureSwitches
 import play.modules.reactivemongo.MongoDbConnection
 import reactivemongo.api.DefaultDB
-import uk.gov.hmrc.play.http.HeaderCarrier
 
 import scala.concurrent.{ExecutionContext, Future}
+import uk.gov.hmrc.http.HeaderCarrier
 
 @Singleton
 class ProactiveMonitoringJobImpl @Inject()(val proactiveMonitoringService: ProactiveMonitoringService) extends ProactiveMonitoringJob {

@@ -24,11 +24,11 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
 import repositories.{IncorpUpdateMongo, IncorpUpdateRepository}
-import uk.gov.hmrc.play.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.control.NoStackTrace
+import uk.gov.hmrc.http.HeaderCarrier
 
 sealed trait TransactionalServiceException extends Throwable {
   val message = this.getMessage

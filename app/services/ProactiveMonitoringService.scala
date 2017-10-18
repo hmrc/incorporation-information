@@ -20,11 +20,11 @@ import javax.inject.{Inject, Singleton}
 
 import config.MicroserviceConfig
 import connectors.{IncorporationAPIConnector, PublicCohoApiConnector, SuccessfulTransactionalAPIResponse}
-import uk.gov.hmrc.play.http.HeaderCarrier
 import utils.Base64
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import uk.gov.hmrc.http.HeaderCarrier
 
 @Singleton
 class ProactiveMonitoringServiceImpl @Inject()(val transactionalConnector: IncorporationAPIConnector,
