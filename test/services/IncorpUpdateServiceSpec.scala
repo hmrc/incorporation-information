@@ -207,6 +207,11 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
     }
   }
 
+//  "updateSpecificIncorpUpdateByTP" should {
+//    "return a true if a incorp update gets fetched and saved"
+//
+//  }
+
 
   "createQueuedIncorpUpdate" should {
     "return a correctly formatted QueuedIncorpUpdate when given an IncorpUpdate" in new Setup {

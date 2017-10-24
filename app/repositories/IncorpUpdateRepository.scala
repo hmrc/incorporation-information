@@ -21,10 +21,10 @@ import javax.inject.{Inject, Singleton}
 import models.IncorpUpdate
 import org.apache.commons.lang3.StringUtils
 import play.api.Logger
-import play.api.libs.json.Format
+import play.api.libs.json.{Format, JsValue}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DB
-import reactivemongo.api.commands.WriteError
+import reactivemongo.api.commands.{UpdateWriteResult, WriteError}
 import reactivemongo.bson.{BSONDocument, BSONObjectID}
 import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
@@ -39,6 +39,7 @@ class IncorpUpdateMongo @Inject()(mongo: ReactiveMongoComponent) extends Reactiv
 
 trait IncorpUpdateRepository {
   def storeIncorpUpdates(updates: Seq[IncorpUpdate]): Future[InsertResult]
+  def storeSingleIncorpUpdate(updates: IncorpUpdate): Future[UpdateWriteResult]
 
   def getIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]]
 }
@@ -63,6 +64,14 @@ class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])
         InsertResult(inserted, duplicates.size, errors, insertedItems = nonDupIU)
     }
   }
+
+  def storeSingleIncorpUpdate(iUpdate: IncorpUpdate): Future[UpdateWriteResult] = {
+
+    implicit val mongoFormat=IncorpUpdate.mongoFormat
+    collection.update(selector(iUpdate.transactionId), iUpdate, upsert = true)
+
+  }
+
 
   private[repositories] def nonDuplicateIncorporations(updates: Seq[IncorpUpdate], errs: Seq[WriteError]): Seq[IncorpUpdate] = {
     val duplicates = errs collect {

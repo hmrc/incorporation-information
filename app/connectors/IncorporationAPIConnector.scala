@@ -108,6 +108,26 @@ trait IncorporationAPIConnector extends AlertLogging {
     } recover handleError(timepoint)
   }
 
+  def checkForIndividualIncorpUpdate(timepoint: Option[String] = None)(implicit hc: HeaderCarrier): Future[Seq[IncorpUpdate]] = {
+    import play.api.http.Status.NO_CONTENT
+
+    val (http, realHc, url) = useProxy match {
+      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoBaseUrl/submissions${buildQueryString(timepoint, "1")}")
+      case false => (httpNoProxy, hc, s"$stubBaseUrl/submissions${buildQueryString(timepoint, "1")}")
+    }
+
+    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
+      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
+        res =>
+          res.status match {
+            case NO_CONTENT => Seq()
+            case _ => res.json.as[IncorpUpdatesResponse].items
+          }
+      }
+    } recover handleError(timepoint)
+  }
+
+
   def fetchTransactionalData(transactionID: String)(implicit hc: HeaderCarrier): Future[TransactionalAPIResponse] = {
     val (http, realHc, url) = useProxy match {
       case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoBaseUrl/submissionData/$transactionID")

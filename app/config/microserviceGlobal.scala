@@ -27,6 +27,7 @@ import uk.gov.hmrc.play.auth.controllers.AuthParamsControllerConfig
 import uk.gov.hmrc.play.auth.microservice.filters.AuthorisationFilter
 import uk.gov.hmrc.play.config.{AppName, ControllerConfig, RunMode}
 import uk.gov.hmrc.play.filters.MicroserviceFilterSupport
+import uk.gov.hmrc.play.http.HeaderCarrier
 import uk.gov.hmrc.play.http.logging.filters.LoggingFilter
 import uk.gov.hmrc.play.microservice.bootstrap.DefaultMicroserviceGlobal
 import uk.gov.hmrc.play.scheduling.{RunningOfScheduledJobs, ScheduledJob}
@@ -79,6 +80,18 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Mi
     val metricsEnabled = app.configuration.getString(metricsKey)
     Logger.info(s"[Config] ${metricsKey} = ${metricsEnabled}")
 
+    import java.util.Base64
+    import services.IncorpUpdateService
+    import scala.concurrent.ExecutionContext.Implicits.global
+    val tpConf = app.configuration.getString("timepointList").getOrElse("")
+     tpConf match {
+       case ("") => Logger.info(s"[Config] No timepoints to re-fetch")
+       case (_) => val tpList = new String(Base64.getDecoder.decode(tpConf), "UTF-8")
+                   Logger.info(s"[Config] List of timepoints are ${tpList}")
+                   app.injector.instanceOf[IncorpUpdateService].updateSpecificIncorpUpdateByTP(tpList.split(","))(HeaderCarrier()) map { result =>
+                   Logger.info(s"Updating incorp data is switched on - result = ${result}")
+                }
+     }
     resetTimepoint(app)
 
     super.onStart(app)
