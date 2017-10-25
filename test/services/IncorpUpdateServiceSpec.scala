@@ -25,7 +25,8 @@ import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.mock.MockitoSugar
 import play.api.libs.json.{JsObject, Json}
-import reactivemongo.api.commands.WriteError
+import reactivemongo.api.commands.{UpdateWriteResult, Upserted, WriteError}
+import reactivemongo.bson.{BSONString, BSONValue}
 import repositories._
 import uk.gov.hmrc.play.http.HeaderCarrier
 import uk.gov.hmrc.play.test.UnitSpec
@@ -41,6 +42,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
   val mockQueueRepository = mock[QueueRepository]
   val mockSubscriptionService = mock[SubscriptionService]
   val mockSubRepo = mock[SubscriptionsMongoRepository]
+  val mockIncorpUpdateService = mock[IncorpUpdateService]
 
 
   implicit val hc = HeaderCarrier()
@@ -56,6 +58,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
     reset(mockTimepointRepository)
     reset(mockQueueRepository)
     reset(mockSubRepo)
+    reset(mockIncorpUpdateService)
   }
 
   trait mockService extends IncorpUpdateService {
@@ -76,6 +79,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
   val timepoint = TimePoint("id", "old timepoint")
   val timepointOld = "old-timepoint"
   val timepointNew = "new-timepoint"
+  val timepointSeq = Seq(timepointOld,timepointNew)
   val incorpUpdate = IncorpUpdate("transId", "accepted", None, None, timepointOld, None)
   val incorpUpdate2 = IncorpUpdate("transId2", "accepted", None, None, timepointOld, None)
   val incorpUpdate3 = IncorpUpdate("transId3", "rejected", None, None, timepointOld, None)
@@ -109,6 +113,17 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
       response.size shouldBe 0
     }
   }
+
+  "fetchSpecificIncorpUpdates" should {
+    "return a single update" in new Setup {
+     when(mockIncorporationCheckAPIConnector.checkForIndividualIncorpUpdate(Some(timepointOld))).thenReturn(Future.successful(Seq(incorpUpdate)))
+
+      val response = await(service.fetchSpecificIncorpUpdates(Some(timepointOld)))
+      response shouldBe incorpUpdate
+    }
+
+  }
+
 
   "storeIncorpUpdates" should {
     "return InsertResult(2, 0, Seq(), 0) when one update with 2 incorps has been inserted with CT subscriptions" in new Setup {
@@ -166,7 +181,18 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
     }
   }
 
-  "latestTimepoint" should {
+  "storeSpecificIncorpUpdate" should {
+    "return an UpdateWriteResult when a single IncorpUpdate is input" in new Setup {
+      val upserted = Seq(Upserted(1,BSONString("")))
+      val UWR = UpdateWriteResult(true,1,1,upserted,Seq(WriteError(1,1,"")),None,None,None)
+      when(mockIncorpUpdateRepository.storeSingleIncorpUpdate(incorpUpdate)).thenReturn(UWR)
+
+      val response = await(service.storeSpecificIncorpUpdate(Future.successful(incorpUpdate)))
+      response shouldBe UpdateWriteResult(true,1,1,upserted,Seq(WriteError(1,1,"")),None,None,None)
+    }
+  }
+
+    "latestTimepoint" should {
     "return the latest timepoint when two have been given" in new Setup {
       val response = service.latestTimepoint(incorpUpdates)
       response shouldBe timepointNew
@@ -207,6 +233,24 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
     }
   }
 
+  "updateSpecificIncorpUpdateByTP" should {
+
+    "return a Sequence of UpdateWriteResults when a sequence of TPs is input" in new Setup {
+
+      val upserted = Seq(Upserted(1, BSONString("")))
+      val UWR = UpdateWriteResult(true, 1, 1, upserted, Seq(WriteError(1, 1, "")), None, None, None)
+      when(mockIncorpUpdateRepository.storeSingleIncorpUpdate(incorpUpdate)).thenReturn(UWR)
+      when(mockIncorpUpdateRepository.storeSingleIncorpUpdate(incorpUpdateNew)).thenReturn(UWR)
+      when(mockIncorporationCheckAPIConnector.checkForIndividualIncorpUpdate(Some(timepointOld))).thenReturn(Future.successful(Seq(incorpUpdate)))
+      when(mockIncorporationCheckAPIConnector.checkForIndividualIncorpUpdate(Some(timepointNew))).thenReturn(Future.successful(Seq(incorpUpdateNew)))
+      when(mockIncorpUpdateService.fetchSpecificIncorpUpdates(Some(timepointOld))).thenReturn(Future.successful(incorpUpdate))
+      when(mockIncorpUpdateService.fetchSpecificIncorpUpdates(Some(timepointNew))).thenReturn(Future.successful(incorpUpdateNew))
+
+      val response = await(service.updateSpecificIncorpUpdateByTP(timepointSeq))
+      response shouldBe Seq(UpdateWriteResult(true, 1, 1, upserted, Seq(WriteError(1, 1, "")), None, None, None),UpdateWriteResult(true, 1, 1, upserted, Seq(WriteError(1, 1, "")), None, None, None))
+
+    }
+  }
 
   "createQueuedIncorpUpdate" should {
     "return a correctly formatted QueuedIncorpUpdate when given an IncorpUpdate" in new Setup {
