@@ -60,6 +60,21 @@ class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
     timepoint = s"tp$n",
     statusDescription = None))
 
+  def individualDoc(num: Int = 1) = IncorpUpdate(
+    transactionId = s"foo$num",
+    status = "accepted",
+    crn = Some(s"bar$num"),
+    incorpDate = None,
+    timepoint = s"tp$num",
+    statusDescription = None)
+def individualUpdatedDoc(num: Int = 1) = IncorpUpdate(
+    transactionId = s"foo$num",
+    status = "accepted",
+    crn = Some(s"updatedbar$num"),
+    incorpDate = None,
+    timepoint = s"tp$num",
+    statusDescription = None)
+
   "storeIncorpUpdates" should {
 
     "insert a single document" in new Setup {
@@ -128,6 +143,42 @@ class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
       count shouldBe num - expectedNumErrors
     }
   }
+
+  "storeSingleIncorpUpdate" should {
+    "insert a single document if it doesn't exist" in new Setup {
+      count shouldBe 0
+
+      val fResponse1 = incorpRepo.storeSingleIncorpUpdate(individualDoc(1))
+      val response1 = await(fResponse1)
+
+      response1.ok shouldBe true
+      response1.writeErrors shouldBe Seq()
+      response1.nModified shouldBe 0
+      count shouldBe 1
+
+      "insert another single document if it doesn't exist"
+
+      val fResponse2 = incorpRepo.storeSingleIncorpUpdate(individualDoc(2))
+      val response2 = await(fResponse2)
+
+      response2.ok shouldBe true
+      response2.writeErrors shouldBe Seq()
+      response2.nModified shouldBe 0
+      count shouldBe 2
+
+      "update a single document if it does exist"
+
+      val fResponse3 = incorpRepo.storeSingleIncorpUpdate(individualUpdatedDoc(1))
+      val response3 = await(fResponse3)
+
+      response3.ok shouldBe true
+      response3.writeErrors shouldBe Seq()
+      response3.nModified shouldBe 1
+      count shouldBe 2
+    }
+
+  }
+
 
   "getIncorpUpdate" should {
 

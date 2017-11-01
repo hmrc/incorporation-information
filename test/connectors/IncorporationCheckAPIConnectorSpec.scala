@@ -200,6 +200,69 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
     }
   }
 
+  "checkForIndividualIncorpUpdate" should {
+
+    val testTimepoint = UUID.randomUUID().toString
+
+    "return a submission status response when no timepoint is provided" in new Setup {
+      val url = s"$testProxyUrl/submissions?items_per_page=1"
+
+      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
+
+      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+        .thenReturn(Future.successful(HttpResponse(200, Some(validSubmissionResponseJson))))
+
+      val result = await(connector.checkForIndividualIncorpUpdate())
+      result shouldBe validSubmissionResponseItems
+
+      urlCaptor.getValue shouldBe url
+    }
+
+    "verify a timepoint is appended as a query string to the url when one is supplied" in new Setup {
+      val url = s"$testProxyUrl/submissions?timepoint=$testTimepoint&items_per_page=1"
+
+      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
+
+      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+        .thenReturn(Future.successful(HttpResponse(200, Some(validSubmissionResponseJson))))
+
+      val result = await(connector.checkForIndividualIncorpUpdate(Some(testTimepoint)))
+      result shouldBe validSubmissionResponseItems
+
+      urlCaptor.getValue shouldBe url
+    }
+
+    "report an error when receiving a 404" in new Setup {
+      val url = s"$testProxyUrl/submissions?items_per_page=1"
+
+      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
+
+      when(mockHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+        .thenReturn(Future.failed(new NotFoundException("404")))
+
+      intercept[IncorpUpdateAPIFailure](await(connector.checkForIndividualIncorpUpdate(None)))
+
+      urlCaptor.getValue shouldBe url
+    }
+
+    "report an error when receiving an unexpected error" in new Setup {
+      val url = s"$testProxyUrl/submissions?items_per_page=1"
+
+      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
+
+      when(mockHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+        .thenReturn(Future.failed(new NoSuchElementException))
+
+      intercept[IncorpUpdateAPIFailure](await(connector.checkForIndividualIncorpUpdate(None)))
+
+      urlCaptor.getValue shouldBe url
+    }
+
+  }
+
+
+
+
   "fetchTransactionalData" when {
 
     val transactionId = "12345"

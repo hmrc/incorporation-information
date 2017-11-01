@@ -27,6 +27,7 @@ import repositories._
 import repositories.{IncorpUpdateRepository, InsertResult, TimepointRepository}
 import uk.gov.hmrc.play.http.HeaderCarrier
 import org.joda.time.DateTime
+import reactivemongo.api.commands.UpdateWriteResult
 import utils.DateCalculators
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -69,12 +70,28 @@ trait IncorpUpdateService extends {
     }
   }
 
+  private[services] def fetchSpecificIncorpUpdates(timepoint: Option[String])(implicit hc: HeaderCarrier): Future[IncorpUpdate] = {
+    for {
+      incorpUpdates <- incorporationCheckAPIConnector.checkForIndividualIncorpUpdate(timepoint)(hc)
+    } yield {
+      incorpUpdates.head
+    }
+  }
+
   private[services] def storeIncorpUpdates(updates: Seq[IncorpUpdate]): Future[InsertResult] = {
     for {
       result <- incorpUpdateRepository.storeIncorpUpdates(updates)
       alerts <- alertOnNoCTInterest(result.insertedItems)
     } yield {
       result.copy(alerts=alerts)
+    }
+  }
+
+  private[services] def storeSpecificIncorpUpdate(iUpdate: IncorpUpdate): Future[UpdateWriteResult] = {
+    for {
+      result <- incorpUpdateRepository.storeSingleIncorpUpdate(iUpdate)
+      } yield {
+      result
     }
   }
 
@@ -129,6 +146,21 @@ trait IncorpUpdateService extends {
           Future.successful(ir)
       }
     }
+  }
+
+  def updateSpecificIncorpUpdateByTP(tps: Seq[String])(implicit hc: HeaderCarrier): Future[Seq[UpdateWriteResult]] = {
+    def processByTP(tp: String) = {
+      Logger.info(s"Updating timepoint " + tp)
+      for {
+        item <- fetchSpecificIncorpUpdates(Some(tp))
+        result <- storeSpecificIncorpUpdate(item)
+      } yield {
+        Logger.info(s"Result of updating Incorp Update:" + result)
+        result
+      }
+    }
+
+    Future.sequence(tps.map(processByTP))
   }
 
   def inWorkingHours: Boolean = {
