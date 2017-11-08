@@ -42,8 +42,6 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
   val mockQueueRepository = mock[QueueRepository]
   val mockSubscriptionService = mock[SubscriptionService]
   val mockSubRepo = mock[SubscriptionsMongoRepository]
-  val mockIncorpUpdateService = mock[IncorpUpdateService]
-
 
   implicit val hc = HeaderCarrier()
 
@@ -58,22 +56,18 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
     reset(mockTimepointRepository)
     reset(mockQueueRepository)
     reset(mockSubRepo)
-    reset(mockIncorpUpdateService)
-  }
-
-  trait mockService extends IncorpUpdateService {
-    val incorporationCheckAPIConnector = mockIncorporationCheckAPIConnector
-    val incorpUpdateRepository = mockIncorpUpdateRepository
-    val timepointRepository = mockTimepointRepository
-    val queueRepository = mockQueueRepository
-    val subscriptionService = mockSubscriptionService
-    val noRAILoggingDay = "Mon"
-    val noRAILoggingTime = "08:00:00_17:00:00"
-
   }
 
   trait Setup {
-    val service = new mockService {}
+    val service = new IncorpUpdateService {
+      val incorporationCheckAPIConnector = mockIncorporationCheckAPIConnector
+      val incorpUpdateRepository = mockIncorpUpdateRepository
+      val timepointRepository = mockTimepointRepository
+      val queueRepository = mockQueueRepository
+      val subscriptionService = mockSubscriptionService
+      val noRAILoggingDay = "Mon"
+      val noRAILoggingTime = "08:00:00_17:00:00"
+    }
   }
 
   val timepoint = TimePoint("id", "old timepoint")
@@ -88,6 +82,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
   val seqOfIncorpUpdates = Seq(incorpUpdate, incorpUpdate2, incorpUpdate3)
   val emptyUpdates = Seq()
   val queuedIncorpUpdate = QueuedIncorpUpdate(DateTime.now, incorpUpdate)
+  val queuedIncorpUpdate2 = QueuedIncorpUpdate(DateTime.now, incorpUpdateNew)
   val transId = "transId123"
   val regime = "CT"
   val subscriber = "SCRS"
@@ -235,21 +230,57 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
 
   "updateSpecificIncorpUpdateByTP" should {
 
-    "return a Sequence of UpdateWriteResults when a sequence of TPs is input" in new Setup {
+    "return a Sequence of Booleans when a sequence of TPs is input" in new Setup {
 
       val upserted = Seq(Upserted(1, BSONString("")))
-      val UWR = UpdateWriteResult(true, 1, 1, upserted, Seq(WriteError(1, 1, "")), None, None, None)
-      when(mockIncorpUpdateRepository.storeSingleIncorpUpdate(incorpUpdate)).thenReturn(UWR)
-      when(mockIncorpUpdateRepository.storeSingleIncorpUpdate(incorpUpdateNew)).thenReturn(UWR)
-      when(mockIncorporationCheckAPIConnector.checkForIndividualIncorpUpdate(Some(timepointOld))).thenReturn(Future.successful(Seq(incorpUpdate)))
-      when(mockIncorporationCheckAPIConnector.checkForIndividualIncorpUpdate(Some(timepointNew))).thenReturn(Future.successful(Seq(incorpUpdateNew)))
-      when(mockIncorpUpdateService.fetchSpecificIncorpUpdates(Some(timepointOld))).thenReturn(Future.successful(incorpUpdate))
-      when(mockIncorpUpdateService.fetchSpecificIncorpUpdates(Some(timepointNew))).thenReturn(Future.successful(incorpUpdateNew))
+      val UWR = UpdateWriteResult(ok = true, 1, 1, upserted, Seq(WriteError(1, 1, "")), None, None, None)
+
+      val seqOfQueuedIncorpUpdates = Seq(queuedIncorpUpdate,queuedIncorpUpdate2)
+
+      when(mockQueueRepository.removeQueuedIncorpUpdate(Matchers.any()))
+        .thenReturn(Future.successful(true))
+
+      when(mockQueueRepository.getIncorpUpdate(Matchers.any()))
+        .thenReturn(Future.successful(Some(queuedIncorpUpdate)))
+
+      when(mockIncorpUpdateRepository.storeSingleIncorpUpdate(Matchers.any())).thenReturn(Future.successful(UWR))
+
+      when(mockIncorporationCheckAPIConnector.checkForIndividualIncorpUpdate(Matchers.any())(Matchers.any[HeaderCarrier]()))
+        .thenReturn(Future.successful(Seq(incorpUpdate)), Future.successful(Seq(incorpUpdateNew)))
+
+      when(mockQueueRepository.storeIncorpUpdates(Matchers.any()))
+        .thenReturn(Future.successful(InsertResult(1,0,Nil)))
 
       val response = await(service.updateSpecificIncorpUpdateByTP(timepointSeq))
-      response shouldBe Seq(UpdateWriteResult(true, 1, 1, upserted, Seq(WriteError(1, 1, "")), None, None, None),UpdateWriteResult(true, 1, 1, upserted, Seq(WriteError(1, 1, "")), None, None, None))
+      response shouldBe Seq(true,true)
 
     }
+    "return a Sequence of Booleans when a sequence of TPs is input and queue entries already exist" in new Setup {
+
+      val upserted = Seq(Upserted(1, BSONString("")))
+      val UWR = UpdateWriteResult(ok = true, 1, 1, upserted, Seq(WriteError(1, 1, "")), None, None, None)
+
+      val seqOfQueuedIncorpUpdates = Seq(queuedIncorpUpdate,queuedIncorpUpdate2)
+
+      when(mockQueueRepository.removeQueuedIncorpUpdate(Matchers.any()))
+        .thenReturn(Future.successful(true))
+
+      when(mockQueueRepository.getIncorpUpdate(Matchers.any()))
+        .thenReturn(Future.successful(None))
+
+      when(mockIncorpUpdateRepository.storeSingleIncorpUpdate(Matchers.any())).thenReturn(Future.successful(UWR))
+
+      when(mockIncorporationCheckAPIConnector.checkForIndividualIncorpUpdate(Matchers.any())(Matchers.any[HeaderCarrier]()))
+        .thenReturn(Future.successful(Seq(incorpUpdate)), Future.successful(Seq(incorpUpdateNew)))
+
+      when(mockQueueRepository.storeIncorpUpdates(Matchers.any()))
+        .thenReturn(Future.successful(InsertResult(1,0,Nil)))
+
+      val response = await(service.updateSpecificIncorpUpdateByTP(timepointSeq))
+      response shouldBe Seq(false,false)
+
+    }
+
   }
 
   "createQueuedIncorpUpdate" should {

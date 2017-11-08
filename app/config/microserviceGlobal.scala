@@ -16,6 +16,7 @@
 
 package config
 
+import java.util.Base64
 import javax.inject.{Inject, Named, Singleton}
 
 import com.typesafe.config.Config
@@ -31,7 +32,9 @@ import uk.gov.hmrc.play.http.HeaderCarrier
 import uk.gov.hmrc.play.http.logging.filters.LoggingFilter
 import uk.gov.hmrc.play.microservice.bootstrap.DefaultMicroserviceGlobal
 import uk.gov.hmrc.play.scheduling.{RunningOfScheduledJobs, ScheduledJob}
+import services.IncorpUpdateService
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
 
@@ -80,21 +83,24 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Mi
     val metricsEnabled = app.configuration.getString(metricsKey)
     Logger.info(s"[Config] ${metricsKey} = ${metricsEnabled}")
 
-    import java.util.Base64
-    import services.IncorpUpdateService
-    import scala.concurrent.ExecutionContext.Implicits.global
-    val tpConf = app.configuration.getString("timepointList").getOrElse("")
-     tpConf match {
-       case ("") => Logger.info(s"[Config] No timepoints to re-fetch")
-       case (_) => val tpList = new String(Base64.getDecoder.decode(tpConf), "UTF-8")
-                   Logger.info(s"[Config] List of timepoints are ${tpList}")
-                   app.injector.instanceOf[IncorpUpdateService].updateSpecificIncorpUpdateByTP(tpList.split(","))(HeaderCarrier()) map { result =>
-                   Logger.info(s"Updating incorp data is switched on - result = ${result}")
-                }
-     }
+    reFetchIncorpInfo(app)
+
     resetTimepoint(app)
 
     super.onStart(app)
+  }
+
+  private def reFetchIncorpInfo(app: Application): Future[Unit] = {
+
+    app.configuration.getString("timepointList") match {
+      case None => Future.successful(Logger.info(s"[Config] No timepoints to re-fetch"))
+      case Some(timepointList) =>
+        val tpList = new String(Base64.getDecoder.decode(timepointList), "UTF-8")
+        Logger.info(s"[Config] List of timepoints are $tpList")
+        app.injector.instanceOf[IncorpUpdateService].updateSpecificIncorpUpdateByTP(tpList.split(","))(HeaderCarrier()) map { result =>
+          Logger.info(s"Updating incorp data is switched on - result = $result")
+        }
+    }
   }
 
   private def resetTimepoint(app: Application): Future[Boolean] = {
