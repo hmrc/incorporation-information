@@ -148,19 +148,60 @@ trait IncorpUpdateService extends {
     }
   }
 
-  def updateSpecificIncorpUpdateByTP(tps: Seq[String])(implicit hc: HeaderCarrier): Future[Seq[UpdateWriteResult]] = {
-    def processByTP(tp: String) = {
-      Logger.info(s"Updating timepoint " + tp)
+  def updateSpecificIncorpUpdateByTP(tps: Seq[String])(implicit hc: HeaderCarrier): Future[Seq[Boolean]] = {
+
+    def processAllTPs(tp:String) = {
+      for {
+        iu <- processByTP(tp)
+        qe <- getQueueEntry(iu)
+        utq <- updateTheQueue(qe,iu)
+      }
+        yield {
+        utq
+        }
+    }
+
+    def processByTP(tp: String) : Future[IncorpUpdate] = {
+      val logPrefix = "[IncorpUpdateService] [processByTP]"
+      Logger.info(s"${logPrefix} Passed in timepoint is " + tp)
       for {
         item <- fetchSpecificIncorpUpdates(Some(tp))
         result <- storeSpecificIncorpUpdate(item)
       } yield {
-        Logger.info(s"Result of updating Incorp Update:" + result)
-        result
+        Logger.info(s"${logPrefix} Result of updating Incorp Update: for "  + item + " is: Store result: "  + result.ok)
+        item
+        }
+      }
+
+    def getQueueEntry(iu: IncorpUpdate ) : Future[Option[QueuedIncorpUpdate]]= {
+      for {
+        q <- queueRepository.getIncorpUpdate(iu.transactionId)
+      } yield {
+        q
       }
     }
 
-    Future.sequence(tps.map(processByTP))
+    def updateTheQueue(qEntry: Option[QueuedIncorpUpdate], iUpdate: IncorpUpdate) : Future[Boolean] = {
+      val logPrefix = "[IncorpUpdateService] [updateTheQueue]"
+      Logger.info(s"${logPrefix} About to update queue for txid ${iUpdate.transactionId}")
+      qEntry match {
+        case Some(qeData) =>
+          val txID = qeData.incorpUpdate.transactionId
+          for {
+            removeQueue <- queueRepository.removeQueuedIncorpUpdate(txID)
+            copyTOQ <- copyToQueue(createQueuedIncorpUpdates(Seq(iUpdate)))
+          }
+            yield {
+              Logger.info(s"${logPrefix} Results of updating the queue for txid: " + qeData.incorpUpdate.transactionId + " Remove from queue result: " + removeQueue + " Copy to queue result: " + copyTOQ)
+              true
+            }
+        case _ =>
+          Logger.info(s"${logPrefix} No queue update done")
+          Future.successful(false)
+      }
+    }
+
+    Future.sequence(tps.map(processAllTPs))
   }
 
   def inWorkingHours: Boolean = {
