@@ -95,7 +95,13 @@ class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate]) 
   }
 
   override def getIncorpUpdate(transactionId: String): Future[Option[QueuedIncorpUpdate]] = {
-    collection.find(txSelector(transactionId)).one[QueuedIncorpUpdate]
+    val selector = txSelector(transactionId)
+    Logger.info(s"""About to fetch Incorp Update from Queue for tx "${transactionId}" with selector "${selector}" """)
+    collection.find(selector).one[QueuedIncorpUpdate] map {
+      queueEntry =>
+        Logger.info(s"""Retrieved from queue for ${transactionId} - "${queueEntry}" """)
+        queueEntry
+    }
   }
 
   override def getIncorpUpdates: Future[Seq[QueuedIncorpUpdate]] = {
