@@ -24,18 +24,17 @@ import models.IncorpUpdate
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import play.api.Logger
-import play.api.libs.json.{JsValue, Reads, __}
 import play.api.libs.functional.syntax._
+import play.api.libs.json.{JsValue, Reads, __}
 import services.MetricsService
-import uk.gov.hmrc.play.http._
+import uk.gov.hmrc.http._
+import uk.gov.hmrc.http.logging.Authorization
+import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 import uk.gov.hmrc.play.http.ws.WSProxy
 import utils.{AlertLogging, SCRSFeatureSwitches}
 
 import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.control.NoStackTrace
-import uk.gov.hmrc.http._
-import uk.gov.hmrc.http.logging.Authorization
 
 case class IncorpUpdatesResponse(items: Seq[IncorpUpdate], nextLink: String)
 object IncorpUpdatesResponse {

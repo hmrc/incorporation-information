@@ -24,14 +24,13 @@ import config.{MicroserviceConfig, WSHttp, WSHttpProxy}
 import play.api.Logger
 import play.api.libs.json.JsValue
 import services.MetricsService
-import uk.gov.hmrc.play.http._
+import uk.gov.hmrc.http._
+import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.http.ws.WSProxy
 import utils.{AlertLogging, SCRSFeatureSwitches}
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 import scala.concurrent.Future
-import uk.gov.hmrc.http._
-import uk.gov.hmrc.http.logging.Authorization
 
 
 class PublicCohoApiConnector @Inject()(config: MicroserviceConfig, injMetricsService: MetricsService) extends PublicCohoApiConn {
