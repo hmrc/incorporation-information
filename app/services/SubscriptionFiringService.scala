@@ -25,10 +25,10 @@ import org.joda.time.DateTime
 import play.api.Logger
 import reactivemongo.api.commands.DefaultWriteResult
 import repositories._
-import uk.gov.hmrc.play.http.HeaderCarrier
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import uk.gov.hmrc.http.HeaderCarrier
 
 @Singleton
 class SubscriptionFiringServiceImpl @Inject()(fsConnector: FiringSubscriptionsConnector,

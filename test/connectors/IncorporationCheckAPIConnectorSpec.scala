@@ -33,14 +33,17 @@ import uk.gov.hmrc.play.http.ws.{WSHttp, WSProxy}
 import utils.{FeatureSwitch, SCRSFeatureSwitches}
 
 import scala.concurrent.Future
+import uk.gov.hmrc.http._
 
 class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
   val testProxyUrl = "testIIUrl/incorporation-frontend-stubs"
   implicit val hc = HeaderCarrier()
 
+  trait WsHttpWithProxy extends CoreGet with CorePut with CorePost with WSProxy
+
   val mockHttp = mock[WSHttp]
-  val mockHttpProxy = mock[WSHttp with WSProxy]
+  val mockHttpProxy = mock[WsHttpWithProxy]
 
   val stubUrlValue = "testIIUrl/incorporation-frontend-stubs"
   val cohoUrlValue = "b"
@@ -111,7 +114,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
         .thenReturn(Future.successful(HttpResponse(200, Some(validSubmissionResponseJson))))
 
       val result = await(connector.checkForIncorpUpdate())
@@ -125,7 +128,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
         .thenReturn(Future.successful(HttpResponse(200, Some(validSubmissionResponseJson))))
 
       val result = await(connector.checkForIncorpUpdate(Some(testTimepoint)))
@@ -139,7 +142,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(new BadRequestException("400")))
 
       intercept[IncorpUpdateAPIFailure](await(connector.checkForIncorpUpdate(None)))
@@ -152,7 +155,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(new NotFoundException("404")))
 
       intercept[IncorpUpdateAPIFailure](await(connector.checkForIncorpUpdate(None)))
@@ -165,7 +168,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(Upstream4xxResponse("429", 429, 429)))
 
       intercept[IncorpUpdateAPIFailure](await(connector.checkForIncorpUpdate(None)))
@@ -178,7 +181,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(Upstream5xxResponse("502", 502, 502)))
 
       intercept[IncorpUpdateAPIFailure](await(connector.checkForIncorpUpdate(None)))
@@ -191,7 +194,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(new NoSuchElementException))
 
       intercept[IncorpUpdateAPIFailure](await(connector.checkForIncorpUpdate(None)))
@@ -209,7 +212,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
         .thenReturn(Future.successful(HttpResponse(200, Some(validSubmissionResponseJson))))
 
       val result = await(connector.checkForIndividualIncorpUpdate())
@@ -223,7 +226,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
         .thenReturn(Future.successful(HttpResponse(200, Some(validSubmissionResponseJson))))
 
       val result = await(connector.checkForIndividualIncorpUpdate(Some(testTimepoint)))
@@ -237,7 +240,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(new NotFoundException("404")))
 
       intercept[IncorpUpdateAPIFailure](await(connector.checkForIndividualIncorpUpdate(None)))
@@ -250,7 +253,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[IncorpUpdatesResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(new NoSuchElementException))
 
       intercept[IncorpUpdateAPIFailure](await(connector.checkForIndividualIncorpUpdate(None)))
@@ -279,7 +282,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       val fullStubUrl = s"$stubUrlValue/fetch-data/$transactionId"
 
       "return a SuccessfulTransactionalAPIResponse with a JsValue" in new Setup {
-        when(mockHttp.GET[JsValue](eqTo(fullStubUrl))(any(), any())).thenReturn(Future.successful(json))
+        when(mockHttp.GET[JsValue](eqTo(fullStubUrl))(any(), any(), any())).thenReturn(Future.successful(json))
 
         val result = await(connector.fetchTransactionalData(transactionId))
 
@@ -291,7 +294,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         "a 404 NotFound status code is returned" in new Setup {
           val response = Future.failed(new NotFoundException(""))
 
-          when(mockHttp.GET[JsValue](eqTo(fullStubUrl))(any(), any())).thenReturn(response)
+          when(mockHttp.GET[JsValue](eqTo(fullStubUrl))(any(), any(), any())).thenReturn(response)
 
           val result = await(connector.fetchTransactionalData(transactionId))
 
@@ -301,7 +304,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         "any other http exception status (4xx / 5xx) is returned" in new Setup {
           val response = Future.failed(new HttpException("Any http status exception that extends this class is either 4xx or 5xx", 9999))
 
-          when(mockHttp.GET[JsValue](eqTo(fullStubUrl))(any(), any())).thenReturn(response)
+          when(mockHttp.GET[JsValue](eqTo(fullStubUrl))(any(), any(), any())).thenReturn(response)
 
           val result = await(connector.fetchTransactionalData(transactionId))
 
@@ -311,7 +314,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         "any Throwable is caught" in new Setup {
           val response = Future.failed(new Throwable(""))
 
-          when(mockHttp.GET[JsValue](eqTo(fullStubUrl))(any(), any())).thenReturn(response)
+          when(mockHttp.GET[JsValue](eqTo(fullStubUrl))(any(), any(), any())).thenReturn(response)
 
           val result = await(connector.fetchTransactionalData(transactionId))
 

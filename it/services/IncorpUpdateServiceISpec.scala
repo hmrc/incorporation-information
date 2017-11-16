@@ -21,8 +21,8 @@ import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json._
 import repositories.{IncorpUpdateMongo, IncorpUpdateMongoRepository, QueueMongo, QueueMongoRepository}
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.MongoSpecSupport
-import uk.gov.hmrc.play.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext.Implicits.global
 

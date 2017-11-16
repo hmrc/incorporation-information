@@ -24,12 +24,12 @@ import config.{MicroserviceConfig, WSHttp, WSHttpProxy}
 import play.api.Logger
 import play.api.libs.json.JsValue
 import services.MetricsService
-import uk.gov.hmrc.play.http.logging.Authorization
-import uk.gov.hmrc.play.http.{HttpException, _}
+import uk.gov.hmrc.http._
+import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.http.ws.WSProxy
 import utils.{AlertLogging, SCRSFeatureSwitches}
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 import scala.concurrent.Future
 
 
@@ -55,8 +55,8 @@ class PublicCohoApiConnector @Inject()(config: MicroserviceConfig, injMetricsSer
 
 trait PublicCohoApiConn extends AlertLogging {
 
-  protected def httpProxy: HttpGet with WSProxy
-  protected def httpNoProxy: HttpGet
+  protected def httpProxy: CoreGet with WSProxy
+  protected def httpNoProxy: CoreGet
 
   protected val featureSwitch: SCRSFeatureSwitches
   protected val incorpFrontendStubUrl : String
@@ -76,7 +76,7 @@ trait PublicCohoApiConn extends AlertLogging {
     }
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
-      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
+      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc, implicitly) map {
         res =>
           res.status match {
             case NO_CONTENT => None
@@ -95,7 +95,7 @@ trait PublicCohoApiConn extends AlertLogging {
     }
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
-      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
+      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc, implicitly) map {
         res =>
           res.status match {
             case NO_CONTENT => None
@@ -126,7 +126,7 @@ trait PublicCohoApiConn extends AlertLogging {
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
 
-      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc) map {
+      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc, implicitly) map {
         res =>
           res.status match {
             case NO_CONTENT =>
