@@ -18,9 +18,11 @@ package utils
 
 import java.time.LocalTime
 
-import uk.gov.hmrc.play.test.UnitSpec
+import org.scalatest.concurrent.Eventually
+import play.api.Logger
+import uk.gov.hmrc.play.test.{LogCapturing, UnitSpec}
 
-class AlertLoggingSpec extends UnitSpec {
+class AlertLoggingSpec extends UnitSpec with LogCapturing with Eventually {
 
   val defaultLoggingDays = "MON,TUE,WED,THU,FRI"
   val defaultLoggingTime = "08:00:00_17:00:00"
@@ -50,11 +52,36 @@ class AlertLoggingSpec extends UnitSpec {
     }
   }
 
-  class DefaultSetup extends Setup(monday, _2pm)
+  class SetupInWorkingHours extends Setup(monday, _2pm)
+  class SetupNotInWorkingHours extends Setup(saturday, _9pm)
+
+  "Alert logging" should {
+
+    "log when in working hours" in new SetupInWorkingHours {
+      withCaptureOfLoggingFrom(Logger) { logEvents =>
+        alertLogging.alertCohoTxAPINotFound()
+
+        eventually {
+          logEvents.size shouldBe 1
+          logEvents.map(_.getMessage) shouldBe List("COHO_TX_API_NOT_FOUND")
+        }
+      }
+    }
+
+    "not log when not in working hours" in new SetupNotInWorkingHours {
+      withCaptureOfLoggingFrom(Logger) { logEvents =>
+        alertLogging.alertCohoTxAPINotFound()
+
+        eventually {
+          logEvents.size shouldBe 0
+        }
+      }
+    }
+  }
 
   "isLoggingDay" should {
 
-    "return true when today is the logging day" in new DefaultSetup {
+    "return true when today is the logging day" in new SetupInWorkingHours {
       alertLogging.isLoggingDay shouldBe true
     }
 
@@ -65,7 +92,7 @@ class AlertLoggingSpec extends UnitSpec {
 
   "isBetweenLoggingTimes" should {
 
-    "return true when now is between the logging times" in new DefaultSetup {
+    "return true when now is between the logging times" in new SetupInWorkingHours {
       alertLogging.isBetweenLoggingTimes shouldBe true
     }
 
@@ -78,7 +105,7 @@ class AlertLoggingSpec extends UnitSpec {
 
     "return true" when {
 
-      "the current time is 14:00 on a Monday" in new DefaultSetup {
+      "the current time is 14:00 on a Monday" in new SetupInWorkingHours {
         alertLogging.inWorkingHours shouldBe true
       }
 
