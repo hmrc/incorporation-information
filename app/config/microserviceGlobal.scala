@@ -85,6 +85,8 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Mi
 
     resetTimepoint(app)
 
+    app.injector.instanceOf[AppStartupJobs].logIncorpInfo()
+
     super.onStart(app)
   }
 
