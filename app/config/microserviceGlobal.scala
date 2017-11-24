@@ -22,7 +22,7 @@ import javax.inject.{Inject, Named, Singleton}
 import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
 import play.api.{Application, Configuration, Logger, Play}
-import repositories.TimepointMongo
+import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo, TimepointMongo}
 import services.IncorpUpdateService
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.auth.controllers.AuthParamsControllerConfig
@@ -111,6 +111,41 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Mi
       timepoint =>
         Logger.info(s"[ResetTimepoint] Found timepoint from config - $timepoint")
         app.injector.instanceOf[TimepointMongo].repo.resetTimepointTo(timepoint)
+    }
+  }
+}
+
+@Singleton
+class AppStartupJobs @Inject()(config: Configuration,
+                               val subsRepo: SubscriptionsMongo,
+                               val incorpUpdateRepo: IncorpUpdateMongo,
+                               val queueRepo: QueueMongo) {
+
+  def logIncorpInfo(): Unit = {
+    val transIdsFromConfig = config.getString("transactionIdList")
+
+    transIdsFromConfig.fold(()){ transIds =>
+      val transIdList = utils.Base64.decode(transIds).split(",")
+
+      transIdList.foreach { transId =>
+        for {
+          subscriptions <- subsRepo.repo.getSubscriptions(transId)
+          incorpUpdate <- incorpUpdateRepo.repo.getIncorpUpdate(transId)
+          queuedUpdate <- queueRepo.repo.getIncorpUpdate(transId)
+        } yield {
+          Logger.info(s"[HeldDocs] For txId: $transId - " +
+            s"subscriptions: ${if (subscriptions.isEmpty) "No subs" else subscriptions} - " +
+            s"""incorp update: ${
+              incorpUpdate.fold("No incorp update")(incorp =>
+                s"incorp status: ${incorp.status} - " +
+                  s"incorp date: ${incorp.incorpDate} - " +
+                  s"crn: ${incorp.crn} - " +
+                  s"timepoint: ${incorp.timepoint}"
+              )
+            } - """ +
+            s"""queue: ${queuedUpdate.fold("No queued incorp update")(_ => "In queue")}""")
+        }
+      }
     }
   }
 }
