@@ -45,7 +45,7 @@ trait AlertLogging {
 
   private[utils] def now: LocalTime = getCurrentTime
 
-  private[utils] def ifInWorkingHours(alert: Unit): Unit = if(inWorkingHours) alert else ()
+  private[utils] def ifInWorkingHours(alert: => Unit): Unit = if(inWorkingHours) alert else ()
 
   private[utils] def isLoggingDay = loggingDays.split(",").contains(today)
 
