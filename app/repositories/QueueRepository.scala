@@ -47,7 +47,7 @@ trait QueueRepository {
 
   def getIncorpUpdate(transactionId: String): Future[Option[QueuedIncorpUpdate]]
 
-  def getIncorpUpdates: Future[Seq[QueuedIncorpUpdate]]
+  def getIncorpUpdates(fetchSize: Int): Future[Seq[QueuedIncorpUpdate]]
 
   def removeQueuedIncorpUpdate(transactionId: String): Future[Boolean]
 
@@ -98,11 +98,11 @@ class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate]) 
     collection.find(txSelector(transactionId)).one[QueuedIncorpUpdate]
   }
 
-  override def getIncorpUpdates: Future[Seq[QueuedIncorpUpdate]] = {
+  override def getIncorpUpdates(fetchSize: Int): Future[Seq[QueuedIncorpUpdate]] = {
     val selector = Json.obj("timestamp" -> Json.obj("$lte" -> DateTime.now.getMillis))
     val rp = ReadPreference.primaryPreferred
 
-    collection.find(selector).sort(Json.obj("timestamp" -> 1)).cursor[QueuedIncorpUpdate](rp).collect[List]()
+    collection.find(selector).sort(Json.obj("timestamp" -> 1)).cursor[QueuedIncorpUpdate](rp).collect[List](upTo = fetchSize)
   }
 
   override def removeQueuedIncorpUpdate(transactionId: String): Future[Boolean] = {

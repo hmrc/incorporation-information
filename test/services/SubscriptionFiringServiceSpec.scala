@@ -55,6 +55,7 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
     val queueRepository = mockQueueRepository
     val subscriptionsRepository = mockSubscriptionsRepository
     val queueFailureDelay = 10
+    val fetchSize = 1
 
     implicit val hc = HeaderCarrier()
 
@@ -73,7 +74,7 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
   "fireIncorpUpdateBatch" should {
     "return a sequence of true when there is one queued incorp update in the batch and the timestamp of this queued update is in" +
       " the past or present and the subscription successfully fires" in new Setup {
-      when(mockQueueRepository.getIncorpUpdates).thenReturn(Seq(queuedIncorpUpdate))
+      when(mockQueueRepository.getIncorpUpdates(Matchers.any())).thenReturn(Seq(queuedIncorpUpdate))
       when(mockSubscriptionsRepository.getSubscriptions(Matchers.any())).thenReturn(Seq(sub), Seq())
       when(mockQueueRepository.removeQueuedIncorpUpdate(sub.transactionId)).thenReturn(true)
       when(mockFiringSubsConnector.connectToAnyURL(Matchers.any(), Matchers.any())(Matchers.any())).thenReturn(HttpResponse(200))
@@ -86,14 +87,14 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
     "return a sequence of false when is one queued incorp update in the batch and the timestamp of this queued update is in" +
       " the future and therefore the subscription is not fired" in new Setup {
       val futureQIU = QueuedIncorpUpdate(DateTime.now.plusMinutes(5), incorpUpdate)
-      when(mockQueueRepository.getIncorpUpdates).thenReturn(Seq(futureQIU))
+      when(mockQueueRepository.getIncorpUpdates(Matchers.any())).thenReturn(Seq(futureQIU))
 
       val result = await(service.fireIncorpUpdateBatch)
       result shouldBe Seq(false)
     }
 
     "return a sequence of false when a successfully fired subscription has failed to be deleted" in new Setup {
-      when(mockQueueRepository.getIncorpUpdates).thenReturn(Seq(queuedIncorpUpdate))
+      when(mockQueueRepository.getIncorpUpdates(Matchers.any())).thenReturn(Seq(queuedIncorpUpdate))
       when(mockSubscriptionsRepository.getSubscriptions(Matchers.any())).thenReturn(Seq(sub))
       when(mockFiringSubsConnector.connectToAnyURL(Matchers.any(), Matchers.any())(Matchers.any())).thenReturn(HttpResponse(200))
       when(mockSubscriptionsRepository.deleteSub(sub.transactionId, sub.regime, sub.subscriber)).thenReturn(DefaultWriteResult(false, 0, Seq(), None, None, None))

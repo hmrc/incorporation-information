@@ -18,6 +18,7 @@ package config
 
 import javax.inject.Inject
 
+import play.api.Logger
 import uk.gov.hmrc.play.config.inject.ServicesConfig
 
 class MicroserviceConfigImpl @Inject()(val config: ServicesConfig) extends MicroserviceConfig
@@ -35,6 +36,11 @@ trait MicroserviceConfig {
   lazy val incorpUpdateCohoApiAuthToken = config.getConfString("incorp-update-api.token", throw new Exception("incorp-update-api.token not found"))
 
   lazy val incorpUpdateItemsToFetch = config.getConfString("incorp-update-api.itemsToFetch", throw new Exception("incorp-update-api.itemsToFetch not found"))
+
+  lazy val queueFetchSize = config.getConfInt("fire-subs-job.queueFetchSizes", {
+    Logger.warn("[Config] fire-subs-job.queueFetchSizes missing, defaulting to 1")
+    1
+  })
 
   lazy val queueFailureDelay = config.getConfInt("fire-subs-job.queueFailureDelaySeconds", throw new Exception("fire-subs-api.queueFailureDelaySeconds not found"))
 
