@@ -86,7 +86,7 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
       await(insert(q1))
       await(insert(q2))
 
-      val result = await(repo.getIncorpUpdates)
+      val result = await(repo.getIncorpUpdates(10))
 
       result shouldBe Seq(q1, q2)
     }
@@ -100,7 +100,7 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
       await(insert(q1))
       await(insert(q2))
 
-      val result = await(repo.getIncorpUpdates)
+      val result = await(repo.getIncorpUpdates(10))
 
       result shouldBe Seq(q2, q1)
     }
@@ -117,10 +117,27 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
 
       await(Future.sequence(Seq(q1,q2,q3,q4,q5,q6) map (fInsert(_))))
 
-      val result = await(repo.getIncorpUpdates)
+      val result = await(repo.getIncorpUpdates(10))
 
       result shouldBe Seq(q3, q1, q6, q5)
     }
+  }
+
+  "return the only 2 updates in the correct order, eliding the ones in the future" in new Setup {
+    val baseTs = now
+    val iu = IncorpUpdate("tx1", "status1", Some("crn1"), None, "xxxx")
+    val q1 = QueuedIncorpUpdate(baseTs.minusSeconds(60), iu)
+    val q2 = q1.copy(timestamp = baseTs.plusSeconds(60))
+    val q3 = q1.copy(timestamp = baseTs.minusSeconds(70))
+    val q4 = q1.copy(timestamp = baseTs.plusSeconds(70))
+    val q5 = q1.copy(timestamp = baseTs.minusMillis(1))
+    val q6 = q1.copy(timestamp = baseTs.minusSeconds(1))
+
+    await(Future.sequence(Seq(q1,q2,q3,q4,q5,q6) map (fInsert(_))))
+
+    val result = await(repo.getIncorpUpdates(2))
+
+    result shouldBe Seq(q3, q1)
   }
 
   "getIncorpUpdate" should {

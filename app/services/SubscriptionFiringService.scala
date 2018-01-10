@@ -40,6 +40,7 @@ class SubscriptionFiringServiceImpl @Inject()(fsConnector: FiringSubscriptionsCo
   override val queueRepository = injQueueRepo.repo
   override val subscriptionsRepository = injSubRepo.repo
   override val queueFailureDelay = config.queueFailureDelay
+  override val fetchSize = config.queueFetchSize
 
   implicit val hc = HeaderCarrier()
 }
@@ -49,12 +50,13 @@ trait SubscriptionFiringService {
   val queueRepository: QueueRepository
   val subscriptionsRepository: SubscriptionsRepository
   val queueFailureDelay: Int
+  val fetchSize: Int
 
   implicit val hc: HeaderCarrier
 
 
   def fireIncorpUpdateBatch: Future[Seq[Boolean]] = {
-    queueRepository.getIncorpUpdates flatMap { updates =>
+    queueRepository.getIncorpUpdates(fetchSize) flatMap { updates =>
       Future.sequence( updates map { update => for {
         checkTSresult <- checkTimestamp(update.timestamp)
         fireResult <- fire(checkTSresult, update)

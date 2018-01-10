@@ -38,7 +38,8 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
     "auditing.consumer.baseUri.host" -> s"$wiremockHost",
     "auditing.consumer.baseUri.port" -> s"$wiremockPort",
     "Test.auditing.consumer.baseUri.host" -> s"$wiremockHost",
-    "Test.auditing.consumer.baseUri.port" -> s"$wiremockPort"
+    "Test.auditing.consumer.baseUri.port" -> s"$wiremockPort",
+    "microservice.services.fire-subs-job.queueFetchSizes" -> s"2"
   )
 
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
@@ -77,11 +78,14 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
 
   val incorpUpdate = IncorpUpdate("transId1", "awaiting", None, None, "timepoint", None)
   val incorpUpdate2 = IncorpUpdate("transId2", "awaiting", None, None, "timepoint", None)
+  val incorpUpdate3 = IncorpUpdate("transId3", "awaiting", None, None, "timepoint", None)
   val queuedIncorpUpdate = QueuedIncorpUpdate(DateTime.now, incorpUpdate)
   val queuedIncorpUpdate2 = QueuedIncorpUpdate(DateTime.now, incorpUpdate2)
-  val sub = Subscription("transId1", "CT", "subscriber", s"$mockUrl/mockUri")
-  val sub2 = Subscription("transId1", "PAYE", "subscriber", s"$mockUrl/mockUri")
-  val sub3 = Subscription("transId2", "CT", "subscriber", s"$mockUrl/mockUri")
+  val queuedIncorpUpdate3 = QueuedIncorpUpdate(DateTime.now, incorpUpdate3)
+  val sub1c = Subscription("transId1", "CT", "subscriber", s"$mockUrl/mockUri")
+  val sub1p = Subscription("transId1", "PAYE", "subscriber", s"$mockUrl/mockUri")
+  val sub2 = Subscription("transId2", "CT", "subscriber", s"$mockUrl/mockUri")
+  val sub3 = Subscription("transId3", "CT", "subscriber", s"$mockUrl/mockUri")
   val incorpUpdateResponse = IncorpUpdateResponse("CT", "subscriber", mockUrl, incorpUpdate)
 
 
@@ -91,7 +95,7 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
   "fireIncorpUpdateBatch" should {
     "return a Sequence of a true value when one queued incorp update has been successfully fired and both the " +
       "queued incorp update and the subscription have been deleted" in new Setup {
-      insert(sub)
+      insert(sub1c)
       subCount shouldBe 1
 
       insert(queuedIncorpUpdate)
@@ -107,8 +111,8 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
 
     "return a sequence of true when two subscriptions with the same transId have successfully returned 200 HTTP responses and then deleted" +
      "and therefore the queued incorp update is then deleted" in new Setup {
-      insert(sub)
-      insert(sub2)
+      insert(sub1c)
+      insert(sub1p)
       subCount shouldBe 2
 
       insert(queuedIncorpUpdate)
@@ -124,9 +128,9 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
 
     "return a sequence of two true values when two updates have been successfully fired, the first queued incorp update connected to two subscriptions with " +
       "via the same transId, and the second one connected to one subscription" in new Setup {
-      insert(sub)
+      insert(sub1c)
+      insert(sub1p)
       insert(sub2)
-      insert(sub3)
       subCount shouldBe 3
 
       insert(queuedIncorpUpdate)
@@ -141,10 +145,30 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
       result shouldBe Seq(true, true)
     }
 
+    "return a sequence of two true values and NOT three when three updates have been successfully fired but the fetch size is 2" in new Setup {
+      insert(sub1c)
+      insert(sub1p)
+      insert(sub2)
+      insert(sub3)
+      subCount shouldBe 4
+
+      insert(queuedIncorpUpdate)
+      insert(queuedIncorpUpdate2)
+      insert(queuedIncorpUpdate3)
+      queueCount shouldBe 3
+
+      val service = app.injector.instanceOf[SubscriptionFiringService]
+      stubPost("/mockUri", 200, "")
+
+      val fResult = service.fireIncorpUpdateBatch
+      val result = await(fResult)
+      result shouldBe Seq(true, true)
+    }
+
 
     "return a true value when an update has been fired that matches the transId of one of the two Subscriptions in the database" in new Setup {
-      insert(sub3)
-      insert(sub)
+      insert(sub2)
+      insert(sub1c)
       subCount shouldBe 2
 
       insert(queuedIncorpUpdate)
@@ -160,7 +184,7 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
     }
 
     "return an empty when the timestamp of the only queued incorp update is in the future" in new Setup {
-      insert(sub)
+      insert(sub1c)
       subCount shouldBe 1
 
       val futureQIU = QueuedIncorpUpdate(DateTime.now.plusMinutes(10), incorpUpdate)
@@ -176,8 +200,8 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
     }
 
     "return a sequence of false when the subscriptions for a queued incorp update did not return a 200 response" in new Setup {
-      insert(sub)
-      insert(sub2)
+      insert(sub1c)
+      insert(sub1p)
       subCount shouldBe 2
 
       insert(queuedIncorpUpdate)
@@ -192,7 +216,7 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
     }
 
     "return a sequence of false when the subscriptions for a queued incorp update has a malformed url" in new Setup {
-      insert(sub.copy(callbackUrl = "/test"))
+      insert(sub1c.copy(callbackUrl = "/test"))
       subCount shouldBe 1
 
       insert(queuedIncorpUpdate)
