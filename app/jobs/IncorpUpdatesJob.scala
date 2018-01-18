@@ -54,7 +54,7 @@ trait IncorpUpdatesJob extends ExclusiveScheduledJob with JobConfig {
         lock.tryLock {
           Logger.info(s"Triggered $name")
           incorpUpdateService.updateNextIncorpUpdateJobLot(HeaderCarrier()) map { result =>
-            val message = s"Feature is turned on - result = ${result}"
+            val message = s"Feature incorpUpdate is turned on - result = ${result}"
             Logger.info(message)
             Result(message)
           }
@@ -66,10 +66,12 @@ trait IncorpUpdatesJob extends ExclusiveScheduledJob with JobConfig {
             Logger.info(s"failed to acquire lock for $name")
             Result(s"$name failed")
         } recover {
-          case _: Exception => Result(s"$name failed")
+          case e: Exception =>
+            Logger.error(s"[IncorpUpdatesJob][executeInMutex] Exception occured: ${e.getMessage}", e)
+            Result(s"$name failed")
         }
       }
-      case false => Future.successful(Result(s"Feature is turned off"))
+      case false => Future.successful(Result(s"Feature incorpUpdate is turned off"))
     }
   }
 }
