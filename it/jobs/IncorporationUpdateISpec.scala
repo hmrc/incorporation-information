@@ -95,7 +95,7 @@ class   IncorporationUpdateISpec extends IntegrationSpecBase {
 
       val f = job.execute
       val r = await(f)
-      r shouldBe job.Result("Feature is turned off")
+      r shouldBe job.Result("Feature incorpUpdate is turned off")
     }
 
     "process successfully when enabled" in new Setup {
