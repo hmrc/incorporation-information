@@ -55,10 +55,10 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
     val queueRepository = mockQueueRepository
     val subscriptionsRepository = mockSubscriptionsRepository
     val queueFailureDelay = 10
+    val queueRetryDelay = 5
     val fetchSize = 1
 
     implicit val hc = HeaderCarrier()
-
   }
 
   trait Setup {
@@ -118,7 +118,6 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
   }
 
   "fireIncorpUpdate" should {
-
     "recover if an exception is thrown from the connector" in new Setup {
       when(mockSubscriptionsRepository.getSubscriptions(Matchers.any()))
         .thenReturn(Future.successful(Seq(sub)))
@@ -128,6 +127,28 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
       val res = intercept[RuntimeException](await(service.fireIncorpUpdate(queuedIncorpUpdate)))
 
       verify(mockQueueRepository).updateTimestamp(Matchers.eq(sub.transactionId), Matchers.any())
+    }
+    "update timestamp if 202 is received from connector" in new Setup {
+      when(mockSubscriptionsRepository.getSubscriptions(Matchers.any()))
+        .thenReturn(Future.successful(Seq(sub)))
+      when(mockFiringSubsConnector.connectToAnyURL(Matchers.any(), Matchers.any())(Matchers.any()))
+        .thenReturn(Future.successful(HttpResponse(202)))
+      when(mockQueueRepository.updateTimestamp(any(), any())).thenReturn(Future.successful(true))
+
+      await(service.fireIncorpUpdate(queuedIncorpUpdate))
+
+      verify(mockQueueRepository).updateTimestamp(Matchers.eq(sub.transactionId), Matchers.any())
+    }
+    "delete subscription when a 200 is received from connector" in new Setup {
+      when(mockSubscriptionsRepository.getSubscriptions(Matchers.any()))
+        .thenReturn(Future.successful(Seq(sub)))
+      when(mockFiringSubsConnector.connectToAnyURL(Matchers.any(), Matchers.any())(Matchers.any()))
+        .thenReturn(Future.successful(HttpResponse(200)))
+      when(mockSubscriptionsRepository.deleteSub(any(), any(), any())).thenReturn(Future.successful(DefaultWriteResult(true, 1, Nil, None, None, None)))
+
+      await(service.fireIncorpUpdate(queuedIncorpUpdate))
+
+      verify(mockSubscriptionsRepository).deleteSub(Matchers.eq(sub.transactionId), Matchers.any(), Matchers.any())
     }
   }
 

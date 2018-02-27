@@ -40,6 +40,7 @@ class SubscriptionFiringServiceImpl @Inject()(fsConnector: FiringSubscriptionsCo
   override val queueRepository = injQueueRepo.repo
   override val subscriptionsRepository = injSubRepo.repo
   override val queueFailureDelay = config.queueFailureDelay
+  override val queueRetryDelay = config.queueRetryDelay
   override val fetchSize = config.queueFetchSize
 
   implicit val hc = HeaderCarrier()
@@ -50,6 +51,7 @@ trait SubscriptionFiringService {
   val queueRepository: QueueRepository
   val subscriptionsRepository: SubscriptionsRepository
   val queueFailureDelay: Int
+  val queueRetryDelay: Int
   val fetchSize: Int
 
   implicit val hc: HeaderCarrier
@@ -115,7 +117,13 @@ trait SubscriptionFiringService {
 
         firingSubsConnector.connectToAnyURL(iuResponse, sub.callbackUrl)(hc) flatMap { response =>
           Logger.info(s"[SubscriptionFiringService] [fireIncorpUpdate] - Posting response to callback for txid : ${iu.incorpUpdate.transactionId} was successful")
-            deleteSub(sub.transactionId, sub.regime, sub.subscriber)
+          response.status match {
+            case 202 => {
+              val newTS = DateTime.now.plusSeconds(queueRetryDelay)
+              queueRepository.updateTimestamp(sub.transactionId, newTS).map(_ => false)
+            }
+            case _   =>  deleteSub(sub.transactionId, sub.regime, sub.subscriber)
+          }
         } recoverWith {
           case e : Exception =>
             Logger.info(s"[SubscriptionFiringService][fireIncorpUpdate] Subscription with transactionId: ${sub.transactionId} failed to return a 200 response")
