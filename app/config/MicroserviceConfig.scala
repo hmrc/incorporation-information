@@ -44,6 +44,8 @@ trait MicroserviceConfig {
 
   lazy val queueFailureDelay = config.getConfInt("fire-subs-job.queueFailureDelaySeconds", throw new Exception("fire-subs-api.queueFailureDelaySeconds not found"))
 
+  lazy val queueRetryDelay = config.getConfInt("fire-subs-job.queueRetryDelaySeconds", throw new Exception("fire-subs-api.queueFailureDelaySeconds not found"))
+
   lazy val cohoPublicBaseUrl = config.getConfString("public-coho-api.baseUrl", throw new Exception("public-coho-api.baseUrl not found"))
 
   lazy val cohoPublicApiAuthToken = config.getConfString("public-coho-api.authToken", throw new Exception("public-coho-api.authToken not found"))

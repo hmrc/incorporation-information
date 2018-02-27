@@ -215,6 +215,22 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
       result shouldBe Seq(false)
     }
 
+    "return a sequence of false when the subscriptions for a queued incorp update returned a 202 response" in new Setup {
+      insert(sub1c)
+      insert(sub1p)
+      subCount shouldBe 2
+
+      insert(queuedIncorpUpdate)
+      queueCount shouldBe 1
+
+      val service = app.injector.instanceOf[SubscriptionFiringService]
+      stubPost("/mockUri", 202, "")
+
+      val fResult = service.fireIncorpUpdateBatch
+      val result = await(fResult)
+      result shouldBe Seq(false)
+    }
+
     "return a sequence of false when the subscriptions for a queued incorp update has a malformed url" in new Setup {
       insert(sub1c.copy(callbackUrl = "/test"))
       subCount shouldBe 1
