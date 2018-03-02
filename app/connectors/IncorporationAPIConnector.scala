@@ -18,7 +18,7 @@ package connectors
 
 import javax.inject.{Inject, Singleton}
 
-import com.codahale.metrics.Counter
+import com.codahale.metrics.{Counter, Timer}
 import config.{MicroserviceConfig, WSHttp, WSHttpProxy}
 import models.IncorpUpdate
 import org.joda.time.DateTime
@@ -134,7 +134,7 @@ trait IncorporationAPIConnector extends AlertLogging {
       case false => (httpNoProxy, hc, s"$stubBaseUrl/fetch-data/$transactionID")
     }
 
-    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
+    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter), Some(metrics.internalAPITimer.time())) {
       http.GET[JsValue](url)(implicitly[HttpReads[JsValue]], realHc, implicitly) map { res =>
         Logger.debug("[TransactionalData] json - " + res)
         SuccessfulTransactionalAPIResponse(res)

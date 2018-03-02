@@ -19,7 +19,7 @@ package connectors
 import java.util.UUID
 
 import Helpers.SCRSSpec
-import com.codahale.metrics.Counter
+import com.codahale.metrics.{Counter, Timer}
 import mocks.MockMetrics
 import models.IncorpUpdate
 import org.joda.time.DateTime
@@ -49,10 +49,12 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
   val cohoUrlValue = "b"
 
   val mockMetrics = new MockMetrics
+  val mockTimer = mockMetrics.mockTimer
+  val mockTimerContext = mock[Timer.Context]
 
   class Setup {
 
-    reset(mockHttp, mockHttpProxy)
+    reset(mockHttp, mockHttpProxy, mockTimerContext)
 
     val connector = new IncorporationAPIConnector {
       val stubBaseUrl = stubUrlValue
@@ -281,12 +283,14 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
       val fullStubUrl = s"$stubUrlValue/fetch-data/$transactionId"
 
-      "return a SuccessfulTransactionalAPIResponse with a JsValue" in new Setup {
+      "return a SuccessfulTransactionalAPIResponse with a JsValue and stop the timer metric" in new Setup {
         when(mockHttp.GET[JsValue](eqTo(fullStubUrl))(any(), any(), any())).thenReturn(Future.successful(json))
+        when(mockTimer.time()).thenReturn(mockTimerContext)
 
         val result = await(connector.fetchTransactionalData(transactionId))
-
         result shouldBe SuccessfulTransactionalAPIResponse(json)
+
+        verify(mockTimerContext, times(1)).stop()
       }
 
       "return a FailedTransactionalAPIResponse" when {
@@ -311,14 +315,15 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
           result shouldBe FailedTransactionalAPIResponse
         }
 
-        "any Throwable is caught" in new Setup {
-          val response = Future.failed(new Throwable(""))
-
-          when(mockHttp.GET[JsValue](eqTo(fullStubUrl))(any(), any(), any())).thenReturn(response)
+        "any Throwable is caught and the timer metric is stopped" in new Setup {
+          when(mockHttp.GET[JsValue](eqTo(fullStubUrl))(any(), any(), any()))
+            .thenReturn(Future.failed(new Throwable("")))
+          when(mockTimer.time()).thenReturn(mockTimerContext)
 
           val result = await(connector.fetchTransactionalData(transactionId))
-
           result shouldBe FailedTransactionalAPIResponse
+
+          verify(mockTimerContext, times(1)).stop()
         }
       }
     }

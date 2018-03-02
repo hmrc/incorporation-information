@@ -37,6 +37,7 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
   val mockMetrics = mock[Metrics]
   val mockCounter = mock[Counter]
   val mockTimer = mock[Timer.Context]
+  val mockTimerMetric = mock[Timer]
 
 
   trait Setup {
@@ -48,7 +49,9 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
       override val publicCohoApiSuccessCounter: Counter = mockCounter
       override val transactionApiFailureCounter: Counter = mockCounter
       override val transactionApiSuccessCounter: Counter = mockCounter
-   }
+      override val publicAPITimer = mockTimerMetric
+      override val internalAPITimer = mockTimerMetric
+    }
   }
 
   override def beforeEach() = {

@@ -43,16 +43,17 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
   val mockHttp = mock[WSHttp]
   val mockHttpProxy = mock[WsHttpWithProxy]
   val mockMetrics = new MockMetrics
-  val mockTimer = new Timer
+  val mockTimer = mockMetrics.mockTimer
   val mockSuccessCounter = new Counter
   val mockFailureCounter = new Counter
+  val mockTimerContext = mock[Timer.Context]
 
   val stubPublicUrlValue = "testIIUrl/incorporation-frontend-stubs"
   val cohoPublicUrlValue = "http://test.url.for.companieshouse.publicapi"
 
   class Setup {
 
-    reset(mockHttp, mockHttpProxy)
+    reset(mockHttp, mockHttpProxy, mockTimerContext)
 
     val connector = new PublicCohoApiConn {
       val incorpFrontendStubUrl = "incorp FE Stub"
@@ -106,19 +107,21 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
   "getCompanyProfile" should {
 
 
-    "return some valid JSON when a valid CRN is provided" in new Setup {
+    "return some valid JSON when a valid CRN is provided and stop the timer metric" in new Setup {
       val url = s"$cohoPublicUrlValue"
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
       when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
         .thenReturn(Future.successful(HttpResponse(200, Some(validCompanyProfileResourceJson))))
-
+      when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(connector.getCompanyProfile(testCrn))
       result shouldBe Some(validCompanyProfileResourceJson)
 
-            urlCaptor.getValue shouldBe "stubbed/company-profile/1234567890"
+      urlCaptor.getValue shouldBe "stubbed/company-profile/1234567890"
+
+      verify(mockTimerContext, times(1)).stop()
     }
 
     "report an error when receiving a 404" in new Setup {
@@ -149,15 +152,18 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
       result shouldBe None
 
       urlCaptor.getValue shouldBe "stubbed/company-profile/1234567890"
+
+      verify(mockTimerContext, times(1)).stop()
     }
 
-    "report an error when receiving a Throwable exception" in new Setup {
+    "report an error when receiving a Throwable exception and stop the timer metric" in new Setup {
       val url = s"$cohoPublicUrlValue"
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
       when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(new Throwable()))
+      when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(connector.getCompanyProfile(testCrn))
 
@@ -200,18 +206,21 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
 
   "getOfficerList" should {
 
-    "return some valid JSON when a valid CRN is provided" in new Setup {
+    "return some valid JSON when a valid CRN is provided and stop the timer metric" in new Setup {
       val url = s"$cohoPublicUrlValue"
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
       when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
         .thenReturn(Future.successful(HttpResponse(200, Some(validOfficerListResourceJson))))
+      when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(connector.getOfficerList(testCrn))
       result shouldBe Some(validOfficerListResourceJson)
 
       urlCaptor.getValue shouldBe "stubbed/company/1234567890/officers"
+
+      verify(mockTimerContext, times(1)).stop()
     }
 
     "report an error when receiving a 404" in new Setup {
@@ -244,19 +253,22 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
       urlCaptor.getValue shouldBe "stubbed/company/1234567890/officers"
     }
 
-    "report an error when receiving a Throwable exception" in new Setup {
+    "report an error when receiving a Throwable exception and stop the timer metric" in new Setup {
       val url = s"$cohoPublicUrlValue"
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
       when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(new Throwable()))
+      when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(connector.getOfficerList(testCrn))
 
       result shouldBe None
 
       urlCaptor.getValue shouldBe "stubbed/company/1234567890/officers"
+
+      verify(mockTimerContext, times(1)).stop()
     }
   }
 
@@ -279,19 +291,20 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
   val testOfficerUrl = "/officers/_Sdjhshdsnnsi-StreatMand-greattsfh/appointments"
   "getOfficerAppointmentList" should {
 
-    "return some valid JSON when a valid Officer ID is provided" in new Setup {
+    "return some valid JSON when a valid Officer ID is provided and stop the timer metric" in new Setup {
       val url = s"$cohoPublicUrlValue"
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
       when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
         .thenReturn(Future.successful(HttpResponse(200, Some(validOfficerAppointmentsResourceJson))))
-
+      when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(connector.getOfficerAppointment(testOfficerId))
       result shouldBe validOfficerAppointmentsResourceJson
 
       urlCaptor.getValue shouldBe "stubbed/get-officer-appointment?fn=testFirstName&sn=testSurname"
+      verify(mockTimerContext, times(1)).stop()
     }
 
     "generate a unique officer name when a url longer than 15 characters is passed" in new Setup {
@@ -337,17 +350,19 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
       urlCaptor.getValue shouldBe "stubbed/get-officer-appointment?fn=testFirstName&sn=testSurname"
     }
 
-    "report an error when receiving a Throwable exception" in new Setup {
+    "report an error when receiving a Throwable exception and stop the timer metric" in new Setup {
       val url = s"$cohoPublicUrlValue"
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
       when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(new Throwable()))
+      when(mockTimer.time()).thenReturn(mockTimerContext)
 
       intercept[Throwable](await(connector.getOfficerAppointment(testOfficerId)))
 
       urlCaptor.getValue shouldBe "stubbed/get-officer-appointment?fn=testFirstName&sn=testSurname"
+      verify(mockTimerContext, times(1)).stop()
     }
   }
 

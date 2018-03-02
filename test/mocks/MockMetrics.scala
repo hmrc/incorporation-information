@@ -16,7 +16,7 @@
 
 package mocks
 
-import com.codahale.metrics.Counter
+import com.codahale.metrics.{Counter, Timer}
 import com.kenshoo.play.metrics.Metrics
 import org.scalatest.mock.MockitoSugar
 import repositories.SubscriptionsMongoRepository
@@ -28,10 +28,14 @@ class MockMetrics extends MetricsService with MockitoSugar{
 
   val mockMetrics = mock[Metrics]
 
+  val mockTimer = mock[Timer]
+
   val metrics = mockMetrics
   override val publicCohoApiFailureCounter: Counter = mockCounter
   override val publicCohoApiSuccessCounter: Counter = mockCounter
   override val transactionApiFailureCounter: Counter = mockCounter
   override val transactionApiSuccessCounter: Counter = mockCounter
   override val subRepo = mock[SubscriptionsMongoRepository]
+  override val publicAPITimer = mockTimer
+  override val internalAPITimer = mockTimer
 }
