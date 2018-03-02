@@ -75,7 +75,7 @@ trait PublicCohoApiConn extends AlertLogging {
       case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company-profile/$crn")
     }
 
-    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
+    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter), Some(metrics.publicAPITimer.time())) {
       http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc, implicitly) map {
         res =>
           res.status match {
@@ -94,7 +94,7 @@ trait PublicCohoApiConn extends AlertLogging {
       case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company/$crn/officers")
     }
 
-    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
+    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter), Some(metrics.publicAPITimer.time())) {
       http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc, implicitly) map {
         res =>
           res.status match {
@@ -124,8 +124,7 @@ trait PublicCohoApiConn extends AlertLogging {
         (httpNoProxy, hc, s"$cohoStubbedUrl/get-officer-appointment?fn=$fName&sn=$lName")
     }
 
-    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
-
+    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter), Some(metrics.publicAPITimer.time())) {
       http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc, implicitly) map {
         res =>
           res.status match {

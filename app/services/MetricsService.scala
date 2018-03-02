@@ -21,6 +21,7 @@ import javax.inject.Inject
 import com.kenshoo.play.metrics.{Metrics, MetricsDisabledException}
 import com.codahale.metrics.{Counter, Gauge, Timer}
 import play.api.Logger
+import play.mvc.Result
 import repositories._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -36,6 +37,9 @@ class MetricsServiceImpl @Inject()(val injSubRepo: SubscriptionsMongo,
   override lazy val publicCohoApiFailureCounter: Counter = metrics.defaultRegistry.counter("public-coho-api-failure-counter")
   override lazy val transactionApiSuccessCounter: Counter = metrics.defaultRegistry.counter("transaction-api-success-counter")
   override lazy val transactionApiFailureCounter: Counter = metrics.defaultRegistry.counter("transaction-api-failure-counter")
+
+  override val publicAPITimer: Timer = metrics.defaultRegistry.timer("public-api-timer")
+  override val internalAPITimer: Timer = metrics.defaultRegistry.timer("internal-api-timer")
 }
 
 trait MetricsService {
@@ -46,6 +50,9 @@ trait MetricsService {
   val publicCohoApiFailureCounter: Counter
   val transactionApiSuccessCounter: Counter
   val transactionApiFailureCounter: Counter
+
+  val publicAPITimer: Timer
+  val internalAPITimer: Timer
 
   def updateSubscriptionMetrics(): Future[Map[String, Int]] = {
     subRepo.getSubscriptionStats() map {
