@@ -148,7 +148,7 @@ trait IncorpUpdateService extends {
     }
   }
 
-  def updateSpecificIncorpUpdateByTP(tps: Seq[String])(implicit hc: HeaderCarrier): Future[Seq[Boolean]] = {
+  def updateSpecificIncorpUpdateByTP(tps: Seq[String],forNoQueue: Boolean = false)(implicit hc: HeaderCarrier): Future[Seq[Boolean]] = {
 
     def processAllTPs(tp:String) = {
       for {
@@ -195,9 +195,16 @@ trait IncorpUpdateService extends {
               Logger.info(s"${logPrefix} Results of updating the queue for txid: " + qeData.incorpUpdate.transactionId + " Remove from queue result: " + removeQueue + " Copy to queue result: " + copyTOQ)
               true
             }
-        case _ =>
+        case _ => if (forNoQueue) {
+          copyToQueue(createQueuedIncorpUpdates(Seq(iUpdate))).map { copyToQ =>
+            Logger.info(s"${logPrefix} Result of adding a new queue entry: " + copyToQ)
+            true
+          }
+        }
+        else {
           Logger.info(s"${logPrefix} No queue update done")
           Future.successful(false)
+        }
       }
     }
 
