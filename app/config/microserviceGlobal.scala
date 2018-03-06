@@ -83,6 +83,8 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Mi
 
     reFetchIncorpInfo(app)
 
+    reFetchIncorpInfoWhenNoQueue(app)
+
     resetTimepoint(app)
 
     app.injector.instanceOf[AppStartupJobs].logIncorpInfo()
@@ -99,6 +101,19 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Mi
         Logger.info(s"[Config] List of timepoints are $tpList")
         app.injector.instanceOf[IncorpUpdateService].updateSpecificIncorpUpdateByTP(tpList.split(","))(HeaderCarrier()) map { result =>
           Logger.info(s"Updating incorp data is switched on - result = $result")
+        }
+    }
+  }
+
+  private def reFetchIncorpInfoWhenNoQueue(app: Application): Future[Unit] = {
+
+    app.configuration.getString("timepointListNoQueue") match {
+      case None => Future.successful(Logger.info(s"[Config] No timepoints to re-fetch for no queue entries"))
+      case Some(timepointListNQ) =>
+        val tpList = new String(Base64.getDecoder.decode(timepointListNQ), "UTF-8")
+        Logger.info(s"[Config] List of timepoints for no queue entries are $tpList")
+        app.injector.instanceOf[IncorpUpdateService].updateSpecificIncorpUpdateByTP(tpList.split(","), forNoQueue = true)(HeaderCarrier()) map { result =>
+          Logger.info(s"Updating incorp data is switched on for no queue entries - result = $result")
         }
     }
   }

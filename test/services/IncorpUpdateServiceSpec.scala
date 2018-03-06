@@ -230,7 +230,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
 
   "updateSpecificIncorpUpdateByTP" should {
 
-    "return a Sequence of Booleans when a sequence of TPs is input" in new Setup {
+    "return a Sequence of trues when a sequence of TPs is input and there is a queue entry for each" in new Setup {
 
       val upserted = Seq(Upserted(1, BSONString("")))
       val UWR = UpdateWriteResult(ok = true, 1, 1, upserted, Seq(WriteError(1, 1, "")), None, None, None)
@@ -255,7 +255,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
       response shouldBe Seq(true,true)
 
     }
-    "return a Sequence of Booleans when a sequence of TPs is input and queue entries already exist" in new Setup {
+    "return a Sequence of false when a sequence of TPs is input and queue entries don't exist" in new Setup {
 
       val upserted = Seq(Upserted(1, BSONString("")))
       val UWR = UpdateWriteResult(ok = true, 1, 1, upserted, Seq(WriteError(1, 1, "")), None, None, None)
@@ -278,6 +278,32 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
 
       val response = await(service.updateSpecificIncorpUpdateByTP(timepointSeq))
       response shouldBe Seq(false,false)
+
+    }
+
+    "return a Sequence of trues when a sequence of TPs is input and queue entries don't exist but the for no queue switch is set" in new Setup {
+
+      val upserted = Seq(Upserted(1, BSONString("")))
+      val UWR = UpdateWriteResult(ok = true, 1, 1, upserted, Seq(WriteError(1, 1, "")), None, None, None)
+
+      val seqOfQueuedIncorpUpdates = Seq(queuedIncorpUpdate,queuedIncorpUpdate2)
+
+      when(mockQueueRepository.removeQueuedIncorpUpdate(Matchers.any()))
+        .thenReturn(Future.successful(true))
+
+      when(mockQueueRepository.getIncorpUpdate(Matchers.any()))
+        .thenReturn(Future.successful(None))
+
+      when(mockIncorpUpdateRepository.storeSingleIncorpUpdate(Matchers.any())).thenReturn(Future.successful(UWR))
+
+      when(mockIncorporationCheckAPIConnector.checkForIndividualIncorpUpdate(Matchers.any())(Matchers.any[HeaderCarrier]()))
+        .thenReturn(Future.successful(Seq(incorpUpdate)), Future.successful(Seq(incorpUpdateNew)))
+
+      when(mockQueueRepository.storeIncorpUpdates(Matchers.any()))
+        .thenReturn(Future.successful(InsertResult(1,0,Nil)))
+
+      val response = await(service.updateSpecificIncorpUpdateByTP(timepointSeq,true))
+      response shouldBe Seq(true,true)
 
     }
 
