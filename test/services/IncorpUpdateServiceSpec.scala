@@ -116,7 +116,6 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
       val response = await(service.fetchSpecificIncorpUpdates(Some(timepointOld)))
       response shouldBe incorpUpdate
     }
-
   }
 
 

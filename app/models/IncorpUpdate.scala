@@ -31,7 +31,7 @@ case class IncorpUpdate(transactionId : String,
 
 object IncorpUpdate {
 
-  import utils.TimeatampFormats._
+  import utils.TimestampFormats._
 
   implicit val format = Json.format[IncorpUpdate]
 
@@ -44,7 +44,7 @@ object IncorpUpdate {
       (__ \ "transaction_status_description").formatNullable[String]
     ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
 
-  val queueFormat = (
+  val cohoFormat = (
     (__ \ "transaction_id").format[String] and
       (__ \ "transaction_status").format[String] and
       (__ \ "company_number").formatNullable[String] and
@@ -52,8 +52,6 @@ object IncorpUpdate {
       (__ \ "timepoint").format[String] and
       (__ \ "transaction_status_description").formatNullable[String]
     ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
-
-  val cohoFormat = queueFormat
 
   val responseFormat = (
     (__ \ "transaction_id").format[String] and
@@ -116,6 +114,6 @@ case class QueuedIncorpUpdate(timestamp: DateTime, incorpUpdate: IncorpUpdate)
 object QueuedIncorpUpdate {
   val format = (
       (__ \ "timestamp").format[DateTime] and
-      (__ \ "incorp_update").format[IncorpUpdate](IncorpUpdate.queueFormat)
+      (__ \ "incorp_update").format[IncorpUpdate](IncorpUpdate.cohoFormat)
   ) (QueuedIncorpUpdate.apply, unlift(QueuedIncorpUpdate.unapply))
 }

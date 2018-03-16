@@ -28,15 +28,15 @@ import org.mockito.Mockito._
 import org.mockito.{ArgumentCaptor, Matchers}
 import play.api.libs.json.{JsValue, Json}
 import services.MetricsService
-import uk.gov.hmrc.play.http._
+import uk.gov.hmrc.http._
 import uk.gov.hmrc.play.http.ws.{WSHttp, WSProxy}
 import utils.{FeatureSwitch, SCRSFeatureSwitches}
 
 import scala.concurrent.Future
-import uk.gov.hmrc.http._
 
 class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
+  val mockIncorporationCheckAPIConnector = mock[IncorporationAPIConnector]
   val testProxyUrl = "testIIUrl/incorporation-frontend-stubs"
   implicit val hc = HeaderCarrier()
 
@@ -53,8 +53,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
   val mockTimerContext = mock[Timer.Context]
 
   class Setup {
-
-    reset(mockHttp, mockHttpProxy, mockTimerContext)
+    reset(mockHttp, mockHttpProxy, mockTimerContext, mockIncorporationCheckAPIConnector)
 
     val connector = new IncorporationAPIConnector {
       val stubBaseUrl = stubUrlValue
@@ -78,6 +77,14 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       override protected val loggingDays = "MON,TUE,WED,THU,FRI"
       override protected val loggingTimes = "08:00:00_17:00:00"
     }
+
+      val timepoint = "old-timepoint"
+      val timepointNew = "new-timepoint"
+      val timepointSeq = Seq(timepoint,timepointNew)
+      val incorpUpdate = Seq(IncorpUpdate("transId", "accepted", None, None, timepoint, None))
+      val incorpUpdate2 = IncorpUpdate("transId2", "accepted", None, None, timepoint, None)
+      val rejectedIncorpUpdate = IncorpUpdate("7894578956784", "rejected", None, None, "123456789", None)
+
   }
 
   val validSubmissionResponseJson = Json.parse(
@@ -90,6 +97,180 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
       |   "transaction_id":"7894578956784",
       |   "incorporated_on":"2016-08-10",
+      |   "timepoint":"123456789"
+      | }
+      |],
+      |"links":{
+      | "next":"https://ewf.companieshouse.gov.uk/internal/check-submission?timepoint=123456789"
+      |}
+      |}""".stripMargin)
+
+  val manyValidSubmissionResponseJson = Json.parse(
+    """{
+      |"items":[
+      | {
+      |   "company_number":"9999999997",
+      |   "transaction_status":"accepted",
+      |   "transaction_type":"incorporation",
+      |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
+      |   "transaction_id":"7894578956784",
+      |   "incorporated_on":"2016-08-10",
+      |   "timepoint":"123456789"
+      | },
+      | {
+      |   "company_number":"9999999998",
+      |   "transaction_status":"accepted",
+      |   "transaction_type":"incorporation",
+      |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
+      |   "transaction_id":"7894578956784",
+      |   "incorporated_on":"2016-08-10",
+      |   "timepoint":"123456789"
+      | },
+      | {
+      |   "company_number":"9999999999",
+      |   "transaction_status":"accepted",
+      |   "transaction_type":"incorporation",
+      |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
+      |   "transaction_id":"7894578956784",
+      |   "incorporated_on":"2016-08-10",
+      |   "timepoint":"123456789"
+      | }
+      |],
+      |"links":{
+      | "next":"https://ewf.companieshouse.gov.uk/internal/check-submission?timepoint=123456789"
+      |}
+      |}""".stripMargin)
+
+  val manyValidSubmissionResponseJsonWithInvalid = Json.parse(
+    """{
+      |"items":[
+      | {
+      |   "company_number":"9999999997",
+      |   "transaction_status":"accepted",
+      |   "transaction_type":"incorporation",
+      |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
+      |   "transaction_id":"7894578956784",
+      |   "incorporated_on":"2016-08-10",
+      |   "timepoint":"123456789"
+      | },
+      | {
+      |   "company_number":"9999999998",
+      |   "transaction_status":"accepted",
+      |   "transaction_type":"incorporation",
+      |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
+      |   "transaction_id":"7894578956784",
+      |   "timepoint":"123456789"
+      | },
+      | {
+      |   "company_number":"9999999999",
+      |   "transaction_status":"accepted",
+      |   "transaction_type":"incorporation",
+      |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
+      |   "transaction_id":"7894578956784",
+      |   "incorporated_on":"2016-08-10",
+      |   "timepoint":"123456789"
+      | }
+      |],
+      |"links":{
+      | "next":"https://ewf.companieshouse.gov.uk/internal/check-submission?timepoint=123456789"
+      |}
+      |}""".stripMargin)
+
+  val validRejectedSubmissionResponseJson = Json.parse(
+    """{
+      |"items":[
+      | {
+      |   "transaction_status":"rejected",
+      |   "transaction_type":"incorporation",
+      |   "transaction_id":"7894578956784",
+      |   "timepoint":"123456789"
+      | }
+      |],
+      |"links":{
+      | "next":"https://ewf.companieshouse.gov.uk/internal/check-submission?timepoint=123456789"
+      |}
+      |}""".stripMargin)
+
+  val invalidNoCRNSubmissionResponseJson = Json.parse(
+    """{
+      |"items":[
+      | {
+      |   "transaction_status":"accepted",
+      |   "transaction_type":"incorporation",
+      |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
+      |   "transaction_id":"7894578956784",
+      |   "incorporated_on":"2016-08-10",
+      |   "timepoint":"123456789"
+      | }
+      |],
+      |"links":{
+      | "next":"https://ewf.companieshouse.gov.uk/internal/check-submission?timepoint=123456789"
+      |}
+      |}""".stripMargin)
+
+  val invalidEmptyCRNSubmissionResponseJson = Json.parse(
+    """{
+      |"items":[
+      | {
+      |   "company_number":"",
+      |   "transaction_status":"accepted",
+      |   "transaction_type":"incorporation",
+      |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
+      |   "transaction_id":"7894578956784",
+      |   "incorporated_on":"2016-08-10",
+      |   "timepoint":"123456789"
+      | }
+      |],
+      |"links":{
+      | "next":"https://ewf.companieshouse.gov.uk/internal/check-submission?timepoint=123456789"
+      |}
+      |}""".stripMargin)
+
+  val invalidDateInvalidSubmissionResponseJson = Json.parse(
+    """{
+      |"items":[
+      | {
+      |   "company_number":"12345678",
+      |   "transaction_status":"accepted",
+      |   "transaction_type":"incorporation",
+      |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
+      |   "transaction_id":"7894578956784",
+      |   "incorporated_on":"20-08-10",
+      |   "timepoint":"123456789"
+      | }
+      |],
+      |"links":{
+      | "next":"https://ewf.companieshouse.gov.uk/internal/check-submission?timepoint=123456789"
+      |}
+      |}""".stripMargin)
+
+  val invalidNoDateSubmissionResponseJson = Json.parse(
+    """{
+      |"items":[
+      | {
+      |   "company_number":"12345678",
+      |   "transaction_status":"accepted",
+      |   "transaction_type":"incorporation",
+      |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
+      |   "transaction_id":"7894578956784",
+      |   "timepoint":"123456789"
+      | }
+      |],
+      |"links":{
+      | "next":"https://ewf.companieshouse.gov.uk/internal/check-submission?timepoint=123456789"
+      |}
+      |}""".stripMargin)
+
+  val invalidEmptyDateSubmissionResponseJson = Json.parse(
+    """{
+      |"items":[
+      | {
+      |   "company_number":"12345678",
+      |   "transaction_status":"accepted",
+      |   "transaction_type":"incorporation",
+      |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
+      |   "transaction_id":"7894578956784",
+      |   "incorporated_on":"",
       |   "timepoint":"123456789"
       | }
       |],
@@ -265,7 +446,67 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
   }
 
+  "checkForIncorpUpdate" should {
+    "return a sequence of updates" when {
+      "it has no invalid updates" in new Setup {
+        def incorpUpdate(crn: String) = IncorpUpdate(
+          "7894578956784",
+          "accepted",
+          Some(crn),
+          Some(DateTime.parse("2016-08-10")),
+          "123456789"
+        )
 
+        when(mockHttp.GET[HttpResponse](any())(Matchers.any(), Matchers.any(), Matchers.any()))
+          .thenReturn(Future.successful(HttpResponse(200, Some(manyValidSubmissionResponseJson))))
+
+        val result = await(connector.checkForIncorpUpdate(Some(timepoint)))
+        result shouldBe Seq(incorpUpdate("9999999997"), incorpUpdate("9999999998"), incorpUpdate("9999999999"))
+      }
+    }
+    "return no updates for an accepted response from CH" when {
+      "there is no CRN" in new Setup {
+        when(mockHttp.GET[HttpResponse](any())(Matchers.any(), Matchers.any(), Matchers.any()))
+          .thenReturn(Future.successful(HttpResponse(200, Some(invalidNoCRNSubmissionResponseJson))))
+
+        val result = await(connector.checkForIncorpUpdate(Some(timepoint)))
+        result shouldBe Seq()
+      }
+      "there is no date of incorporation" in new Setup {
+        when(mockHttp.GET[HttpResponse](any())(Matchers.any(), Matchers.any(), Matchers.any()))
+          .thenReturn(Future.successful(HttpResponse(200, Some(invalidNoDateSubmissionResponseJson))))
+
+        val result = await(connector.checkForIncorpUpdate(Some(timepoint)))
+        result shouldBe Seq()
+      }
+      "there is a date of incorporation in the wrong format" in new Setup {
+        when(mockHttp.GET[HttpResponse](any())(Matchers.any(), Matchers.any(), Matchers.any()))
+          .thenReturn(Future.successful(HttpResponse(200, Some(invalidEmptyDateSubmissionResponseJson))))
+
+        val result = connector.checkForIncorpUpdate(Some(timepoint))
+        val failure = intercept[IncorpUpdateAPIFailure]( await(result) )
+
+        failure.ex shouldBe a[IllegalArgumentException]
+      }
+      "only one of many submissions is invalid" in new Setup {
+        when(mockHttp.GET[HttpResponse](any())(Matchers.any(), Matchers.any(), Matchers.any()))
+          .thenReturn(Future.successful(HttpResponse(200, Some(manyValidSubmissionResponseJsonWithInvalid))))
+
+        val result = await(connector.checkForIncorpUpdate(Some(timepoint)))
+
+        result shouldBe Seq()
+      }
+    }
+
+    "return updates when there is any number of rejected CH responses" in new Setup {
+      when(mockHttp.GET[HttpResponse](any())(Matchers.any(), Matchers.any(), Matchers.any()))
+        .thenReturn(Future.successful(HttpResponse(200, Some(validRejectedSubmissionResponseJson))))
+
+      val result = await(connector.checkForIncorpUpdate(Some(timepoint)))
+      result shouldBe Seq(rejectedIncorpUpdate)
+    }
+
+  }
 
 
   "fetchTransactionalData" when {
