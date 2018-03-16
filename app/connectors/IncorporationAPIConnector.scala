@@ -102,7 +102,18 @@ trait IncorporationAPIConnector extends AlertLogging {
         res =>
           res.status match {
             case NO_CONTENT => Seq()
-            case _ => res.json.as[IncorpUpdatesResponse].items
+            case _ =>
+              val items = res.json.as[IncorpUpdatesResponse].items
+              if(
+                items exists {
+                  case IncorpUpdate(_, "accepted", Some(crn), Some(incorpDate), _, _) => false
+                  case IncorpUpdate(_, "rejected", _, _, _, _)                        => false
+                  case failure =>
+                    Logger.error("CH_UPDATE_INVALID")
+                    Logger.info(s"CH Update failed for transaction ID: ${failure.transactionId}. Status: ${failure.status}, incorpdate provided: ${failure.incorpDate.isDefined}")
+                    true
+                }
+              ){ Seq() } else { items }
           }
       }
     } recover handleError(timepoint)

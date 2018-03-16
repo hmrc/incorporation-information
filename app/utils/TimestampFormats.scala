@@ -20,7 +20,7 @@ import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
 import play.api.libs.json.{Format, JsString, Reads, Writes}
 
-object TimeatampFormats {
+object TimestampFormats {
 
   val timestampFormat = Format[DateTime](
     Reads[DateTime](js =>
