@@ -20,21 +20,21 @@ import Helpers.JSONhelpers
 import connectors.IncorporationAPIConnector
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
 import org.joda.time.DateTime
-import org.mockito.{ArgumentCaptor, Matchers}
 import org.mockito.Mockito._
-import org.scalatest.BeforeAndAfterEach
-import org.scalatest.mock.MockitoSugar
-import play.api.libs.json.{JsObject, Json}
+import org.mockito.{ArgumentCaptor, Matchers}
+import org.mockito.Matchers.{any, eq => eqTo}
+import org.scalatest.mockito.MockitoSugar
+import play.api.Logger
 import reactivemongo.api.commands.{UpdateWriteResult, Upserted, WriteError}
-import reactivemongo.bson.{BSONString, BSONValue}
+import reactivemongo.bson.BSONString
 import repositories._
-import uk.gov.hmrc.play.test.UnitSpec
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.play.test.{LogCapturing, UnitSpec}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import uk.gov.hmrc.http.HeaderCarrier
 
-class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEach with JSONhelpers{
+class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with JSONhelpers with LogCapturing {
 
   val mockIncorporationCheckAPIConnector = mock[IncorporationAPIConnector]
   val mockIncorpUpdateRepository = mock[IncorpUpdateRepository]
@@ -45,17 +45,15 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
 
   implicit val hc = HeaderCarrier()
 
-  override def beforeEach() {
-    resetMocks()
-  }
-
-  def resetMocks() = {
-    reset(mockIncorporationCheckAPIConnector)
-    reset(mockIncorpUpdateRepository)
-    reset(mockSubscriptionService)
-    reset(mockTimepointRepository)
-    reset(mockQueueRepository)
-    reset(mockSubRepo)
+  def resetMocks() {
+    reset(
+      mockIncorporationCheckAPIConnector,
+      mockIncorpUpdateRepository,
+      mockSubscriptionService,
+      mockTimepointRepository,
+      mockQueueRepository,
+      mockSubRepo
+    )
   }
 
   trait Setup {
@@ -68,14 +66,19 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
       val noRAILoggingDay = "Mon"
       val noRAILoggingTime = "08:00:00_17:00:00"
     }
+
+    resetMocks()
   }
+
+  val transId = "transId1"
+  val transId2 = "transId2"
 
   val timepoint = TimePoint("id", "old timepoint")
   val timepointOld = "old-timepoint"
   val timepointNew = "new-timepoint"
   val timepointSeq = Seq(timepointOld,timepointNew)
-  val incorpUpdate = IncorpUpdate("transId", "accepted", None, None, timepointOld, None)
-  val incorpUpdate2 = IncorpUpdate("transId2", "accepted", None, None, timepointOld, None)
+  val incorpUpdate = IncorpUpdate(transId, "accepted", None, None, timepointOld, None)
+  val incorpUpdate2 = IncorpUpdate(transId2, "accepted", None, None, timepointOld, None)
   val incorpUpdate3 = IncorpUpdate("transId3", "rejected", None, None, timepointOld, None)
   val incorpUpdateNew = IncorpUpdate("transIdNew", "accepted", None, None, timepointNew, None)
   val incorpUpdates = Seq(incorpUpdate, incorpUpdateNew)
@@ -83,16 +86,17 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
   val emptyUpdates = Seq()
   val queuedIncorpUpdate = QueuedIncorpUpdate(DateTime.now, incorpUpdate)
   val queuedIncorpUpdate2 = QueuedIncorpUpdate(DateTime.now, incorpUpdateNew)
-  val transId = "transId123"
-  val regime = "CT"
-  val subscriber = "SCRS"
+  val regimeCT = "ct"
+  val regimeCTAX = "ctax"
+  val subscriber = "scrs"
   val url = "www.test.com"
-  val sub = Subscription(transId, regime, subscriber, url)
+  val subCT = Subscription(transId, regimeCT, subscriber, url)
+  val subCTAX = Subscription(transId2, regimeCTAX, subscriber, url)
 
   "fetchIncorpUpdates" should {
     "return some updates" in new Setup {
       when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
-        .thenReturn(Future(Some(sub)))
+        .thenReturn(Future(Some(subCT)))
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
       when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(incorpUpdates))
 
@@ -120,12 +124,13 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
 
 
   "storeIncorpUpdates" should {
+
     "return InsertResult(2, 0, Seq(), 0) when one update with 2 incorps has been inserted with CT subscriptions" in new Setup {
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
       when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
       when(mockIncorpUpdateRepository.storeIncorpUpdates(incorpUpdates)).thenReturn(InsertResult(2, 0, Seq(),0, incorpUpdates))
       when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
-        .thenReturn(Future(Some(sub)))
+        .thenReturn(Future(Some(subCT)))
 
       val response = await(service.storeIncorpUpdates(Future.successful(incorpUpdates)))
       response shouldBe InsertResult(2, 0, Seq(), 0, incorpUpdates)
@@ -146,10 +151,8 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
       when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
       when(mockIncorpUpdateRepository.storeIncorpUpdates(incorpUpdates)).thenReturn(InsertResult(2, 0, Seq(), 0, incorpUpdates))
-      when(mockSubscriptionService.getSubscription(Matchers.eq("transId"), Matchers.anyString(), Matchers.anyString()))
-        .thenReturn(Future(Some(sub)))
-      when(mockSubscriptionService.getSubscription(Matchers.eq("transIdNew"), Matchers.anyString(), Matchers.anyString()))
-        .thenReturn(Future(None))
+      when(mockSubscriptionService.getSubscription(any(), Matchers.anyString(), Matchers.anyString()))
+        .thenReturn(Future(Some(subCT)), Future.successful(None), Future.successful(None))
 
       val response = await(service.storeIncorpUpdates(Future.successful(incorpUpdates)))
       response shouldBe InsertResult(2, 0, Seq(), 1, incorpUpdates)
@@ -208,7 +211,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
     "return a string stating that the timepoint has been updated to 'new timepoint'" in new Setup {
       val newTimepoint = timepointNew
       when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
-        .thenReturn(Future(Some(sub)))
+        .thenReturn(Future(Some(subCT)))
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepointOld)))
       when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Matchers.eq(Some(timepointOld)))(Matchers.any())).thenReturn(Future.successful(incorpUpdates))
 
@@ -335,41 +338,83 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with BeforeAndA
     }
   }
 
-  "checkForInterest" should {
+  "alertOnNoCTInterest" should {
 
-    "return the no alerts were raised where there's an interest registered" in new Setup {
-      when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
-        .thenReturn(Future(Some(sub)))
+    "return 0 and not raise an alert when there's an interest registered" in new Setup {
+      when(mockSubscriptionService.getSubscription(any(), eqTo(regimeCT), eqTo(subscriber)))
+        .thenReturn(Future(Some(subCT)))
 
-      val result = await(service.alertOnNoCTInterest(seqOfIncorpUpdates))
+      withCaptureOfLoggingFrom(Logger){ loggingEvents =>
+        val result = await(service.alertOnNoCTInterest(seqOfIncorpUpdates))
+        result shouldBe 0
 
-      result shouldBe 0
+        loggingEvents.isEmpty shouldBe true
+      }
     }
 
-    "return 2 where there were two incorps without an interest registered" in new Setup {
-      when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
+    "return 2 where there were two incorps without an interest registered for regime ct or ctax" in new Setup {
+      when(mockSubscriptionService.getSubscription(any(), eqTo(regimeCT), eqTo(subscriber)))
         .thenReturn(Future(None))
 
-      val result = await(service.alertOnNoCTInterest(incorpUpdates))
+      when(mockSubscriptionService.getSubscription(any(), eqTo(regimeCTAX), eqTo(subscriber)))
+        .thenReturn(Future(None))
 
-      result shouldBe 2
+      withCaptureOfLoggingFrom(Logger) { loggingEvents =>
+        val result = await(service.alertOnNoCTInterest(incorpUpdates))
+        result shouldBe 2
+
+        loggingEvents.size shouldBe 2
+      }
     }
+
     "return 1 alerts when 2 out of 3 incorps have an interested registered" in new Setup {
-      when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
-        .thenReturn(Future(Some(sub)), Future(None), Future(Some(sub)))
+      when(mockSubscriptionService.getSubscription(any(), eqTo(regimeCT), eqTo(subscriber)))
+        .thenReturn(Future(Some(subCT)), Future(None), Future(Some(subCT)))
 
-      val result = await(service.alertOnNoCTInterest(seqOfIncorpUpdates))
+      when(mockSubscriptionService.getSubscription(any(), eqTo(regimeCTAX), eqTo(subscriber)))
+        .thenReturn(Future(None))
 
-      result shouldBe 1
+      withCaptureOfLoggingFrom(Logger) { loggingEvents =>
+        val result = await(service.alertOnNoCTInterest(seqOfIncorpUpdates))
+        result shouldBe 1
+
+        loggingEvents.size shouldBe 1
+      }
+    }
+
+    "return 0 when there is 1 incorp update with a ctax regime" in new Setup {
+      when(mockSubscriptionService.getSubscription(eqTo(transId), eqTo(regimeCT), eqTo(subscriber)))
+        .thenReturn(Future(None))
+
+      when(mockSubscriptionService.getSubscription(eqTo(transId), eqTo(regimeCTAX), eqTo(subscriber)))
+        .thenReturn(Future(Some(subCT)))
+
+      withCaptureOfLoggingFrom(Logger) { loggingEvents =>
+        val result = await(service.alertOnNoCTInterest(Seq(incorpUpdate)))
+        result shouldBe 0
+
+        loggingEvents.size shouldBe 0
+      }
+    }
+
+    "return 0 when there are 2 incorp updates; 1 with a ct regime sub and 1 with a ctax regime sub" in new Setup {
+      when(mockSubscriptionService.getSubscription(any(), any(), eqTo(subscriber)))
+        .thenReturn(Future.successful(Some(subCT)), Future.successful(None), Future.successful(Some(subCTAX)))
+
+      withCaptureOfLoggingFrom(Logger) { loggingEvents =>
+        val result = await(service.alertOnNoCTInterest(Seq(incorpUpdate, incorpUpdate2)))
+        result shouldBe 0
+
+        loggingEvents.size shouldBe 0
+
+        verify(mockSubscriptionService, times(1)).getSubscription(eqTo(transId), eqTo(regimeCT), eqTo(subscriber))
+        verify(mockSubscriptionService, times(1)).getSubscription(eqTo(transId2), eqTo(regimeCTAX), eqTo(subscriber))
+      }
     }
 
     "return 0 alerts if no incorps are processed" in new Setup {
       val result = await(service.alertOnNoCTInterest(emptyUpdates))
-
       result shouldBe 0
     }
   }
-
 }
-
-

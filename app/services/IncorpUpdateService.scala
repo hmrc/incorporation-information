@@ -96,17 +96,21 @@ trait IncorpUpdateService extends {
   }
 
   private[services] def alertOnNoCTInterest(updates: Seq[IncorpUpdate]): Future[Int] = {
+
+    // TODO SCRS-11013 got pager duty outside of working hours - alert log scanner matching substring?
+    def logNoSubscription(transactionId: String) {
+      Logger.error(s"NO_CT_REG_OF_INTEREST for txid $transactionId")
+      if (inWorkingHours) { Logger.error("NO_CT_REG_OF_INTEREST") }
+    }
+
     Future.sequence {
-      updates.map(iu =>
-        subscriptionService.getSubscription(iu.transactionId, "ct", "scrs").map {
-          _.fold {
-            Logger.error(s"NO_CT_REG_OF_INTEREST for txid ${iu.transactionId}")
-            if (inWorkingHours) {
-              Logger.error("NO_CT_REG_OF_INTEREST")
-            }
-            1
-          } { _ => 0 }
-        })
+      updates.map { iu =>
+        for {
+          ctSub   <- subscriptionService.getSubscription(iu.transactionId, "ct", "scrs")
+          ctaxSub <- ctSub.fold(subscriptionService.getSubscription(iu.transactionId, "ctax", "scrs"))(_ => Future(ctSub))
+          count    = ctaxSub.fold{ logNoSubscription(iu.transactionId); 1 }(_ => 0)
+        } yield count
+      }
     } map { _.sum }
   }
 
