@@ -40,6 +40,7 @@ trait FakeAppConfig {
     "microservice.services.incorp-frontend-stubs.port" -> s"$wiremockPort",
     "microservice.services.public-coho-api.baseUrl" -> s"$wiremockUrl",
     "microservice.services.transaction-id-to-poll" -> Base64.encode(txId),
-    "microservice.services.crn-to-poll" -> Base64.encode(crn)
+    "microservice.services.crn-to-poll" -> Base64.encode(crn),
+    "microservice.services.rai-alert-logging-time" -> "00:00:00_23:59:59"
   ) ++ additionalConfig
 }
