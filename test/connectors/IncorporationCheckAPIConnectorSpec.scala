@@ -279,6 +279,26 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       |}
       |}""".stripMargin)
 
+  val invalidDateSubmissionResponseJson = Json.parse(
+    """{
+      |"items":[
+      | {
+      |   "company_number":"12345678",
+      |   "transaction_status":"accepted",
+      |   "transaction_type":"incorporation",
+      |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
+      |   "transaction_id":"7894578956784",
+      |   "incorporated_on":"2002-20-00",
+      |   "timepoint":"123456789"
+      | }
+      |],
+      |"links":{
+      | "next":"https://ewf.companieshouse.gov.uk/internal/check-submission?timepoint=123456789"
+      |}
+      |}""".stripMargin)
+
+
+
   val validSubmissionResponseItems = Seq(
     IncorpUpdate(
       "7894578956784",
@@ -481,12 +501,21 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       }
       "there is a date of incorporation in the wrong format" in new Setup {
         when(mockHttp.GET[HttpResponse](any())(Matchers.any(), Matchers.any(), Matchers.any()))
-          .thenReturn(Future.successful(HttpResponse(200, Some(invalidEmptyDateSubmissionResponseJson))))
+          .thenReturn(Future.successful(HttpResponse(200, Some(invalidDateSubmissionResponseJson))))
 
         val result = connector.checkForIncorpUpdate(Some(timepoint))
-        val failure = intercept[IncorpUpdateAPIFailure]( await(result) )
+        val failure = intercept[IncorpUpdateAPIFailure](await(result))
 
         failure.ex shouldBe a[IllegalArgumentException]
+      }
+        "there is an empty date of incorporation" in new Setup {
+          when(mockHttp.GET[HttpResponse](any())(Matchers.any(), Matchers.any(), Matchers.any()))
+            .thenReturn(Future.successful(HttpResponse(200, Some(invalidEmptyDateSubmissionResponseJson))))
+
+          val result = connector.checkForIncorpUpdate(Some(timepoint))
+          val failure = intercept[IncorpUpdateAPIFailure]( await(result) )
+
+          failure.ex shouldBe a[IllegalArgumentException]
       }
       "only one of many submissions is invalid" in new Setup {
         when(mockHttp.GET[HttpResponse](any())(Matchers.any(), Matchers.any(), Matchers.any()))

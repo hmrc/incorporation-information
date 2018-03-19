@@ -17,27 +17,18 @@
 package utils
 
 import org.joda.time.DateTime
-import org.joda.time.format.ISODateTimeFormat
+import org.joda.time.format.{DateTimeFormat, DateTimeFormatter, ISODateTimeFormat}
 import play.api.libs.json.{Format, JsString, Reads, Writes}
 
 object TimestampFormats {
 
-  val timestampFormat = Format[DateTime](
-    Reads[DateTime](js =>
-      js.validate[String].map[DateTime](
-        ISODateTimeFormat.dateTimeParser().withOffsetParsed().parseDateTime(_)
-      )
-    ),
-    Writes[DateTime](d =>
-      JsString(ISODateTimeFormat.dateTime().print(d))
-    )
-  )
+  val datePattern = "yyyy-MM-dd"
 
   val dateFormat = Format[DateTime](
     Reads[DateTime](js =>
-      js.validate[String].map[DateTime](
-        ISODateTimeFormat.dateParser().withOffsetParsed().parseDateTime(_)
-      )
+      js.validate[String].map {
+        date => DateTime.parse(date, DateTimeFormat.forPattern(datePattern))
+    }
     ),
     Writes[DateTime](d =>
       JsString(ISODateTimeFormat.date().print(d))
