@@ -59,6 +59,7 @@ class AppStartupJobsSpec extends UnitSpec with MockitoSugar with LogCapturing wi
     when(mockSubsMongo.repo).thenReturn(mockSubsRepo)
     when(mockIncorpUpdateMongo.repo).thenReturn(mockIncorpUpdateRepo)
     when(mockQueueMongo.repo).thenReturn(mockQueueRepo)
+
   }
 
   "logIncorpInfo" should {
@@ -97,10 +98,10 @@ class AppStartupJobsSpec extends UnitSpec with MockitoSugar with LogCapturing wi
       when(mockQueueRepo.getIncorpUpdate(eqTo(transId2)))
         .thenReturn(Future.successful(None))
 
-      withCaptureOfLoggingFrom(Logger){ logEvents =>
+      withCaptureOfLoggingFrom(Logger) { logEvents =>
         appStartupJobs.logIncorpInfo()
 
-        eventually{
+        eventually {
           logEvents.size shouldBe 2
 
           val expectedLogs = List(
@@ -119,10 +120,11 @@ class AppStartupJobsSpec extends UnitSpec with MockitoSugar with LogCapturing wi
       when(mockConfig.getString(eqTo("transactionIdList"), any()))
         .thenReturn(None)
 
-      withCaptureOfLoggingFrom(Logger){ logEvents =>
+      withCaptureOfLoggingFrom(Logger) { logEvents =>
         appStartupJobs.logIncorpInfo()
         logEvents.size shouldBe 0
       }
     }
   }
+
 }

@@ -23,7 +23,7 @@ import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
 import play.api.{Application, Configuration, Logger, Play}
 import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo, TimepointMongo}
-import services.IncorpUpdateService
+import services.{IncorpUpdateService, SubscriptionService}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.auth.controllers.AuthParamsControllerConfig
 import uk.gov.hmrc.play.auth.microservice.filters.AuthorisationFilter
@@ -87,6 +87,8 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Mi
 
     resetTimepoint(app)
 
+    recreateSubscription(app)
+
     app.injector.instanceOf[AppStartupJobs].logIncorpInfo()
 
     super.onStart(app)
@@ -103,6 +105,22 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Mi
           Logger.info(s"Updating incorp data is switched on - result = $result")
         }
     }
+  }
+
+  private def recreateSubscription(app: Application): Future[Unit] = {
+    app.configuration.getString("resubscribe") match {
+      case None         => Future.successful(Logger.info(s"[Config] No re-subscriptions"))
+      case Some(resubs) =>
+        val configString = new String(Base64.getDecoder.decode(resubs), "UTF-8")
+        configString.split(",").toList match {
+          case txId :: callbackUrl :: Nil =>
+            app.injector.instanceOf[SubscriptionService].checkForSubscription(txId, "ctax","scrs",callbackUrl,true)(HeaderCarrier()) map {
+              result => Logger.info(s"[Config] result of subscription service call for $txId = $result")
+            }
+          case _ => Future.successful(Logger.info(s"[Config] No info in re-subscription variable"))
+        }
+    }
+
   }
 
   private def reFetchIncorpInfoWhenNoQueue(app: Application): Future[Unit] = {
