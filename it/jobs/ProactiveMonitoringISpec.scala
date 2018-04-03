@@ -16,6 +16,8 @@
 
 package jobs
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.spi.ILoggingEvent
 import com.github.tomakehurst.wiremock.stubbing.StubMapping
 import helpers.{FakeAppConfig, IntegrationSpecBase}
 import org.scalatest.concurrent.Eventually
@@ -74,9 +76,9 @@ class ProactiveMonitoringISpec extends IntegrationSpecBase with FakeAppConfig
 
         eventually {
           val logMessages = loggingEvents.map(_.getMessage)
-          logMessages should contain("COHO_PUBLIC_API_5XX")
-          logMessages should contain("COHO_TX_API_5XX")
-        }
+          logMessages.toString().contains("COHO_TX_API_5XX") shouldBe true
+          logMessages.toString().contains("COHO_PUBLIC_API_5XX") shouldBe true
+         }
       }
     }
   }
