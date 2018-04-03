@@ -188,12 +188,12 @@ trait TransactionalService {
   }
 
 
-  private[services] def checkIfCompIncorporated(transactionId:String): Future[Option[String]] = {
+  def checkIfCompIncorporated(transactionId:String): Future[Option[String]] = {
     incorpRepo.getIncorpUpdate(transactionId) map {
       case Some(s) if s.crn.isDefined => s.crn
       case _ => None
-      }
     }
+  }
 
 
   private[services] def extractJson(f: => Future[TransactionalAPIResponse], transformer: Reads[JsObject]) = {
