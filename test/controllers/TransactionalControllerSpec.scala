@@ -148,4 +148,23 @@ class TransactionalControllerSpec extends SCRSSpec {
       status(result) shouldBe 500
     }
   }
+
+  "fetchCRN" should {
+    "return a 200 and the CRN as JSON" in new Setup {
+      when(mockService.checkIfCompIncorporated(eqTo(transactionId)))
+        .thenReturn(Future.successful(Some("example CRN")))
+
+      val result = await(controller.fetchCRN(transactionId)(FakeRequest()))
+      status(result) shouldBe 200
+      jsonBodyOf(result) shouldBe Json.parse("""{"crn": "example CRN"}""")
+    }
+    "return a 200 and no JSON" in new Setup {
+      when(mockService.checkIfCompIncorporated(eqTo(transactionId)))
+        .thenReturn(Future.successful(None))
+
+      val result = await(controller.fetchCRN(transactionId)(FakeRequest()))
+      status(result) shouldBe 200
+      jsonBodyOf(result) shouldBe Json.parse("""{}""")
+    }
+  }
 }

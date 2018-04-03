@@ -19,8 +19,9 @@ package controllers
 import javax.inject.Inject
 
 import play.api.Logger
+import play.api.libs.json.Json
 import play.api.mvc.Action
-import services.{TransactionalServiceException, TransactionalService}
+import services.{TransactionalService, TransactionalServiceException}
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -48,6 +49,14 @@ trait TransactionalController extends BaseController {
         case ex: Throwable =>
           Logger.error(s"[TransactionalController] [fetchOfficerList] - Exception caught - reason: ${ex.getMessage}", ex)
           InternalServerError
+      }
+  }
+
+  def fetchCRN(transactionId: String) = Action.async {
+    implicit request =>
+      service.checkIfCompIncorporated(transactionId) map {
+        case Some(crn) => Ok(Json.obj("crn" -> crn))
+        case _ => Ok(Json.obj())
       }
   }
 }
