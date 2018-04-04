@@ -31,7 +31,7 @@ import uk.gov.hmrc.http._
 import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 import uk.gov.hmrc.play.http.ws.WSProxy
-import utils.{AlertLogging, SCRSFeatureSwitches}
+import utils.{AlertLogging, PagerDutyKeys, SCRSFeatureSwitches}
 
 import scala.concurrent.Future
 import scala.util.control.NoStackTrace
@@ -179,23 +179,19 @@ trait IncorporationAPIConnector extends AlertLogging {
 
   private def handleError(transactionID: String): PartialFunction[Throwable, TransactionalAPIResponse] = {
     case _: NotFoundException =>
-      alertCohoTxAPINotFound()
-      Logger.info(s"[TransactionalConnector] [fetchTransactionalData] - Could not find incorporation data for transaction ID - $transactionID")
+      pagerduty(PagerDutyKeys.COHO_TX_API_NOT_FOUND, Some(s"Could not find incorporation data for transaction ID - $transactionID"))
       FailedTransactionalAPIResponse
     case ex: Upstream4xxResponse =>
-      alertCohoTxAPI4xx()
-      Logger.info(s"[TransactionalConnector] [fetchTransactionalData] - ${ex.upstreamResponseCode} returned for transaction id - $transactionID")
+      pagerduty(PagerDutyKeys.COHO_TX_API_4XX,Some(s"${ex.upstreamResponseCode} returned for transaction id - $transactionID"))
       FailedTransactionalAPIResponse
     case _: GatewayTimeoutException =>
-      alertCohoTxAPIGatewayTimeout()
-      Logger.error(s"[TransactionalConnector] [fetchTransactionalData] - Gateway timeout for transaction id - $transactionID")
+      pagerduty(PagerDutyKeys.COHO_TX_API_GATEWAY_TIMEOUT,Some(s"Gateway timeout for transaction id - $transactionID"))
       FailedTransactionalAPIResponse
     case _: ServiceUnavailableException =>
-      alertCohoTxAPIServiceUnavailable()
+      pagerduty(PagerDutyKeys.COHO_TX_API_SERVICE_UNAVAILABLE)
       FailedTransactionalAPIResponse
     case ex: Upstream5xxResponse =>
-      alertCohoTxAPI5xx()
-      Logger.info(s"[TransactionalConnector] [fetchTransactionalData] - Returned status code: ${ex.upstreamResponseCode} for $transactionID - reason: ${ex.getMessage}")
+      pagerduty(PagerDutyKeys.COHO_TX_API_5XX,Some(s"Returned status code: ${ex.upstreamResponseCode} for $transactionID - reason: ${ex.getMessage}"))
       FailedTransactionalAPIResponse
     case ex: Throwable =>
       Logger.info(s"[TransactionalConnector] [fetchTransactionalData] - Failed for $transactionID - reason: ${ex.getMessage}")

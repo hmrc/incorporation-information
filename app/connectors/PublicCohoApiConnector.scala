@@ -27,9 +27,9 @@ import services.MetricsService
 import uk.gov.hmrc.http._
 import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.http.ws.WSProxy
-import utils.{AlertLogging, SCRSFeatureSwitches}
-
+import utils.{AlertLogging, PagerDutyKeys, SCRSFeatureSwitches}
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
+
 import scala.concurrent.Future
 
 
@@ -140,23 +140,19 @@ trait PublicCohoApiConn extends AlertLogging {
 
   private def handleGetCompanyProfileError(crn: String): PartialFunction[Throwable, Option[JsValue]] = {
     case _: NotFoundException =>
-      alertCohoPublicAPINotFound()
-      Logger.info(s"[PublicCohoApiConnector] [getCompanyProfile] - Could not find company data for CRN - $crn")
+      pagerduty(PagerDutyKeys.COHO_PUBLIC_API_NOT_FOUND, Some(s"Could not find company data for CRN - $crn"))
       None
     case ex: Upstream4xxResponse =>
-      alertCohoPublicAPI4xx()
-      Logger.info(s"[PublicCohoApiConnector] [getCompanyProfile] - Returned status code: ${ex.upstreamResponseCode} for $crn - reason: ${ex.getMessage}")
+      pagerduty(PagerDutyKeys.COHO_PUBLIC_API_4XX, Some(s"Returned status code: ${ex.upstreamResponseCode} for $crn - reason: ${ex.getMessage}"))
       None
     case _: GatewayTimeoutException =>
-      Logger.info(s"[PublicCohoApiConnector] [getCompanyProfile] - Gateway timeout for $crn")
-      alertCohoPublicAPIGatewayTimeout()
+      pagerduty(PagerDutyKeys.COHO_PUBLIC_API_GATEWAY_TIMEOUT, Some(s"Gateway timeout for $crn"))
       None
     case _: ServiceUnavailableException =>
-      alertCohoPublicAPIServiceUnavailable()
+      pagerduty(PagerDutyKeys.COHO_PUBLIC_API_SERVICE_UNAVAILABLE)
       None
     case ex: Upstream5xxResponse =>
-      alertCohoPublicAPI5xx()
-      Logger.info(s"[PublicCohoApiConnector] [getCompanyProfile] - Returned status code: ${ex.upstreamResponseCode} for $crn - reason: ${ex.getMessage}")
+      pagerduty(PagerDutyKeys.COHO_PUBLIC_API_5XX, Some(s"Returned status code: ${ex.upstreamResponseCode} for $crn - reason: ${ex.getMessage}"))
       None
     case ex: Throwable =>
       Logger.info(s"[PublicCohoApiConnector] [getCompanyProfile] - Failed for $crn - reason: ${ex.getMessage}")

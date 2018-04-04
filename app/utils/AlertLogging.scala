@@ -22,36 +22,40 @@ import java.time.format.DateTimeFormatter
 import DateCalculators.{getCurrentDay, getCurrentTime}
 import play.api.Logger
 
+object PagerDutyKeys extends Enumeration {
+  val COHO_TX_API_NOT_FOUND = Value
+  val COHO_TX_API_4XX = Value
+  val COHO_TX_API_SERVICE_UNAVAILABLE = Value
+  val COHO_TX_API_GATEWAY_TIMEOUT = Value
+  val COHO_TX_API_5XX = Value
+  val COHO_PUBLIC_API_NOT_FOUND = Value
+  val COHO_PUBLIC_API_4XX = Value
+  val COHO_PUBLIC_API_SERVICE_UNAVAILABLE = Value
+  val COHO_PUBLIC_API_GATEWAY_TIMEOUT = Value
+  val COHO_PUBLIC_API_5XX = Value
+}
+
 trait AlertLogging {
 
   protected val loggingDays: String
   protected val loggingTimes: String
 
+  def pagerduty(key: PagerDutyKeys.Value, message: Option[String] = None) {
+    val log = s"${key.toString}${message.fold("")(msg => s" - $msg")}"
+    if(inWorkingHours) Logger.error(log) else Logger.info(log)
+  }
+
   def inWorkingHours: Boolean = isLoggingDay && isBetweenLoggingTimes
-
-  def alertCohoTxAPINotFound(): Unit = ifInWorkingHours(Logger.error("COHO_TX_API_NOT_FOUND"))
-  def alertCohoTxAPI4xx(): Unit = ifInWorkingHours(Logger.error("COHO_TX_API_4XX"))
-  def alertCohoTxAPIServiceUnavailable(): Unit = ifInWorkingHours(Logger.error("COHO_TX_API_SERVICE_UNAVAILABLE"))
-  def alertCohoTxAPIGatewayTimeout(): Unit = ifInWorkingHours(Logger.error("COHO_TX_API_GATEWAY_TIMEOUT"))
-  def alertCohoTxAPI5xx(): Unit = ifInWorkingHours(Logger.error("COHO_TX_API_5XX"))
-
-  def alertCohoPublicAPINotFound(): Unit = ifInWorkingHours(Logger.error("COHO_PUBLIC_API_NOT_FOUND"))
-  def alertCohoPublicAPI4xx(): Unit = ifInWorkingHours(Logger.error("COHO_PUBLIC_API_4XX"))
-  def alertCohoPublicAPIServiceUnavailable(): Unit = ifInWorkingHours(Logger.error("COHO_PUBLIC_API_SERVICE_UNAVAILABLE"))
-  def alertCohoPublicAPIGatewayTimeout(): Unit = ifInWorkingHours(Logger.error("COHO_PUBLIC_API_GATEWAY_TIMEOUT"))
-  def alertCohoPublicAPI5xx(): Unit = ifInWorkingHours(Logger.error("COHO_PUBLIC_API_5XX"))
 
   private[utils] def today: String = getCurrentDay
 
   private[utils] def now: LocalTime = getCurrentTime
 
-  private[utils] def ifInWorkingHours(alert: => Unit): Unit = if(inWorkingHours) alert else ()
-
   private[utils] def isLoggingDay = loggingDays.split(",").contains(today)
 
   private[utils] def isBetweenLoggingTimes: Boolean = {
-    implicit val format: String => LocalTime = LocalTime.parse(_: String, DateTimeFormatter.ofPattern("HH:mm:ss"))
-    val Array(start, end) = loggingTimes.split("_")
-    (start isBefore now) && (now isBefore end)
+    val stringToDate = LocalTime.parse(_: String, DateTimeFormatter.ofPattern("HH:mm:ss"))
+    val Array(start, end) = loggingTimes.split("_") map stringToDate
+    ((start isBefore now) || (now equals start)) && (now isBefore end)
   }
 }
