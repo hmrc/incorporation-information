@@ -17,7 +17,6 @@
 package services
 
 import javax.inject.Inject
-
 import connectors._
 import play.api.Logger
 import play.api.libs.functional.syntax._
@@ -29,6 +28,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.control.NoStackTrace
 import uk.gov.hmrc.http.HeaderCarrier
+import utils.TimestampFormats
 
 sealed trait TransactionalServiceException extends Throwable {
   val message = this.getMessage
@@ -51,14 +51,14 @@ trait TransactionalService {
 
   def fetchCompanyProfile(transactionId:String)(implicit hc:HeaderCarrier): Future[Option[JsValue]] = {
     checkIfCompIncorporated(transactionId) flatMap {
-      case Some(crn) => fetchCompanyProfileFromCoho(crn,transactionId)
+      case Some(json) => fetchCompanyProfileFromCoho((json \ "crn").as[String], transactionId)
       case None => fetchCompanyProfileFromTx(transactionId)(hc)
     }
   }
 
   def fetchOfficerList(transactionId: String)(implicit hc: HeaderCarrier): Future[JsValue] = {
     checkIfCompIncorporated(transactionId) flatMap {
-      case Some(crn) => fetchOfficerListFromPublicAPI(transactionId, crn)
+      case Some(json) => fetchOfficerListFromPublicAPI(transactionId, (json \ "crn").as[String])
       case None => fetchOfficerListFromTxAPI(transactionId)
     }
   }
@@ -188,10 +188,13 @@ trait TransactionalService {
   }
 
 
-  def checkIfCompIncorporated(transactionId:String): Future[Option[String]] = {
-    incorpRepo.getIncorpUpdate(transactionId) map {
-      case Some(s) if s.crn.isDefined => s.crn
-      case _ => None
+  def checkIfCompIncorporated(transactionId:String): Future[Option[JsValue]] = {
+    incorpRepo.getIncorpUpdate(transactionId) map { incorpUpdate =>
+      incorpUpdate flatMap { incorp =>
+        incorp.crn map { crn =>
+          Json.obj("crn" -> crn) ++ incorp.incorpDate.fold(Json.obj())(date => Json.obj("incorpDate" -> Json.toJson(date)(TimestampFormats.dateFormat)))
+        }
+      }
     }
   }
 

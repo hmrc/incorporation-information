@@ -26,7 +26,8 @@ import org.mockito.Matchers.{any, eq => eqTo}
 
 import scala.concurrent.Future
 
-class TransactionalControllerSpec extends SCRSSpec {
+class
+TransactionalControllerSpec extends SCRSSpec {
 
   val mockService = mock[TransactionalService]
 
@@ -149,22 +150,24 @@ class TransactionalControllerSpec extends SCRSSpec {
     }
   }
 
-  "fetchCRN" should {
+  "fetchIncorpUpdate" should {
     "return a 200 and the CRN as JSON" in new Setup {
-      when(mockService.checkIfCompIncorporated(eqTo(transactionId)))
-        .thenReturn(Future.successful(Some("example CRN")))
+      val jsonIncorpUpdate = Json.obj("crn" -> "example CRN", "incorpDate" -> "2018-05-01")
 
-      val result = await(controller.fetchCRN(transactionId)(FakeRequest()))
+      when(mockService.checkIfCompIncorporated(eqTo(transactionId)))
+        .thenReturn(Future.successful(Some(jsonIncorpUpdate)))
+
+      val result = await(controller.fetchIncorpUpdate(transactionId)(FakeRequest()))
+
       status(result) shouldBe 200
-      jsonBodyOf(result) shouldBe Json.parse("""{"crn": "example CRN"}""")
+      jsonBodyOf(result) shouldBe jsonIncorpUpdate
     }
-    "return a 200 and no JSON" in new Setup {
+    "return a 204" in new Setup {
       when(mockService.checkIfCompIncorporated(eqTo(transactionId)))
         .thenReturn(Future.successful(None))
 
-      val result = await(controller.fetchCRN(transactionId)(FakeRequest()))
-      status(result) shouldBe 200
-      jsonBodyOf(result) shouldBe Json.parse("""{}""")
+      val result = await(controller.fetchIncorpUpdate(transactionId)(FakeRequest()))
+      status(result) shouldBe 204
     }
   }
 }

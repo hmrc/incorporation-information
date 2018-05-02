@@ -20,11 +20,13 @@ import Helpers.SCRSSpec
 import connectors.{FailedTransactionalAPIResponse, IncorporationAPIConnector, PublicCohoApiConnector, SuccessfulTransactionalAPIResponse}
 import models.IncorpUpdate
 import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormat
 import org.mockito.Matchers
 import org.mockito.Matchers.{any, eq => eqTo}
 import play.api.libs.json._
 import org.mockito.Mockito._
 import repositories.IncorpUpdateRepository
+import utils.TimestampFormats
 
 import scala.concurrent.Future
 
@@ -288,7 +290,7 @@ class TransactionalServiceSpec extends SCRSSpec {
 
     val crn = "crn-12345"
 
-    val incorpUpdate = IncorpUpdate(transactionId, "accepted", Some(crn), None, "", None)
+    val incorpUpdate = IncorpUpdate(transactionId, "accepted", Some(crn), Some(DateTime.parse("2018-05-01", DateTimeFormat.forPattern(TimestampFormats.datePattern))), "", None)
 
     "return Json when a document is retrieved by the supplied transaction Id and the sub-document is fetched by the supplied key" in new Setup {
       val response = SuccessfulTransactionalAPIResponse(buildJson())
@@ -357,28 +359,55 @@ class TransactionalServiceSpec extends SCRSSpec {
   }
 
   "checkIfCompIncorporated" should {
+    val incorpDate = DateTime.parse("2018-05-01", DateTimeFormat.forPattern(TimestampFormats.datePattern))
 
-    "return Some(String) - the crn" when {
+    "return Some(JsValue)" when {
 
-      "Company exists and has a crn" in new Setup {
+      "Company exists and has a crn only" in new Setup {
         val incorpUpdate = IncorpUpdate("transId", "accepted", Some("foo"), None, "", None)
         when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(Some(incorpUpdate)))
 
-        await(service.checkIfCompIncorporated("fooBarTest")) shouldBe Some("foo")
+        val expectedJson = Json.parse(
+          """
+            |{
+            |   "crn": "foo"
+            |}
+          """.stripMargin)
+
+        await(service.checkIfCompIncorporated("fooBarTest")) shouldBe Some(expectedJson)
+      }
+
+      "Company exists and has a crn && incorpDate" in new Setup {
+        val incorpUpdate = IncorpUpdate("transId", "accepted", Some("foo"), Some(incorpDate), "", None)
+        when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(Some(incorpUpdate)))
+
+        val expectedJson = Json.parse(
+          """
+            |{
+            |   "crn": "foo",
+            |   "incorpDate": "2018-05-01"
+            |}
+          """.stripMargin)
+
+        await(service.checkIfCompIncorporated("fooBarTest")) shouldBe Some(expectedJson)
       }
     }
 
     "return None" when {
 
       "Company exists, has a status != rejected but has no crn" in new Setup {
+        val incorpUpdate = IncorpUpdate("transId", "foo", None, Some(incorpDate), "", None)
+        when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(Some(incorpUpdate)))
+
+        await(service.checkIfCompIncorporated("fooBarTest")) shouldBe  None
+      }
+
+      "Company exists, has a status != rejected but has no crn and no incorporation date" in new Setup {
         val incorpUpdate = IncorpUpdate("transId", "foo", None, None, "", None)
         when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(Some(incorpUpdate)))
 
         await(service.checkIfCompIncorporated("fooBarTest")) shouldBe  None
       }
-    }
-
-    "return None" when {
 
       "Company does not exist" in new Setup {
         when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(None))

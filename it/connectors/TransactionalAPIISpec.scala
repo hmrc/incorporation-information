@@ -16,13 +16,15 @@
 
 package connectors
 
-import helpers.{IntegrationSpecBase}
+import helpers.IntegrationSpecBase
 import models.IncorpUpdate
 import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormat
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsObject, Json}
 import repositories.IncorpUpdateMongo
+import utils.TimestampFormats
 
 import scala.concurrent.ExecutionContext.Implicits.global
 class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
@@ -48,7 +50,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
     def insert(update: IncorpUpdate) = await(incRepo.insert(update))
   }
 
-
+  val incorpDate = DateTime.parse("2018-05-01", DateTimeFormat.forPattern(TimestampFormats.datePattern))
 
   "fetchTransactionalData" should {
 
@@ -216,9 +218,6 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
     """.stripMargin
 
     "return 200 if a company is incorporated and can be found in Public API" in new Setup {
-
-      println("=============================cxvxcvxcvx")
-
       val expected =
         s"""
                         {"company_type":"ltd",
@@ -237,7 +236,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
     """.stripMargin
 
       val crn = "crn1"
-      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some(crn), None, "tp", Some("description"))
+      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some(crn), Some(incorpDate), "tp", Some("description"))
       insert(incorpUpdate)
 
       val clientUrl = s"/incorporation-information/$transactionId/company-profile"
@@ -556,7 +555,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
 
       await(incRepo.drop)
       // insert into incorp info db -> company is registered so dont go to tx api
-      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), None, "tp", Some("description"))
+      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), Some(incorpDate), "tp", Some("description"))
       insert(incorpUpdate)
       //fail to get officer list can be 404 / 500 etc, as long as not 200 this test is valid
       stubGet(cohOfficerListUrl, 404, "")
@@ -570,7 +569,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
       val transactionId = "12345"
       await(incRepo.drop)
       // insert into incorp info db -> company is registered so dont go to tx api
-      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), None, "tp", Some("description"))
+      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), Some(incorpDate), "tp", Some("description"))
       insert(incorpUpdate)
       //succeed in getting officer list
       stubGet(cohOfficerListUrl, 200, officerListInput)
@@ -585,7 +584,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
       val transactionId = "12345"
       await(incRepo.drop)
       // insert into incorp info db -> company is registered so dont go to tx api
-      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), None, "tp", Some("description"))
+      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), Some(incorpDate), "tp", Some("description"))
       insert(incorpUpdate)
       //succeed in getting officer list
       stubGet(cohOfficerListUrl, 200, officerListInput)
