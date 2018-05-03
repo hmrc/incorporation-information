@@ -17,12 +17,17 @@
 package controllers
 
 import Helpers.SCRSSpec
+import models.IncorpUpdate
+import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormat
 import org.mockito.Matchers
 import play.api.libs.json.{JsObject, Json}
 import play.api.test.FakeRequest
 import services.{FailedToFetchOfficerListFromTxAPI, TransactionalService}
 import org.mockito.Mockito._
 import org.mockito.Matchers.{any, eq => eqTo}
+import repositories.IncorpUpdateRepository
+import utils.TimestampFormats
 
 import scala.concurrent.Future
 
@@ -30,10 +35,12 @@ class
 TransactionalControllerSpec extends SCRSSpec {
 
   val mockService = mock[TransactionalService]
+  val mockIncorpUpdateRepository = mock[IncorpUpdateRepository]
 
   class Setup {
     val controller = new TransactionalController {
       override val service = mockService
+      override val incorpRepo: IncorpUpdateRepository = mockIncorpUpdateRepository
     }
   }
 
@@ -152,18 +159,28 @@ TransactionalControllerSpec extends SCRSSpec {
 
   "fetchIncorpUpdate" should {
     "return a 200 and the CRN as JSON" in new Setup {
-      val jsonIncorpUpdate = Json.obj("crn" -> "example CRN", "incorpDate" -> "2018-05-01")
+      val incorpUpdate = IncorpUpdate(transactionId, "accepted", Some("example CRN"), Some(DateTime.parse("2018-05-01", DateTimeFormat.forPattern(TimestampFormats.datePattern))), "", None)
+      val expectedJson = Json.parse(
+        s"""
+           |{
+           |  "transaction_id": "$transactionId",
+           |  "status": "accepted",
+           |  "crn": "example CRN",
+           |  "incorporationDate": "2018-05-01",
+           |  "timepoint": ""
+           |}
+         """.stripMargin)
 
-      when(mockService.checkIfCompIncorporated(eqTo(transactionId)))
-        .thenReturn(Future.successful(Some(jsonIncorpUpdate)))
+      when(mockIncorpUpdateRepository.getIncorpUpdate(eqTo(transactionId)))
+        .thenReturn(Future.successful(Some(incorpUpdate)))
 
       val result = await(controller.fetchIncorpUpdate(transactionId)(FakeRequest()))
 
       status(result) shouldBe 200
-      jsonBodyOf(result) shouldBe jsonIncorpUpdate
+      jsonBodyOf(result) shouldBe expectedJson
     }
     "return a 204" in new Setup {
-      when(mockService.checkIfCompIncorporated(eqTo(transactionId)))
+      when(mockIncorpUpdateRepository.getIncorpUpdate(eqTo(transactionId)))
         .thenReturn(Future.successful(None))
 
       val result = await(controller.fetchIncorpUpdate(transactionId)(FakeRequest()))

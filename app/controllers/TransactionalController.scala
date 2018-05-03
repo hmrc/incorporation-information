@@ -17,20 +17,25 @@
 package controllers
 
 import javax.inject.Inject
-
+import models.IncorpUpdate
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc.Action
+import repositories.{IncorpUpdateMongo, IncorpUpdateRepository}
 import services.{TransactionalService, TransactionalServiceException}
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class TransactionalControllerImpl @Inject()(val service: TransactionalService) extends TransactionalController
+class TransactionalControllerImpl @Inject()(val service: TransactionalService,
+                                            val incorpMongo: IncorpUpdateMongo) extends TransactionalController {
+  lazy val incorpRepo = incorpMongo.repo
+}
 
 trait TransactionalController extends BaseController {
 
   protected val service: TransactionalService
+  val incorpRepo: IncorpUpdateRepository
 
   def fetchCompanyProfile(transactionId: String) = Action.async {
     implicit request =>
@@ -54,8 +59,8 @@ trait TransactionalController extends BaseController {
 
   def fetchIncorpUpdate(transactionId: String) = Action.async {
     implicit request =>
-      service.checkIfCompIncorporated(transactionId) map {
-        case Some(json) => Ok(json)
+      incorpRepo.getIncorpUpdate(transactionId) map {
+        case Some(incorpUpdate) => Ok(Json.toJson(incorpUpdate)(IncorpUpdate.responseFormat))
         case _ => NoContent
       }
   }
