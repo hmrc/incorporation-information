@@ -52,11 +52,11 @@ trait TransactionalController extends BaseController {
       }
   }
 
-  def fetchCRN(transactionId: String) = Action.async {
+  def fetchIncorpUpdate(transactionId: String) = Action.async {
     implicit request =>
       service.checkIfCompIncorporated(transactionId) map {
-        case Some(crn) => Ok(Json.obj("crn" -> crn))
-        case _ => Ok(Json.obj())
+        case Some(json) => Ok(json)
+        case _ => NoContent
       }
   }
 }
