@@ -17,7 +17,7 @@
 package services
 
 import Helpers.SCRSSpec
-import connectors.{FailedTransactionalAPIResponse, IncorporationAPIConnector, PublicCohoApiConnector, SuccessfulTransactionalAPIResponse}
+import connectors.{FailedTransactionalAPIResponse, IncorporationAPIConnector, PublicCohoApiConnectorImpl, SuccessfulTransactionalAPIResponse}
 import models.IncorpUpdate
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
@@ -34,7 +34,7 @@ class TransactionalServiceSpec extends SCRSSpec {
 
   val mockConnector = mock[IncorporationAPIConnector]
   val mockRepos = mock[IncorpUpdateRepository]
-  val mockCohoConnector = mock[PublicCohoApiConnector]
+  val mockCohoConnector = mock[PublicCohoApiConnectorImpl]
   class Setup {
     val service = new TransactionalService {
       override protected val connector = mockConnector
@@ -390,14 +390,14 @@ class TransactionalServiceSpec extends SCRSSpec {
 
     "return None when companyProfile cannot be found" in new Setup {
       val response = FailedTransactionalAPIResponse
-      when(mockCohoConnector.getCompanyProfile(Matchers.any[String])(any())).thenReturn(Future.successful(None))
+      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any())).thenReturn(Future.successful(None))
       when(mockConnector.fetchTransactionalData(Matchers.any[String])(any())).thenReturn(Future.successful(response))
       await(service.fetchCompanyProfileFromCoho("num","")) shouldBe None
     }
 
     "return Some(json) when companyProfile can be found" in new SetupForCohoTransform {
       val json = buildJson("foo")
-      when(mockCohoConnector.getCompanyProfile(Matchers.any[String])(any())).thenReturn(Future.successful(Some(service.jsonObj)))
+      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any())).thenReturn(Future.successful(Some(service.jsonObj)))
       await(service.fetchCompanyProfileFromCoho("num","")) shouldBe Some(service.jsonObj)
     }
   }

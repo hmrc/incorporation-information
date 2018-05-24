@@ -17,18 +17,18 @@
 package services
 
 import javax.inject.Inject
+
 import connectors._
 import play.api.Logger
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
 import repositories.{IncorpUpdateMongo, IncorpUpdateRepository}
+import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.control.NoStackTrace
-import uk.gov.hmrc.http.HeaderCarrier
-import utils.TimestampFormats
 
 sealed trait TransactionalServiceException extends Throwable {
   val message = this.getMessage
@@ -39,7 +39,6 @@ case class FailedToFetchOfficerListFromTxAPI() extends TransactionalServiceExcep
 class TransactionalServiceImpl @Inject()(val connector: IncorporationAPIConnector,
                                          val incorpMongo: IncorpUpdateMongo,
                                          val publicCohoConnector: PublicCohoApiConnector) extends TransactionalService {
-
   lazy val incorpRepo = incorpMongo.repo
 }
 

@@ -16,7 +16,7 @@
 
 package services
 
-import connectors.{FailedTransactionalAPIResponse, IncorporationAPIConnector, PublicCohoApiConnector, SuccessfulTransactionalAPIResponse}
+import connectors.{FailedTransactionalAPIResponse, IncorporationAPIConnector, PublicCohoApiConnectorImpl, SuccessfulTransactionalAPIResponse}
 import org.scalatest.mock.MockitoSugar
 import uk.gov.hmrc.play.test.UnitSpec
 import org.mockito.Mockito._
@@ -30,7 +30,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 class ProactiveMonitoringServiceSpec extends UnitSpec with MockitoSugar {
 
   val mockTransactionalConnector: IncorporationAPIConnector = mock[IncorporationAPIConnector]
-  val mockPublicCohoConnector: PublicCohoApiConnector = mock[PublicCohoApiConnector]
+  val mockPublicCohoConnector: PublicCohoApiConnectorImpl = mock[PublicCohoApiConnectorImpl]
 
   val encodedTransactionId: String = Base64.encode("test-txid")
   val transactionId: String = "test-txid"
@@ -41,7 +41,7 @@ class ProactiveMonitoringServiceSpec extends UnitSpec with MockitoSugar {
   class Setup {
     val service: ProactiveMonitoringService = new ProactiveMonitoringService {
       val transactionalConnector: IncorporationAPIConnector = mockTransactionalConnector
-      val publicCohoConnector: PublicCohoApiConnector = mockPublicCohoConnector
+      val publicCohoConnector: PublicCohoApiConnectorImpl = mockPublicCohoConnector
       val transactionIdToPoll: String = encodedTransactionId
       val crnToPoll: String = encodedCrn
     }
@@ -73,7 +73,7 @@ class ProactiveMonitoringServiceSpec extends UnitSpec with MockitoSugar {
   "pollPublicAPI" should {
 
     "return a success response" in new Setup {
-      when(mockPublicCohoConnector.getCompanyProfile(eqTo(crn))(any()))
+      when(mockPublicCohoConnector.getCompanyProfile(eqTo(crn), any())(any()))
         .thenReturn(Future.successful(Some(testJson)))
 
       val result: String = service.pollPublicAPI
@@ -81,7 +81,7 @@ class ProactiveMonitoringServiceSpec extends UnitSpec with MockitoSugar {
     }
 
     "return a failed response" in new Setup {
-      when(mockPublicCohoConnector.getCompanyProfile(eqTo(crn))(any()))
+      when(mockPublicCohoConnector.getCompanyProfile(eqTo(crn), any())(any()))
         .thenReturn(Future.successful(None))
 
       val result: String = service.pollPublicAPI
@@ -95,7 +95,7 @@ class ProactiveMonitoringServiceSpec extends UnitSpec with MockitoSugar {
     "return a success response from each API" in new Setup {
       when(mockTransactionalConnector.fetchTransactionalData(eqTo(transactionId))(any()))
         .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(testJson)))
-      when(mockPublicCohoConnector.getCompanyProfile(eqTo(crn))(any()))
+      when(mockPublicCohoConnector.getCompanyProfile(eqTo(crn), any())(any()))
         .thenReturn(Future.successful(Some(testJson)))
 
       val result: (String, String) = service.pollAPIs
@@ -105,7 +105,7 @@ class ProactiveMonitoringServiceSpec extends UnitSpec with MockitoSugar {
     "return a failed response from each API" in new Setup {
       when(mockTransactionalConnector.fetchTransactionalData(eqTo(transactionId))(any()))
         .thenReturn(Future.successful(FailedTransactionalAPIResponse))
-      when(mockPublicCohoConnector.getCompanyProfile(eqTo(crn))(any()))
+      when(mockPublicCohoConnector.getCompanyProfile(eqTo(crn), any())(any()))
         .thenReturn(Future.successful(None))
 
       val result: (String, String) = service.pollAPIs
@@ -115,7 +115,7 @@ class ProactiveMonitoringServiceSpec extends UnitSpec with MockitoSugar {
     "return a success response from the transactional API and a failed response from the public API" in new Setup {
       when(mockTransactionalConnector.fetchTransactionalData(eqTo(transactionId))(any()))
         .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(testJson)))
-      when(mockPublicCohoConnector.getCompanyProfile(eqTo(crn))(any()))
+      when(mockPublicCohoConnector.getCompanyProfile(eqTo(crn), any())(any()))
         .thenReturn(Future.successful(None))
 
       val result: (String, String) = service.pollAPIs

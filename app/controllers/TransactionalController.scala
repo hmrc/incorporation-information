@@ -17,6 +17,9 @@
 package controllers
 
 import javax.inject.Inject
+
+import config.MicroserviceConfig
+import connectors.PublicCohoApiConnector
 import models.IncorpUpdate
 import play.api.Logger
 import play.api.libs.json.Json
@@ -27,19 +30,36 @@ import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class TransactionalControllerImpl @Inject()(val service: TransactionalService,
-                                            val incorpMongo: IncorpUpdateMongo) extends TransactionalController {
+
+class TransactionalControllerImpl @Inject()(config: MicroserviceConfig,
+                                            val publicApiConnector: PublicCohoApiConnector,
+                                            val incorpMongo: IncorpUpdateMongo,
+                                            val service: TransactionalService) extends TransactionalController {
   lazy val incorpRepo = incorpMongo.repo
+  override val whitelistedServices = config.knownSCRSServices.split(",").toSet
 }
 
 trait TransactionalController extends BaseController {
 
   protected val service: TransactionalService
+  val publicApiConnector: PublicCohoApiConnector
   val incorpRepo: IncorpUpdateRepository
+  val whitelistedServices: Set[String]
 
   def fetchCompanyProfile(transactionId: String) = Action.async {
     implicit request =>
       service.fetchCompanyProfile(transactionId).map {
+        case Some(json) => Ok(json)
+        case _ => NotFound
+      }
+  }
+
+  def fetchIncorporatedCompanyProfile(crn: String) = Action.async {
+    implicit request =>
+      val callingService = request.headers.get("User-Agent").getOrElse("unknown")
+      val isScrs = whitelistedServices(callingService)
+
+      publicApiConnector.getCompanyProfile(crn, isScrs)(hc) map {
         case Some(json) => Ok(json)
         case _ => NotFound
       }

@@ -17,29 +17,31 @@
 package controllers
 
 import Helpers.SCRSSpec
+import connectors.PublicCohoApiConnector
 import models.IncorpUpdate
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
-import org.mockito.Matchers
+import org.mockito.Matchers.{any, eq => eqTo}
+import org.mockito.Mockito._
 import play.api.libs.json.{JsObject, Json}
 import play.api.test.FakeRequest
-import services.{FailedToFetchOfficerListFromTxAPI, TransactionalService}
-import org.mockito.Mockito._
-import org.mockito.Matchers.{any, eq => eqTo}
 import repositories.IncorpUpdateRepository
+import services.{FailedToFetchOfficerListFromTxAPI, TransactionalService}
 import utils.TimestampFormats
 
 import scala.concurrent.Future
 
-class
-TransactionalControllerSpec extends SCRSSpec {
+class TransactionalControllerSpec extends SCRSSpec {
 
   val mockService = mock[TransactionalService]
   val mockIncorpUpdateRepository = mock[IncorpUpdateRepository]
+  val mockApiConnector = mock[PublicCohoApiConnector]
 
   class Setup {
     val controller = new TransactionalController {
       override val service = mockService
+      override val publicApiConnector = mockApiConnector
+      override val whitelistedServices = Set("test", "services")
       override val incorpRepo: IncorpUpdateRepository = mockIncorpUpdateRepository
     }
   }
@@ -126,6 +128,45 @@ TransactionalControllerSpec extends SCRSSpec {
 
   }
 
+  "fetchIncorporatedCompanyProfile" should {
+    val crn = "01234567"
+    val json = Json.parse("""{"example":"response"}""")
+    "return a 200 with JSON" when {
+      "called by a whitelisted service" in new Setup {
+        when(mockApiConnector.getCompanyProfile(eqTo(crn), eqTo(true))(any()))
+          .thenReturn(Future.successful(Some(json)))
+
+        val result = controller.fetchIncorporatedCompanyProfile(crn)(FakeRequest().withHeaders("User-Agent" -> "test"))
+        status(result) shouldBe 200
+        jsonBodyOf(await(result)) shouldBe json
+      }
+      "called by a non-whitelisted service" in new Setup {
+        when(mockApiConnector.getCompanyProfile(eqTo(crn), eqTo(false))(any()))
+          .thenReturn(Future.successful(Some(json)))
+
+        val result = controller.fetchIncorporatedCompanyProfile(crn)(FakeRequest().withHeaders("User-Agent" -> "not whitelisted"))
+        status(result) shouldBe 200
+        jsonBodyOf(await(result)) shouldBe json
+      }
+      "called by an unidentifiable service" in new Setup {
+        when(mockApiConnector.getCompanyProfile(eqTo(crn), eqTo(false))(any()))
+          .thenReturn(Future.successful(Some(json)))
+
+        val result = controller.fetchIncorporatedCompanyProfile(crn)(FakeRequest())
+        status(result) shouldBe 200
+        jsonBodyOf(await(result)) shouldBe json
+      }
+    }
+    "return a 404" when {
+      "CRN does not exist on Companies House" in new Setup {
+        when(mockApiConnector.getCompanyProfile(eqTo(crn), eqTo(true))(any()))
+          .thenReturn(Future.successful(None))
+
+        val result = controller.fetchIncorporatedCompanyProfile(crn)(FakeRequest().withHeaders("User-Agent" -> "test"))
+        status(result) shouldBe 404
+      }
+    }
+  }
 
   "fetchOfficerList" should {
 
