@@ -55,10 +55,11 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
 
     reset(mockHttp, mockHttpProxy, mockTimerContext)
 
-    val connector = new PublicCohoApiConn {
+    val connector = new PublicCohoApiConnector {
       val incorpFrontendStubUrl = "incorp FE Stub"
       val cohoPublicUrl = "Coho public url"
       val cohoPublicApiAuthToken = "CohoPublicToken"
+      val nonSCRSPublicApiAuthToken = "NonSCRSCohoPublicToken"
       override val cohoStubbedUrl = "stubbed"
       override val httpNoProxy = mockHttp
       override val httpProxy = mockHttpProxy
@@ -382,8 +383,13 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
 
   "appendAPIAuthHeader" should {
 
-    "return a HeaderCarrier with the correct Basic auth token" in new Setup {
-      connector.appendAPIAuthHeader(hc).authorization shouldBe Some(Authorization("Basic Q29ob1B1YmxpY1Rva2Vu"))
+    "return a HeaderCarrier with the correct Basic auth token" when {
+     "a request is made by a whitelisted service" in new Setup {
+       connector.appendAPIAuthHeader(hc).authorization shouldBe Some(Authorization("Basic Q29ob1B1YmxpY1Rva2Vu"))
+     }
+     "a request is made by an un-whitelisted service" in new Setup {
+       connector.appendAPIAuthHeader(hc, isScrs = false).authorization shouldBe Some(Authorization("Basic Tm9uU0NSU0NvaG9QdWJsaWNUb2tlbg=="))
+     }
     }
   }
 }

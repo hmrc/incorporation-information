@@ -33,7 +33,7 @@ import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 import scala.concurrent.Future
 
 
-class PublicCohoApiConnector @Inject()(config: MicroserviceConfig, injMetricsService: MetricsService) extends PublicCohoApiConn {
+class PublicCohoApiConnectorImpl @Inject()(config: MicroserviceConfig, injMetricsService: MetricsService) extends PublicCohoApiConnector {
 
   protected def httpProxy: WSHttpProxy.type = WSHttpProxy
   protected def httpNoProxy: WSHttp.type = WSHttp
@@ -42,7 +42,8 @@ class PublicCohoApiConnector @Inject()(config: MicroserviceConfig, injMetricsSer
 
   protected val incorpFrontendStubUrl: String =  config.incorpFrontendStubUrl
   protected val cohoPublicUrl: String =  config.cohoPublicBaseUrl
-  protected val cohoPublicApiAuthToken:String = config.cohoPublicApiAuthToken
+  protected val cohoPublicApiAuthToken: String = config.cohoPublicApiAuthToken
+  protected val nonSCRSPublicApiAuthToken: String = config.nonSCRSPublicApiAuthToken
   protected val cohoStubbedUrl: String = config.cohoStubbedUrl
 
   protected lazy val metrics: MetricsService = injMetricsService
@@ -53,7 +54,7 @@ class PublicCohoApiConnector @Inject()(config: MicroserviceConfig, injMetricsSer
   protected val loggingTimes: String = config.noRegisterAnInterestLoggingTime
 }
 
-trait PublicCohoApiConn extends AlertLogging {
+trait PublicCohoApiConnector extends AlertLogging {
 
   protected def httpProxy: CoreGet with WSProxy
   protected def httpNoProxy: CoreGet
@@ -62,16 +63,17 @@ trait PublicCohoApiConn extends AlertLogging {
   protected val incorpFrontendStubUrl : String
   protected val cohoPublicUrl: String
   protected val cohoPublicApiAuthToken: String
+  protected val nonSCRSPublicApiAuthToken: String
   protected val cohoStubbedUrl:String
   protected val metrics: MetricsService
   protected val successCounter: Counter
   protected val failureCounter: Counter
 
-  def getCompanyProfile(crn: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
+  def getCompanyProfile(crn: String, isScrs: Boolean = true)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
     import play.api.http.Status.NO_CONTENT
 
     val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/company/$crn")
+      case true => (httpProxy, appendAPIAuthHeader(hc, isScrs), s"$cohoPublicUrl/company/$crn")
       case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company-profile/$crn")
     }
 
@@ -184,8 +186,12 @@ trait PublicCohoApiConn extends AlertLogging {
 
   private[connectors] def useProxy: Boolean = featureSwitch.transactionalAPI.enabled
 
-  private[connectors] def appendAPIAuthHeader(hc: HeaderCarrier): HeaderCarrier = {
-    val encodedToken = Base64.encode(cohoPublicApiAuthToken.getBytes())
+  private[connectors] def appendAPIAuthHeader(hc: HeaderCarrier, isScrs: Boolean = true): HeaderCarrier = {
+    val encodedToken = if(isScrs) {
+      Base64.encode(cohoPublicApiAuthToken.getBytes)
+    } else {
+      Base64.encode(nonSCRSPublicApiAuthToken.getBytes)
+    }
     Logger.debug(s"[Public API auth token] - $encodedToken")
     hc.copy(authorization = Some(Authorization(s"Basic $encodedToken")))
   }

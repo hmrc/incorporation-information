@@ -45,6 +45,7 @@ class Module extends AbstractModule {
     // connectors
     bind(classOf[IncorporationAPIConnector]).to(classOf[IncorporationAPIConnectorImpl])
     bind(classOf[FiringSubscriptionsConnector]).to(classOf[FiringSubscriptionsConnectorImpl])
+    bind(classOf[PublicCohoApiConnector]).to(classOf[PublicCohoApiConnectorImpl])
 
     // services
     bind(classOf[IncorpUpdateService]).to(classOf[IncorpUpdateServiceImpl])

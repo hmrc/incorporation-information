@@ -1,6 +1,7 @@
 # microservice specific routes
 
 GET        /:transactionId/company-profile                             @controllers.TransactionalController.fetchCompanyProfile(transactionId)
+GET        /:crn/incorporated-company-profile                          @controllers.TransactionalController.fetchIncorporatedCompanyProfile(crn)
 GET        /:transactionId/officer-list                                @controllers.TransactionalController.fetchOfficerList(transactionId)
 GET        /:transactionId/incorporation-update                        @controllers.TransactionalController.fetchIncorpUpdate(transactionId)
 

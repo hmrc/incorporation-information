@@ -19,7 +19,7 @@ package services
 import javax.inject.{Inject, Singleton}
 
 import config.MicroserviceConfig
-import connectors.{IncorporationAPIConnector, PublicCohoApiConnector, SuccessfulTransactionalAPIResponse}
+import connectors.{IncorporationAPIConnector, PublicCohoApiConnectorImpl, SuccessfulTransactionalAPIResponse}
 import utils.Base64
 
 import scala.concurrent.Future
@@ -28,7 +28,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 
 @Singleton
 class ProactiveMonitoringServiceImpl @Inject()(val transactionalConnector: IncorporationAPIConnector,
-                                               val publicCohoConnector: PublicCohoApiConnector,
+                                               val publicCohoConnector: PublicCohoApiConnectorImpl,
                                                config: MicroserviceConfig) extends ProactiveMonitoringService {
   protected val transactionIdToPoll: String = config.transactionIdToPoll
   protected val crnToPoll: String = config.crnToPoll
@@ -37,7 +37,7 @@ class ProactiveMonitoringServiceImpl @Inject()(val transactionalConnector: Incor
 trait ProactiveMonitoringService {
 
   protected val transactionalConnector: IncorporationAPIConnector
-  protected val publicCohoConnector: PublicCohoApiConnector
+  protected val publicCohoConnector: PublicCohoApiConnectorImpl
 
   protected val transactionIdToPoll: String
   protected val crnToPoll: String
