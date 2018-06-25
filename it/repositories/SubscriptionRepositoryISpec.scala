@@ -49,6 +49,13 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
     "url"
   )
 
+  def subRegime(regime: String, num: Int) = Subscription(
+    s"transId$num",
+    regime,
+    "CT",
+    "url"
+  )
+
   def secondSub() = Subscription(
     "transId1",
     "test",
@@ -201,6 +208,33 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
     "remove all test data from submissions status" in new Setup {
       val result = await(repository.wipeTestData())
       result.hasErrors shouldBe false
+    }
+  }
+
+  "getSubscriptionsByRegime" should {
+
+    val testRegime = "archy"
+    val limit = 10
+
+    "an empty list if no documents exist for a regime" in new Setup {
+      val result = await(repository.getSubscriptionsByRegime(testRegime, limit))
+      result shouldBe Seq()
+    }
+    "a list containing one document if there is only one in the database, even if the max is higher" in new Setup {
+      val subscription = subRegime(testRegime, 1)
+      await(repository.insertSub(subscription))
+
+      val result = await(repository.getSubscriptionsByRegime(testRegime, limit))
+      result shouldBe List(subscription)
+    }
+    "a list containing subscriptions up to the desired limit, even if the more were returned" in new Setup {
+      val subscriptions = ((1 to 15) map (num => subRegime(testRegime, num))).toList
+      subscriptions foreach {sub => await(repository.insertSub(sub))}
+
+      val expected = subscriptions.take(limit)
+
+      val result = await(repository.getSubscriptionsByRegime(testRegime, limit))
+      result shouldBe expected
     }
   }
 }

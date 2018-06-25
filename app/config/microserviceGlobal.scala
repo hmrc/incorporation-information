@@ -90,6 +90,7 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Mi
     recreateSubscription(app)
 
     app.injector.instanceOf[AppStartupJobs].logIncorpInfo()
+    app.injector.instanceOf[AppStartupJobs].logRemainingSubscriptionIdentifiers()
 
     super.onStart(app)
   }
@@ -180,6 +181,17 @@ class AppStartupJobs @Inject()(config: Configuration,
             } - """ +
             s"""queue: ${queuedUpdate.fold("No queued incorp update")(_ => "In queue")}""")
         }
+      }
+    }
+  }
+
+  def logRemainingSubscriptionIdentifiers(): Unit = {
+    val regime = config.getString("log-regime").getOrElse("ct")
+
+    subsRepo.repo.getSubscriptionsByRegime(regime) map { subs =>
+      Logger.info(s"Logging existing subscriptions for $regime regime, found ${subs.size} subscriptions")
+      subs foreach { sub =>
+        Logger.info(s"[Subscription] [$regime] Transaction ID: ${sub.transactionId}, Subscriber: ${sub.subscriber}")
       }
     }
   }
