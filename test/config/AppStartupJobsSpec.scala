@@ -127,4 +127,53 @@ class AppStartupJobsSpec extends UnitSpec with MockitoSugar with LogCapturing wi
     }
   }
 
+  "logRemainingSubscriptionIdentifiers" should {
+    val subscription1 = Subscription("transId", "testRegime", "testSubscriber", "testCallbackUrl")
+
+    "log information about subscriptions" in new Setup {
+      when(mockConfig.getString(eqTo("log-regime"), any()))
+        .thenReturn(None)
+
+      when(mockSubsRepo.getSubscriptionsByRegime(any(), any()))
+        .thenReturn(Future.successful(Seq(subscription1)))
+
+      withCaptureOfLoggingFrom(Logger) { logEvents =>
+        appStartupJobs.logRemainingSubscriptionIdentifiers()
+
+        eventually {
+          logEvents.size shouldBe 2
+
+          val expectedLogs = List(
+            "Logging existing subscriptions for ct regime, found 1 subscriptions",
+            "[Subscription] [ct] Transaction ID: transId, Subscriber: testSubscriber"
+          )
+
+          logEvents.map(_.getMessage) should contain theSameElementsAs expectedLogs
+        }
+      }
+    }
+
+    "log the job ran but retrieved nothing when there are no subscriptions" in new Setup {
+      when(mockConfig.getString(eqTo("log-regime"), any()))
+        .thenReturn(None)
+
+      when(mockSubsRepo.getSubscriptionsByRegime(any(), any()))
+        .thenReturn(Future.successful(Seq()))
+
+      withCaptureOfLoggingFrom(Logger) { logEvents =>
+        appStartupJobs.logRemainingSubscriptionIdentifiers()
+
+        eventually {
+          logEvents.size shouldBe 1
+
+          val expectedLogs = List(
+            "Logging existing subscriptions for ct regime, found 0 subscriptions"
+          )
+
+          logEvents.map(_.getMessage) should contain theSameElementsAs expectedLogs
+        }
+      }
+    }
+  }
+
 }
