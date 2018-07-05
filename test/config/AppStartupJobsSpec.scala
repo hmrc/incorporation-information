@@ -130,35 +130,32 @@ class AppStartupJobsSpec extends UnitSpec with MockitoSugar with LogCapturing wi
   "logRemainingSubscriptionIdentifiers" should {
     val subscription1 = Subscription("transId", "testRegime", "testSubscriber", "testCallbackUrl")
 
-    "log information about subscriptions" in new Setup {
-      when(mockConfig.getString(eqTo("log-regime"), any()))
-        .thenReturn(None)
+    "log information about subscriptions with default values as nothing exists in config" in new Setup {
+      val subscriptions = List.fill(5)(subscription1)
+      val expectedLogOfSubscriptions = {
+        List("Logging existing subscriptions for ct regime, found 5 subscriptions") ++
+       List.fill(5)("[Subscription] [ct] Transaction ID: transId, Subscriber: testSubscriber")
+      }
 
-      when(mockSubsRepo.getSubscriptionsByRegime(any(), any()))
-        .thenReturn(Future.successful(Seq(subscription1)))
+      when(mockConfig.getString(eqTo("log-regime"), any())) thenReturn None
+      when(mockConfig.getInt(eqTo("log-count"))) thenReturn None
+      when(mockSubsRepo.getSubscriptionsByRegime(any(), any())) thenReturn Future.successful(subscriptions)
 
       withCaptureOfLoggingFrom(Logger) { logEvents =>
         appStartupJobs.logRemainingSubscriptionIdentifiers()
 
         eventually {
-          logEvents.size shouldBe 2
+          logEvents.size shouldBe 6
 
-          val expectedLogs = List(
-            "Logging existing subscriptions for ct regime, found 1 subscriptions",
-            "[Subscription] [ct] Transaction ID: transId, Subscriber: testSubscriber"
-          )
-
-          logEvents.map(_.getMessage) should contain theSameElementsAs expectedLogs
+          logEvents.map(_.getMessage) should contain theSameElementsAs expectedLogOfSubscriptions
         }
       }
     }
 
     "log the job ran but retrieved nothing when there are no subscriptions" in new Setup {
-      when(mockConfig.getString(eqTo("log-regime"), any()))
-        .thenReturn(None)
-
-      when(mockSubsRepo.getSubscriptionsByRegime(any(), any()))
-        .thenReturn(Future.successful(Seq()))
+      when(mockConfig.getString(eqTo("log-regime"), any())) thenReturn None
+      when(mockConfig.getInt(eqTo("log-count"))) thenReturn None
+      when(mockSubsRepo.getSubscriptionsByRegime(any(), any())) thenReturn Future.successful(Seq())
 
       withCaptureOfLoggingFrom(Logger) { logEvents =>
         appStartupJobs.logRemainingSubscriptionIdentifiers()

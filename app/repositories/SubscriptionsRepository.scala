@@ -110,7 +110,7 @@ class SubscriptionsMongoRepository(mongo: () => DB) extends ReactiveRepository[S
     collection.find(query).cursor[Subscription]().collect[Seq]()
   }
 
-  def getSubscriptionsByRegime(regime: String, max: Int = 20): Future[Seq[Subscription]] = {
+  def getSubscriptionsByRegime(regime: String, max: Int): Future[Seq[Subscription]] = {
     val query = BSONDocument("regime" -> regime)
     collection
       .find(query)

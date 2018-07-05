@@ -187,8 +187,9 @@ class AppStartupJobs @Inject()(config: Configuration,
 
   def logRemainingSubscriptionIdentifiers(): Unit = {
     val regime = config.getString("log-regime").getOrElse("ct")
+    val maxAmountToLog = config.getInt("log-count").getOrElse(20)
 
-    subsRepo.repo.getSubscriptionsByRegime(regime) map { subs =>
+    subsRepo.repo.getSubscriptionsByRegime(regime, maxAmountToLog) map { subs =>
       Logger.info(s"Logging existing subscriptions for $regime regime, found ${subs.size} subscriptions")
       subs foreach { sub =>
         Logger.info(s"[Subscription] [$regime] Transaction ID: ${sub.transactionId}, Subscriber: ${sub.subscriber}")
