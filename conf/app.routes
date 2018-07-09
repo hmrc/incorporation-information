@@ -9,7 +9,5 @@ POST       /subscribe/:transId/regime/:regime/subscriber/:sub          @controll
 DELETE     /subscribe/:transId/regime/:regime/subscriber/:sub          @controllers.SubscriptionController.removeSubscription(transId, regime, sub)
 GET        /subscribe/:transId/regime/:regime/subscriber/:sub          @controllers.SubscriptionController.getSubscription(transId, regime, sub)
 
-
-
-
-
+GET        /sic-codes/transaction/:txId                                @controllers.TransactionalController.fetchSicCodesByTransactionID(txId)
+GET        /sic-codes/crn/:crn                                         @controllers.TransactionalController.fetchSicCodesByCRN(crn)

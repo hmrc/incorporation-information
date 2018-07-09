@@ -17,7 +17,6 @@
 package controllers
 
 import javax.inject.Inject
-
 import config.MicroserviceConfig
 import connectors.PublicCohoApiConnector
 import models.IncorpUpdate
@@ -29,6 +28,7 @@ import services.{TransactionalService, TransactionalServiceException}
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 
 class TransactionalControllerImpl @Inject()(config: MicroserviceConfig,
@@ -84,5 +84,22 @@ trait TransactionalController extends BaseController {
         case _ => NoContent
       }
   }
+
+  def fetchSicCodesByTransactionID(txId: String) = Action.async {
+    implicit request =>
+      service.fetchSicByTransId(txId) map {
+        case Some(sicCodes) => Ok(sicCodes)
+        case _ => NoContent
+      }
+  }
+
+  def fetchSicCodesByCRN(crn: String) = Action.async {
+    implicit request =>
+      service.fetchSicByCRN(crn) map {
+        case Some(json) => Ok(json)
+        case None => NoContent
+      }
+  }
+
 }
 

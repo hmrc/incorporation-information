@@ -144,3 +144,32 @@ A ```200``` response:
 ```
 
 A ```404``` response: ```no body```
+
+
+
+| Path                                                                | Supported Methods | Description |
+| ------------------------------------------------------------------- | ----------------- | ----------- |
+|```/incorporation-information/sic-codes/transaction/:transactionId```|       GET         | Fetches a companies sic codes using a transaction ID, this priorities Public information but defers to the pre-incorporation API if nothing is found
+|```/incorporation-information/sic-codes/crn/:crn```                  |       GET         | Fetches an incorporated companies sic codes using its Company Number
+
+Responds with:
+
+| Status        | Message       |
+|:--------------|:--------------|
+| 200           | OK            |
+| 204           | No Content    |
+
+**Response body**
+
+A ```200``` response:
+```json
+{
+  "sic_codes": [
+    "12345",
+    "67890",
+    "55555"
+  ]
+}
+```
+
+A ```204``` response: ```no body```
