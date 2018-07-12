@@ -16,33 +16,42 @@
 
 package controllers.test
 
-import javax.inject.{Inject, Named, Singleton}
-
-import play.api.mvc.Action
-import uk.gov.hmrc.play.microservice.controller.BaseController
-import models.IncorpUpdate
+import javax.inject.{Inject, Singleton}
+import models.{IncorpUpdate, QueuedIncorpUpdate}
+import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
-import repositories.{IncorpUpdateMongo, IncorpUpdateRepository}
+import play.api.mvc.Action
+import repositories.{IncorpUpdateMongo, IncorpUpdateRepository, QueueMongo, QueueRepository}
+import uk.gov.hmrc.play.microservice.controller.BaseController
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class IncorpUpdateControllerImpl @Inject()(val injIncorpRepo: IncorpUpdateMongo) extends IncorpUpdateController {
-  override val repo = injIncorpRepo.repo
+class IncorpUpdateControllerImpl @Inject()(val injIncorpMongo: IncorpUpdateMongo,
+                                           val injQueueMongo: QueueMongo) extends IncorpUpdateController {
+  override val repo = injIncorpMongo.repo
+  override val queueRepository = injQueueMongo.repo
 }
 
 trait IncorpUpdateController extends BaseController {
 
   val repo: IncorpUpdateRepository
+  val queueRepository: QueueRepository
 
   def add(txId:String, date:Option[String], crn:Option[String] = None, success:Boolean = false) = Action.async {
     implicit request => {
       val status = if(success) "accepted" else "rejected"
       val incorpDate = date map { ISODateTimeFormat.dateParser().withOffsetParsed().parseDateTime(_) }
-      repo.storeIncorpUpdates(Seq(
-        IncorpUpdate(txId, status, crn, incorpDate, "-1")
-      ))
-          Future.successful(Ok)
-      }
+
+      val incorpUpdate = IncorpUpdate(txId, status, crn, incorpDate, "-1")
+
+      for {
+        _ <- repo.storeIncorpUpdates(Seq(incorpUpdate))
+        _ <- queueRepository.storeIncorpUpdates(Seq(QueuedIncorpUpdate(DateTime.now(), IncorpUpdate(txId, status, crn, incorpDate, "-1"))))
+      } yield true
+
+      Future.successful(Ok)
+    }
   }
 }

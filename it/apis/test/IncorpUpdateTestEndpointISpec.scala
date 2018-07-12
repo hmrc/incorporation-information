@@ -22,7 +22,7 @@ import org.joda.time.format.ISODateTimeFormat
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.modules.reactivemongo.ReactiveMongoComponent
-import repositories.IncorpUpdateMongo
+import repositories.{IncorpUpdateMongo, QueueMongo}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -50,15 +50,16 @@ class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase {
 
   class Setup {
     val incRepo = new IncorpUpdateMongo(reactiveMongoComponent).repo
+    val queueRepository = new QueueMongo(reactiveMongoComponent).repo
 
-    def insert(update: IncorpUpdate) = await(incRepo.insert(update))
-    def incCount = await(incRepo.count)
     def getIncorp(txid: String) = await(incRepo.getIncorpUpdate(txid))
   }
 
   override def beforeEach() = new Setup {
     await(incRepo.drop)
     await(incRepo.ensureIndexes)
+    await(queueRepository.drop)
+    await(queueRepository.ensureIndexes)
   }
 
   override def afterEach() = new Setup {
@@ -76,12 +77,14 @@ class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase {
     "Allow an IU with tx-id and defaults" in new Setup {
       setupSimpleAuthMocks()
 
-      incCount shouldBe 0
+      await(incRepo.count) shouldBe 0
+      await(queueRepository.count) shouldBe 0
 
       val response = client(s"test-only/add-incorp-update?txId=${transactionId}").get().futureValue
       response.status shouldBe 200
 
-      incCount shouldBe 1
+      await(incRepo.count) shouldBe 1
+      await(queueRepository.count) shouldBe 1
       getIncorp(transactionId) shouldBe Some(IncorpUpdate("123abc","rejected",None,None,"-1",None))
     }
 
@@ -92,12 +95,14 @@ class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase {
 
       setupSimpleAuthMocks()
 
-      incCount shouldBe 0
+      await(incRepo.count) shouldBe 0
+      await(queueRepository.count) shouldBe 0
 
       val response = client(s"test-only/add-incorp-update?txId=${transactionId}&date=${incorpDate}&success=true&crn=1234").get().futureValue
       response.status shouldBe 200
 
-      incCount shouldBe 1
+      await(incRepo.count) shouldBe 1
+      await(queueRepository.count) shouldBe 1
       getIncorp(transactionId) shouldBe Some(IncorpUpdate("123abc","accepted",Some("1234"),Some(toDateTime(incorpDate)),"-1",None))
     }
 
