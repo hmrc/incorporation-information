@@ -228,6 +228,7 @@ class TransactionalServiceSpec extends SCRSSpec {
     """.stripMargin)
 
   val transactionId = "tx-12345"
+  val crn = "XX010101"
 
   val dateTime = Json.toJson(DateTime.parse("2017-05-15T17:45:45Z"))
 
@@ -1047,5 +1048,222 @@ class TransactionalServiceSpec extends SCRSSpec {
       result shouldBe expected
     }
   }
-}
 
+  "fetchSicCodes" should {
+
+    "return None if no json was returned by the public API" in new Setup {
+      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+        .thenReturn(Future.successful(None))
+
+      await(service.fetchSicCodes(crn, usePublicAPI = true)) shouldBe None
+    }
+
+    "return None if no json was returned by the transactional API" in new Setup {
+      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+        .thenReturn(Future.successful(None))
+
+      await(service.fetchSicCodes(crn, usePublicAPI = false)) shouldBe None
+    }
+
+    "return None if no SIC codes were returned by the public API" in new Setup {
+      val unexpectedResponse = Json.parse("""{ "foo":"bar" }""")
+
+      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+        .thenReturn(Future.successful(Some(unexpectedResponse)))
+
+      await(service.fetchSicCodes(crn, usePublicAPI = true)) shouldBe None
+    }
+
+    "return None if no SIC codes were returned by the transactional API" in new Setup {
+      val unexpectedResponse = Json.parse("""{ "foo":"bar" }""")
+
+      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+        .thenReturn(Future.successful(Some(unexpectedResponse)))
+
+      await(service.fetchSicCodes(crn, usePublicAPI = false)) shouldBe None
+    }
+
+    "return a JsArray of SIC codes returned by the public API" in new Setup {
+      val expectedJson = Json.parse(
+        s"""{
+           |  "company_name": "company's name",
+           |  "type": "limited",
+           |  "company_type": "limited",
+           |  "company_number": "$crn",
+           |  "company_status": "status",
+           |  "sic_codes":[
+           |    "12345",
+           |    "67890"
+           |  ]
+           |}
+        """.stripMargin).as[JsObject]
+      val expectedCodes: JsValue = Json.parse("""{"sic_codes": ["12345","67890"]}""")
+
+      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+        .thenReturn(Future.successful(Some(expectedJson)))
+
+      await(service.fetchSicCodes(crn, usePublicAPI = true)) shouldBe Some(expectedCodes)
+    }
+
+    "return a JsArray of SIC codes returned by the transactional API" in new Setup {
+      val expectedJson = Json.parse(
+        s"""{
+           |  "sic_codes": [
+           |    {
+           |      "sic_description": "Some code description",
+           |      "sic_code": "12345"
+           |    },
+           |    {
+           |      "sic_description": "Standard code about Industry",
+           |      "sic_code": "67890"
+           |    }
+           |  ]
+           |}
+        """.stripMargin).as[JsObject]
+      val expectedCodes: JsValue = Json.parse("""{"sic_codes": ["12345","67890"]}""")
+
+      when(mockConnector.fetchTransactionalData(Matchers.any[String])(any()))
+        .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(expectedJson)))
+
+      await(service.fetchSicCodes(transactionId, usePublicAPI = false)) shouldBe Some(expectedCodes)
+    }
+
+    "return None when the JSON is formatted incorrectly" in new Setup {
+      val expectedJson = Json.parse(
+        s"""{
+           |  "sic_codes":
+           |    {
+           |      "sic_description": "Some code description",
+           |      "sic_code": "12345"
+           |    }
+           |}
+        """.stripMargin).as[JsObject]
+      val expectedCodes: JsValue = Json.parse("""{"sic_codes": ["12345","67890"]}""")
+
+      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+        .thenReturn(Future.successful(Some(expectedJson)))
+
+      await(service.fetchSicCodes(crn, usePublicAPI = true)) shouldBe None
+    }
+  }
+
+  "fetchSicCodesByCRN" should {
+    val expectedJson = Json.parse(
+      s"""{
+         |  "company_name": "company's name",
+         |  "type": "limited",
+         |  "company_type": "limited",
+         |  "company_number": "$crn",
+         |  "company_status": "status",
+         |  "sic_codes":[
+         |    "12345",
+         |    "67890"
+         |  ]
+         |}
+        """.stripMargin).as[JsObject]
+    val expectedCodes: JsValue = Json.parse("""{"sic_codes": ["12345","67890"]}""")
+
+    "return some SIC codes" in new Setup {
+      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+        .thenReturn(Future.successful(Some(expectedJson)))
+
+      await(service.fetchSicByCRN(crn)) shouldBe Some(expectedCodes)
+    }
+    "return no SIC codes" in new Setup {
+      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+        .thenReturn(Future.successful(None))
+
+      await(service.fetchSicByCRN(crn)) shouldBe None
+    }
+  }
+
+  "fetchSicCodesByCRN" should {
+    val expectedJson = Json.parse(
+      s"""{
+         |  "company_name": "company's name",
+         |  "type": "limited",
+         |  "company_type": "limited",
+         |  "company_number": "$crn",
+         |  "company_status": "status",
+         |  "sic_codes":[
+         |    "12345",
+         |    "67890"
+         |  ]
+         |}
+        """.stripMargin).as[JsObject]
+
+    val transactionalJson = Json.parse(
+      s"""{
+         |  "sic_codes": [
+         |    {
+         |      "sic_description": "Some code description",
+         |      "sic_code": "12345"
+         |    },
+         |    {
+         |      "sic_description": "Standard code about Industry",
+         |      "sic_code": "67890"
+         |    }
+         |  ]
+         |}
+        """.stripMargin).as[JsObject]
+    val expectedCodes: JsValue = Json.parse("""{"sic_codes": ["12345","67890"]}""")
+
+    def incorporated(boolean: Boolean) = Future.successful(Option(IncorpUpdate(transactionId, "", if(boolean) Some(crn) else None, None, "")))
+
+    "return some SIC codes from the public API if an incorporation update exists for the given transaction ID" in new Setup {
+      when(mockRepos.getIncorpUpdate(eqTo(transactionId)))
+        .thenReturn(incorporated(true))
+
+      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+        .thenReturn(Future.successful(Some(expectedJson)))
+
+      await(service.fetchSicByTransId(transactionId)) shouldBe Some(expectedCodes)
+    }
+
+    "return some SIC codes from the internal API if an incorporation update exists but the Public API returned nothing" in new Setup {
+      when(mockRepos.getIncorpUpdate(eqTo(transactionId)))
+        .thenReturn(incorporated(true))
+
+      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+        .thenReturn(Future.successful(None))
+
+      when(mockConnector.fetchTransactionalData(Matchers.any[String])(any()))
+        .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(transactionalJson)))
+
+      await(service.fetchSicByTransId(transactionId)) shouldBe Some(expectedCodes)
+    }
+
+    "return no SIC codes from the either API if an incorporation update exists but both APIs returned nothing" in new Setup {
+      when(mockRepos.getIncorpUpdate(eqTo(transactionId)))
+        .thenReturn(incorporated(true))
+
+      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+        .thenReturn(Future.successful(None))
+
+      when(mockConnector.fetchTransactionalData(Matchers.any[String])(any()))
+        .thenReturn(Future.successful(FailedTransactionalAPIResponse))
+
+      await(service.fetchSicByTransId(transactionId)) shouldBe None
+    }
+
+    "return no SIC codes from the internal API if an incorporation update doesn't exist" in new Setup {
+      when(mockRepos.getIncorpUpdate(eqTo(transactionId)))
+        .thenReturn(incorporated(false))
+
+      when(mockConnector.fetchTransactionalData(Matchers.any[String])(any()))
+        .thenReturn(Future.successful(FailedTransactionalAPIResponse))
+
+      await(service.fetchSicByTransId(transactionId)) shouldBe None
+    }
+
+    "return SIC codes from the internal API if an incorporation update doesn't exist" in new Setup {
+      when(mockRepos.getIncorpUpdate(eqTo(transactionId)))
+        .thenReturn(incorporated(false))
+
+      when(mockConnector.fetchTransactionalData(Matchers.any[String])(any()))
+        .thenReturn(Future.successful(FailedTransactionalAPIResponse))
+
+      await(service.fetchSicByTransId(transactionId)) shouldBe None
+    }
+  }
+}

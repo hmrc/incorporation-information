@@ -16,10 +16,11 @@
 
 package apis
 
-import com.github.tomakehurst.wiremock.client.WireMock.{aResponse, get, stubFor, urlMatching, equalTo}
+import com.github.tomakehurst.wiremock.client.WireMock.{aResponse, equalTo, get, stubFor, urlMatching}
 import helpers.IntegrationSpecBase
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
+import play.api.libs.json.Json
 
 class TransactionalControllerISpec extends IntegrationSpecBase {
 
@@ -79,6 +80,124 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
         whitelistedResponse.status shouldBe 200
         whitelistedResponse.body shouldBe json
       }
+    }
+  }
+
+  "fetchSicCodes" should {
+    val txid = "transid"
+
+    "return no sic codes while using public API with a CRN if the API is down" in {
+      stubFor(get(urlMatching(s"/company/$crn"))
+        .willReturn(
+          aResponse()
+            .withStatus(502)
+        )
+      )
+      val result = client(s"sic-codes/crn/$crn").get().futureValue
+      result.status shouldBe 204
+    }
+
+    "return sic codes while using public API with a CRN" in {
+      stubFor(get(urlMatching(s"/company/$crn"))
+        .willReturn(
+          aResponse()
+            .withStatus(200)
+            .withBody("""{"foo":"bar", "sic_codes":["12345", "54321"], "wibble":"pop"}""")
+        )
+      )
+      val result = client(s"sic-codes/crn/$crn").get().futureValue
+      result.status shouldBe 200
+      result.body shouldBe """{"sic_codes":["12345","54321"]}"""
+    }
+    "return no sic codes while using public API with a CRN" in {
+      stubFor(get(urlMatching(s"/company/$crn"))
+        .willReturn(
+          aResponse()
+            .withStatus(200)
+            .withBody("""{"foo":"bar", "wibble":"pop"}""")
+        )
+      )
+      val result = client(s"sic-codes/crn/$crn").get().futureValue
+      result.status shouldBe 204
+    }
+
+    "return sic codes while using transactional API with a transaction ID" in {
+      stubFor(get(urlMatching(s"/submissionData/$txid"))
+        .willReturn(
+          aResponse()
+            .withStatus(200)
+            .withBody(
+              """{
+                |  "foo":"bar",
+                |  "sic_codes":[
+                |    {
+                |      "sic_description":"wibble",
+                |      "sic_code":"12345"
+                |    },
+                |    {
+                |      "sic_description":"pop",
+                |      "sic_code":"54321"
+                |    }
+                |  ],
+                |  "wibble":"pop"
+                |}
+                |""".stripMargin)
+        )
+      )
+      val result = client(s"sic-codes/transaction/$txid").get().futureValue
+      result.status shouldBe 200
+      result.body shouldBe
+        """{"sic_codes":["12345","54321"]}""".stripMargin
+    }
+
+    "return no sic codes if JSON cannot be parsed" in {
+      stubFor(get(urlMatching(s"/submissionData/$txid"))
+        .willReturn(
+          aResponse()
+            .withStatus(200)
+            .withBody(
+              """{
+                |  "foo":"bar",
+                |  "sic_codes"{
+                |    { . _ . }
+                |      "sic_description":"wibble",
+                |      "sic_code":"12345"
+                |    },///{""]}}
+                |    {
+                |      "sic_description":"pop",
+                |      "sic_code":"54321"
+                |    }
+                |  ],
+                |  "wibble":"pop"
+                |}
+                |""".stripMargin)
+        )
+      )
+      val result = client(s"sic-codes/transaction/$txid").get().futureValue
+      result.status shouldBe 204
+    }
+    "return no sic codes while using transactional API with a transaction ID" in {
+      stubFor(get(urlMatching(s"/submissionData/$txid"))
+        .willReturn(
+          aResponse()
+            .withStatus(200)
+            .withBody("""{"foo":"bar", "sic_codes":["12345", "54321"], "wibble":"pop"}""")
+        )
+      )
+      val result = client(s"sic-codes/transaction/$txid").get().futureValue
+      result.status shouldBe 200
+      result.body shouldBe """{"sic_codes":[]}"""
+    }
+    "return no sic codes while using transactional API with a transaction ID when the API is down" in {
+      stubFor(get(urlMatching(s"/submissionData/$txid"))
+        .willReturn(
+          aResponse()
+            .withStatus(502)
+            .withBody("""{"foo":"bar", "sic_codes":["12345", "54321"], "wibble":"pop"}""")
+        )
+      )
+      val result = client(s"sic-codes/transaction/$txid").get().futureValue
+      result.status shouldBe 204
     }
   }
 

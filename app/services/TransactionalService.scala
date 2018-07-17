@@ -62,6 +62,30 @@ trait TransactionalService {
     }
   }
 
+  private[services] def fetchSicCodes(id: String, usePublicAPI: Boolean)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
+    val fetchCodesFromSource = if(usePublicAPI){ publicCohoConnector.getCompanyProfile(id) } else { fetchCompanyProfileFromTx(id) }
+
+    fetchCodesFromSource map { _ flatMap { json =>
+      Json.fromJson(json)((__ \ "sic_codes").read[JsArray]).asOpt map { existingCodes =>
+        val formattedCodes = if(!usePublicAPI) JsArray(existingCodes \\ "sic_code") else existingCodes
+        Json.obj("sic_codes" -> formattedCodes)
+      }
+    }
+    }
+  }
+
+  def fetchSicByTransId(transId: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
+    checkIfCompIncorporated(transId).flatMap {
+      case Some(crn) => fetchSicCodes(crn, usePublicAPI = true) flatMap {
+        case None => fetchSicCodes(transId, usePublicAPI = false)
+        case sicCodes @ Some(_) => Future.successful(sicCodes)
+      }
+      case _ => fetchSicCodes(transId, usePublicAPI = false)
+    }
+  }
+
+  def fetchSicByCRN(crn: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = fetchSicCodes(crn, usePublicAPI = true)
+
   private[services] def fetchOfficerListFromTxAPI(transactionID: String)(implicit hc: HeaderCarrier): Future[JsObject] = {
     connector.fetchTransactionalData(transactionID) map {
       case SuccessfulTransactionalAPIResponse(js) => Json.obj("officers" -> (js \ "officers").as[JsArray])

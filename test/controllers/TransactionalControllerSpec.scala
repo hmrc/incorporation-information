@@ -27,6 +27,7 @@ import play.api.libs.json.{JsObject, Json}
 import play.api.test.FakeRequest
 import repositories.IncorpUpdateRepository
 import services.{FailedToFetchOfficerListFromTxAPI, TransactionalService}
+import uk.gov.hmrc.http.HeaderCarrier
 import utils.TimestampFormats
 
 import scala.concurrent.Future
@@ -47,6 +48,7 @@ class TransactionalControllerSpec extends SCRSSpec {
   }
 
   val transactionId = "trans-12345"
+  val crn = "some-crn"
   val officerId = "off-12345"
 
   "fetchCompanyProfile" should {
@@ -225,6 +227,48 @@ class TransactionalControllerSpec extends SCRSSpec {
         .thenReturn(Future.successful(None))
 
       val result = await(controller.fetchIncorpUpdate(transactionId)(FakeRequest()))
+      status(result) shouldBe 204
+    }
+  }
+
+  "fetchSicCodesByTransactionID" should {
+    val sicJson = Json.parse("""{"sic_codes": ["12345", "23456"]}""")
+
+    "return sic codes from the CH API using TxId" in new Setup {
+      when(mockService.fetchSicByTransId(eqTo(transactionId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Some(sicJson)))
+
+      val result = await(controller.fetchSicCodesByTransactionID(transactionId)(FakeRequest()))
+      status(result) shouldBe 200
+      jsonBodyOf(result) shouldBe sicJson
+    }
+
+    "return no content when no data returned from the CH API using TxId" in new Setup {
+      when(mockService.fetchSicByTransId(eqTo(transactionId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(None))
+
+      val result = await(controller.fetchSicCodesByTransactionID(transactionId)(FakeRequest()))
+      status(result) shouldBe 204
+    }
+  }
+
+  "fetchSicCodesByCRN" should {
+    val sicJson = Json.parse("""{"sic_codes": ["12345", "23456"]}""")
+
+    "return sic codes from the CH API" in new Setup {
+      when(mockService.fetchSicByCRN(eqTo(crn))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Some(sicJson)))
+
+      val result = await(controller.fetchSicCodesByCRN(crn)(FakeRequest()))
+      status(result) shouldBe 200
+      jsonBodyOf(result) shouldBe sicJson
+    }
+
+    "return no content when no data returned from the CH API" in new Setup {
+      when(mockService.fetchSicByCRN(eqTo(crn))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(None))
+
+      val result = await(controller.fetchSicCodesByCRN(crn)(FakeRequest()))
       status(result) shouldBe 204
     }
   }
