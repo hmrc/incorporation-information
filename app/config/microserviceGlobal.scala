@@ -91,7 +91,6 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Mi
 
     app.injector.instanceOf[AppStartupJobs].logIncorpInfo()
     app.injector.instanceOf[AppStartupJobs].logRemainingSubscriptionIdentifiers()
-    app.injector.instanceOf[AppStartupJobs].logSCandNI()
 
     super.onStart(app)
   }
@@ -194,17 +193,6 @@ class AppStartupJobs @Inject()(config: Configuration,
       Logger.info(s"Logging existing subscriptions for $regime regime, found ${subs.size} subscriptions")
       subs foreach { sub =>
         Logger.info(s"[Subscription] [$regime] Transaction ID: ${sub.transactionId}, Subscriber: ${sub.subscriber}")
-      }
-    }
-  }
-
-  def logSCandNI(): Unit = {
-    incorpUpdateRepo.repo.getSCandNIincorps map { result =>
-      if (result.nonEmpty) {
-        result.sliding(20, 20).foreach(twentyRecords =>
-          Logger.info(s"[Startup] [SC_and_NI] ${twentyRecords.map(s => (s.crn, s.incorpDate))}"))
-      } else {
-        Logger.info(s"[Startup] [SC_and_NI] None found")
       }
     }
   }
