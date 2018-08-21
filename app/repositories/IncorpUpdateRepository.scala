@@ -25,7 +25,7 @@ import play.api.libs.json.{Format, JsValue}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DB
 import reactivemongo.api.commands.{UpdateWriteResult, WriteError}
-import reactivemongo.bson.{BSONArray, BSONDocument, BSONObjectID}
+import reactivemongo.bson.{BSONDocument, BSONObjectID}
 import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
 
@@ -42,7 +42,6 @@ trait IncorpUpdateRepository {
   def storeSingleIncorpUpdate(updates: IncorpUpdate): Future[UpdateWriteResult]
 
   def getIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]]
-  def getSCandNIincorps: Future[Seq[IncorpUpdate]]
 }
 
 class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate]) extends ReactiveRepository[IncorpUpdate, BSONObjectID](
@@ -55,12 +54,6 @@ class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])
   implicit val fmt = format
 
   private def selector(transactionId: String) = BSONDocument("_id" -> transactionId)
-
-  private def sCandNIselector = BSONDocument(
-  "$or" -> BSONArray(
-      BSONDocument("company_number" -> BSONDocument ("$regex" -> "SC*")),
-      BSONDocument("company_number" -> BSONDocument ("$regex" -> "NI*"))
-  ))
 
   def storeIncorpUpdates(updates: Seq[IncorpUpdate]): Future[InsertResult] = {
     bulkInsert(updates) map {
@@ -95,11 +88,6 @@ class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])
     collection.find(selector(transactionId)).one[IncorpUpdate]
   }
 
-  def getSCandNIincorps: Future[Seq[IncorpUpdate]] = {
-    collection
-      .find(sCandNIselector)
-      .cursor[IncorpUpdate]().collect[Seq]()
-  }
 }
 
 case class InsertResult(

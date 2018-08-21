@@ -60,14 +60,6 @@ class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
     timepoint = s"tp$n",
     statusDescription = None))
 
-  def docsByLocation(num: Int = 1, location: String = "") = (1 to num).map(n => IncorpUpdate(
-    transactionId = s"foo$location$n",
-    status = "accepted",
-    crn = Some(s"$location$n"),
-    incorpDate = None,
-    timepoint = s"tp$n",
-    statusDescription = None))
-
   def individualDoc(num: Int = 1) = IncorpUpdate(
     transactionId = s"foo$num",
     status = "accepted",
@@ -202,47 +194,5 @@ def individualUpdatedDoc(num: Int = 1) = IncorpUpdate(
     }
   }
 
-  "getSCandNIincorps" should {
-
-    val incorpUpdate = docsByLocation(3,"")
-    val SCincorpUpdate = docsByLocation(3,"SC")
-    val NIincorpUpdate = docsByLocation(3,"NI")
-
-    "return a sequence of IncorpUpdates with only SC and NI CRNs" in new Setup {
-
-      count shouldBe 0
-      await(incorpRepo.storeIncorpUpdates(incorpUpdate))
-      await(incorpRepo.storeIncorpUpdates(SCincorpUpdate))
-      await(incorpRepo.storeIncorpUpdates(NIincorpUpdate))
-      count shouldBe 9
-      val res = incorpRepo.getSCandNIincorps
-      await(res) shouldBe SCincorpUpdate ++ NIincorpUpdate
-
-    }
-
-    "return a sequence of IncorpUpdates with only SC in if only SC ones are present" in new Setup {
-
-      count shouldBe 0
-      await(incorpRepo.storeIncorpUpdates(incorpUpdate))
-      await(incorpRepo.storeIncorpUpdates(SCincorpUpdate))
-
-      count shouldBe 6
-      val res = incorpRepo.getSCandNIincorps
-      await(res) shouldBe SCincorpUpdate
-
-    }
-
-    "return a sequence of IncorpUpdates with only NI in if only NI ones are present" in new Setup {
-
-      count shouldBe 0
-      await(incorpRepo.storeIncorpUpdates(incorpUpdate))
-      await(incorpRepo.storeIncorpUpdates(NIincorpUpdate))
-
-      count shouldBe 6
-      val res = incorpRepo.getSCandNIincorps
-      await(res) shouldBe NIincorpUpdate
-
-    }
-  }
 }
 
