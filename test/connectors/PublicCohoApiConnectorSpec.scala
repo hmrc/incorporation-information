@@ -381,14 +381,14 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
     }
   }
 
-  "appendAPIAuthHeader" should {
+  "createAPIAuthHeader" should {
 
     "return a HeaderCarrier with the correct Basic auth token" when {
      "a request is made by a whitelisted service" in new Setup {
-       connector.appendAPIAuthHeader(hc).authorization shouldBe Some(Authorization("Basic Q29ob1B1YmxpY1Rva2Vu"))
+       connector.createAPIAuthHeader().authorization shouldBe Some(Authorization("Basic Q29ob1B1YmxpY1Rva2Vu"))
      }
      "a request is made by an un-whitelisted service" in new Setup {
-       connector.appendAPIAuthHeader(hc, isScrs = false).authorization shouldBe Some(Authorization("Basic Tm9uU0NSU0NvaG9QdWJsaWNUb2tlbg=="))
+       connector.createAPIAuthHeader(isScrs = false).authorization shouldBe Some(Authorization("Basic Tm9uU0NSU0NvaG9QdWJsaWNUb2tlbg=="))
      }
     }
   }

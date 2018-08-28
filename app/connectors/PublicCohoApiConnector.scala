@@ -73,7 +73,7 @@ trait PublicCohoApiConnector extends AlertLogging {
     import play.api.http.Status.NO_CONTENT
 
     val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, appendAPIAuthHeader(hc, isScrs), s"$cohoPublicUrl/company/$crn")
+      case true => (httpProxy, createAPIAuthHeader(isScrs), s"$cohoPublicUrl/company/$crn")
       case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company-profile/$crn")
     }
 
@@ -92,7 +92,7 @@ trait PublicCohoApiConnector extends AlertLogging {
     import play.api.http.Status.NO_CONTENT
 
     val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl/company/$crn/officers")
+      case true => (httpProxy, createAPIAuthHeader(), s"$cohoPublicUrl/company/$crn/officers")
       case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company/$crn/officers")
     }
 
@@ -120,7 +120,7 @@ trait PublicCohoApiConnector extends AlertLogging {
     import play.api.http.Status.NO_CONTENT
 
     val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoPublicUrl$officerAppointmentUrl")
+      case true => (httpProxy, createAPIAuthHeader(), s"$cohoPublicUrl$officerAppointmentUrl")
       case false =>
         val (fName,lName) = getStubbedFirstAndLastName(officerAppointmentUrl)
         (httpNoProxy, hc, s"$cohoStubbedUrl/get-officer-appointment?fn=$fName&sn=$lName")
@@ -186,13 +186,12 @@ trait PublicCohoApiConnector extends AlertLogging {
 
   private[connectors] def useProxy: Boolean = featureSwitch.transactionalAPI.enabled
 
-  private[connectors] def appendAPIAuthHeader(hc: HeaderCarrier, isScrs: Boolean = true): HeaderCarrier = {
+  private[connectors] def createAPIAuthHeader(isScrs: Boolean = true): HeaderCarrier = {
     val encodedToken = if(isScrs) {
       Base64.encode(cohoPublicApiAuthToken.getBytes)
     } else {
       Base64.encode(nonSCRSPublicApiAuthToken.getBytes)
     }
-    Logger.debug(s"[Public API auth token] - $encodedToken")
-    hc.copy(authorization = Some(Authorization(s"Basic $encodedToken")))
+    HeaderCarrier(authorization = Some(Authorization(s"Basic $encodedToken")))
   }
 }

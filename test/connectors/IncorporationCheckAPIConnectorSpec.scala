@@ -29,6 +29,7 @@ import org.mockito.{ArgumentCaptor, Matchers}
 import play.api.libs.json.{JsValue, Json}
 import services.MetricsService
 import uk.gov.hmrc.http._
+import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.http.ws.{WSHttp, WSProxy}
 import utils.{FeatureSwitch, SCRSFeatureSwitches}
 
@@ -58,7 +59,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
     val connector = new IncorporationAPIConnector {
       val stubBaseUrl = stubUrlValue
       val cohoBaseUrl = cohoUrlValue
-      val cohoApiAuthToken = "c"
+      val cohoApiAuthToken = "CohoPublicToken"
       val itemsToFetch = "1"
       val httpNoProxy = mockHttp
       val httpProxy = mockHttpProxy
@@ -537,7 +538,6 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
   }
 
-
   "fetchTransactionalData" when {
 
     val transactionId = "12345"
@@ -595,6 +595,13 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
           verify(mockTimerContext, times(1)).stop()
         }
+      }
+    }
+  }
+  "createAPIAuthHeader" should {
+    "return a HeaderCarrier with the correct Bearer token" when {
+      "a request is made " in new Setup {
+        connector.createAPIAuthHeader.authorization shouldBe Some(Authorization("Bearer CohoPublicToken"))
       }
     }
   }
