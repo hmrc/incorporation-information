@@ -93,7 +93,7 @@ trait IncorporationAPIConnector extends AlertLogging {
     import play.api.http.Status.NO_CONTENT
 
     val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
+      case true => (httpProxy, createAPIAuthHeader, s"$cohoBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
       case false => (httpNoProxy, hc, s"$stubBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
     }
 
@@ -123,7 +123,7 @@ trait IncorporationAPIConnector extends AlertLogging {
     import play.api.http.Status.NO_CONTENT
 
     val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoBaseUrl/submissions${buildQueryString(timepoint, "1")}")
+      case true => (httpProxy, createAPIAuthHeader, s"$cohoBaseUrl/submissions${buildQueryString(timepoint, "1")}")
       case false => (httpNoProxy, hc, s"$stubBaseUrl/submissions${buildQueryString(timepoint, "1")}")
     }
 
@@ -141,7 +141,7 @@ trait IncorporationAPIConnector extends AlertLogging {
 
   def fetchTransactionalData(transactionID: String)(implicit hc: HeaderCarrier): Future[TransactionalAPIResponse] = {
     val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, appendAPIAuthHeader(hc), s"$cohoBaseUrl/submissionData/$transactionID")
+      case true => (httpProxy, createAPIAuthHeader, s"$cohoBaseUrl/submissionData/$transactionID")
       case false => (httpNoProxy, hc, s"$stubBaseUrl/fetch-data/$transactionID")
     }
 
@@ -200,8 +200,9 @@ trait IncorporationAPIConnector extends AlertLogging {
 
   private[connectors] def useProxy: Boolean = featureSwitch.transactionalAPI.enabled
 
-  private[connectors] def appendAPIAuthHeader(hc: HeaderCarrier): HeaderCarrier = {
-    hc.copy(authorization = Some(Authorization(s"Bearer $cohoApiAuthToken")))
+  private[connectors] def createAPIAuthHeader : HeaderCarrier = {
+    HeaderCarrier(authorization = Some(Authorization(s"Bearer $cohoApiAuthToken")))
+
   }
 
   private[connectors] def buildQueryString(timepoint: Option[String], itemsPerPage: String = "1") = {

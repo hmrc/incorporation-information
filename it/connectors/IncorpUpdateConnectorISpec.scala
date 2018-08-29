@@ -16,11 +16,13 @@
 
 package connectors
 
+import com.github.tomakehurst.wiremock.client.WireMock.{getRequestedFor, matching, urlMatching, verify}
 import helpers.IntegrationSpecBase
 import models.IncorpUpdate
 import org.joda.time.DateTime
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
+import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.http.{BadRequestException, HeaderCarrier}
 
 class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
@@ -28,7 +30,7 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
   val additionalConfiguration = Map(
     "metrics.enabled" -> true,
     "microservice.services.incorp-update-api.stub-url" -> s"http://${wiremockHost}:${wiremockPort}/incorporation-frontend-stubs",
-    "microservice.services.incorp-update-api.url" -> s"http://${wiremockHost}:${wiremockPort}",
+    "microservice.services.incorp-update-api.url" -> s"http://${wiremockHost}:${wiremockPort}/coho",
     "microservice.services.incorp-update-api.token" -> "N/A"
   )
 
@@ -38,9 +40,7 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
 
 
   "fetchTransactionalData" should {
-
     val transactionId = "12345"
-
     val destinationUrl = s"/incorporation-frontend-stubs/fetch-data/$transactionId"
 
     val responseOne = s"""{
@@ -64,16 +64,33 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
     val date = new DateTime(2016, 8, 10, 0, 0)
     val item1 = IncorpUpdate(transactionId, "accepted", Some("9999999999"), Some(date), "123456789", None)
 
-    "items from the sample response" in {
+    "items from the sample response keeping headers when getting from stub" in {
+      setupFeatures(transactionalAPI = false)
       stubGet("/incorporation-frontend-stubs/submissions.*", 200, responseOne)
+      val connector = app.injector.instanceOf[IncorporationAPIConnector]
+
+      val result = await(connector.checkForIncorpUpdate(None)(HeaderCarrier(authorization = Some(Authorization("foo")), extraHeaders = Seq("bar" -> "wizz"))))
+      result shouldBe Seq(item1)
+      verify(getRequestedFor(urlMatching("/incorporation-frontend-stubs/submissions.*"))
+        .withHeader("Authorization", matching("foo"))
+        .withHeader("bar", matching("wizz")))
+    }
+
+    "header carrier is reset when calling coho" in {
+      setupFeatures(transactionalAPI = true)
+      stubGet("/coho/submissions.*", 200, responseOne)
 
       val connector = app.injector.instanceOf[IncorporationAPIConnector]
 
-      val result = await(connector.checkForIncorpUpdate(None)(HeaderCarrier()))
+      val result = await(connector.checkForIncorpUpdate(None)(HeaderCarrier(authorization = Some(Authorization("foo")),extraHeaders = Seq("bar" -> "wizz"))))
       result shouldBe Seq(item1)
+      verify(getRequestedFor(urlMatching("/coho/submissions.*"))
+        .withHeader("Authorization", matching("Bearer N/A"))
+        .withoutHeader("bar"))
     }
 
     "Return no items if a 204 (no content) result is returned" in {
+      setupFeatures(transactionalAPI = false)
       stubGet("/incorporation-frontend-stubs/submissions.*", 204, "")
 
       val connector = app.injector.instanceOf[IncorporationAPIConnector]
@@ -84,14 +101,11 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
     }
 
     "Return no items if a 400 (bad request) result is returned" in {
+      setupFeatures(transactionalAPI = false)
       stubGet("/incorporation-frontend-stubs/submissions.*", 400, "")
-
       val connector = app.injector.instanceOf[IncorporationAPIConnector]
-
       val f = connector.checkForIncorpUpdate(None)(HeaderCarrier())
-
       val failure = intercept[IncorpUpdateAPIFailure]( await(f) )
-
       failure.ex shouldBe a[BadRequestException]
     }
 
