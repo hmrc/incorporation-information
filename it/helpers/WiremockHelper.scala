@@ -18,7 +18,6 @@ package helpers
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock._
-import com.github.tomakehurst.wiremock.common.ConsoleNotifier
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig
 import org.scalatestplus.play.OneServerPerSuite
 import play.api.libs.ws.WS
@@ -42,6 +41,7 @@ trait WiremockHelper {
   def startWiremock() = {
     wireMockServer.start()
     WireMock.configureFor(wiremockHost, wiremockPort)
+
   }
 
   def stopWiremock() = wireMockServer.stop()
@@ -65,6 +65,7 @@ trait WiremockHelper {
         aResponse().
           withStatus(status).
           withBody(responseBody)
+
       )
     )
 
