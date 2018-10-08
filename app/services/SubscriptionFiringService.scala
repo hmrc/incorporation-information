@@ -17,12 +17,11 @@
 package services
 
 import javax.inject.{Inject, Singleton}
-
 import config.MicroserviceConfig
 import connectors.FiringSubscriptionsConnector
 import models.{IncorpUpdateResponse, QueuedIncorpUpdate}
 import org.joda.time.DateTime
-import play.api.Logger
+import play.api.{Environment, Logger, Mode}
 import reactivemongo.api.commands.DefaultWriteResult
 import repositories._
 
@@ -34,7 +33,8 @@ import uk.gov.hmrc.http.HeaderCarrier
 class SubscriptionFiringServiceImpl @Inject()(fsConnector: FiringSubscriptionsConnector,
                                               injQueueRepo: QueueMongo,
                                               injSubRepo: SubscriptionsMongo,
-                                              config: MicroserviceConfig
+                                              config: MicroserviceConfig,
+                                              val env: Environment
                                              ) extends SubscriptionFiringService {
   override val firingSubsConnector = fsConnector
   override val queueRepository = injQueueRepo.repo
@@ -53,6 +53,7 @@ trait SubscriptionFiringService {
   val queueFailureDelay: Int
   val queueRetryDelay: Int
   val fetchSize: Int
+  val env: Environment
 
   implicit val hc: HeaderCarrier
 
@@ -109,13 +110,14 @@ trait SubscriptionFiringService {
     }
   }
 
-  private[services] def fireIncorpUpdate(iu: QueuedIncorpUpdate): Future[Boolean] = {
+  private[services] val httpHttpsConverter = (url: String) => if(env.mode == Mode.Prod) url.replace("http://", "https://").replace(":80", ":443") else url
 
+  private[services] def fireIncorpUpdate(iu: QueuedIncorpUpdate): Future[Boolean] = {
     subscriptionsRepository.getSubscriptions(iu.incorpUpdate.transactionId) flatMap { subscriptions =>
       Future.sequence( subscriptions map { sub =>
         val iuResponse: IncorpUpdateResponse = IncorpUpdateResponse(sub.regime, sub.subscriber, sub.callbackUrl, iu.incorpUpdate)
 
-        firingSubsConnector.connectToAnyURL(iuResponse, sub.callbackUrl)(hc) flatMap { response =>
+        firingSubsConnector.connectToAnyURL(iuResponse, httpHttpsConverter(sub.callbackUrl))(hc) flatMap { response =>
           Logger.info(s"[SubscriptionFiringService] [fireIncorpUpdate] - Posting response to callback for txid : ${iu.incorpUpdate.transactionId} was successful")
           response.status match {
             case 202 => {

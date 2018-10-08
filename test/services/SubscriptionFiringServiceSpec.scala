@@ -25,19 +25,20 @@ import org.mockito.Matchers.any
 import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.mock.MockitoSugar
+import play.api.{Environment, Mode}
 import reactivemongo.api.commands.DefaultWriteResult
 import repositories.{QueueRepository, SubscriptionsRepository}
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future
-import uk.gov.hmrc.http.{ HeaderCarrier, HttpResponse }
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 
 class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEach with JSONhelpers {
 
-  val mockFiringSubsConnector = mock[FiringSubscriptionsConnector]
-  val mockQueueRepository = mock[QueueRepository]
+  val mockFiringSubsConnector     = mock[FiringSubscriptionsConnector]
+  val mockQueueRepository         = mock[QueueRepository]
   val mockSubscriptionsRepository = mock[SubscriptionsRepository]
-
+  val mockEnvironment             = mock[Environment]
   implicit val hc = HeaderCarrier()
 
   override def beforeEach() {
@@ -48,12 +49,14 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
     reset(mockFiringSubsConnector)
     reset(mockQueueRepository)
     reset(mockSubscriptionsRepository)
+    reset(mockEnvironment)
   }
 
   trait mockService extends SubscriptionFiringService {
     val firingSubsConnector = mockFiringSubsConnector
     val queueRepository = mockQueueRepository
     val subscriptionsRepository = mockSubscriptionsRepository
+    override val env: Environment = mockEnvironment
     val queueFailureDelay = 10
     val queueRetryDelay = 5
     val fetchSize = 1
@@ -116,9 +119,27 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
       result shouldBe false
     }
   }
+  "httpHttpsConverter" should {
+    "convert a url to https if mode == Prod" in new Setup {
+      when(mockEnvironment.mode).thenReturn(Mode.Prod)
+      val expectedUrl = "https://foo"
+      service.httpHttpsConverter("http://foo") shouldBe expectedUrl
+    }
+    "convert a url to https and replace 443 if mode == prod" in new Setup {
+      when(mockEnvironment.mode).thenReturn(Mode.Prod)
+      val expectedUrl = "https://foo:443"
+      service.httpHttpsConverter("http://foo:80") shouldBe expectedUrl
+    }
+    "do not convert a url if Mode != Prod" in new Setup {
+      when(mockEnvironment.mode).thenReturn(Mode.Dev)
+      val expectedUrl = "http://foo:80"
+      service.httpHttpsConverter(expectedUrl) shouldBe expectedUrl
+    }
+  }
 
   "fireIncorpUpdate" should {
     "recover if an exception is thrown from the connector" in new Setup {
+      when(mockEnvironment.mode).thenReturn(Mode.Dev)
       when(mockSubscriptionsRepository.getSubscriptions(Matchers.any()))
         .thenReturn(Future.successful(Seq(sub)))
       when(mockFiringSubsConnector.connectToAnyURL(Matchers.any(), Matchers.any())(Matchers.any()))
@@ -129,6 +150,7 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
       verify(mockQueueRepository).updateTimestamp(Matchers.eq(sub.transactionId), Matchers.any())
     }
     "update timestamp if 202 is received from connector" in new Setup {
+      when(mockEnvironment.mode).thenReturn(Mode.Dev)
       when(mockSubscriptionsRepository.getSubscriptions(Matchers.any()))
         .thenReturn(Future.successful(Seq(sub)))
       when(mockFiringSubsConnector.connectToAnyURL(Matchers.any(), Matchers.any())(Matchers.any()))
@@ -140,6 +162,7 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
       verify(mockQueueRepository).updateTimestamp(Matchers.eq(sub.transactionId), Matchers.any())
     }
     "delete subscription when a 200 is received from connector" in new Setup {
+      when(mockEnvironment.mode).thenReturn(Mode.Dev)
       when(mockSubscriptionsRepository.getSubscriptions(Matchers.any()))
         .thenReturn(Future.successful(Seq(sub)))
       when(mockFiringSubsConnector.connectToAnyURL(Matchers.any(), Matchers.any())(Matchers.any()))

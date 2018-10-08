@@ -19,18 +19,16 @@ package apis
 import helpers.IntegrationSpecBase
 import models.{IncorpUpdate, IncorpUpdateResponse, QueuedIncorpUpdate, Subscription}
 import org.joda.time.DateTime
-import play.api.Application
+import play.api._
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.modules.reactivemongo.ReactiveMongoComponent
-import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo}
+import repositories.{QueueMongo, SubscriptionsMongo}
 import services.SubscriptionFiringService
 import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-
 class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
-
 
   val mockUrl = s"http://$wiremockHost:$wiremockPort"
 
@@ -42,14 +40,13 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
     "microservice.services.fire-subs-job.queueFetchSizes" -> s"2"
   )
 
-  override implicit lazy val app: Application = new GuiceApplicationBuilder()
+  override implicit lazy val app: Application = new GuiceApplicationBuilder(Environment.simple(mode = Mode.Test))
     .configure(fakeConfig(additionalConfiguration))
     .build
-
   lazy val reactiveMongoComponent = app.injector.instanceOf[ReactiveMongoComponent]
-
-
   class Setup {
+
+
     val subRepo = new SubscriptionsMongo(reactiveMongoComponent).repo
     val queueRepo = new QueueMongo(reactiveMongoComponent).repo
 
@@ -75,7 +72,6 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
     await(subRepo.drop)
     await(queueRepo.drop)
   }
-
   val incorpUpdate = IncorpUpdate("transId1", "awaiting", None, None, "timepoint", None)
   val incorpUpdate2 = IncorpUpdate("transId2", "awaiting", None, None, "timepoint", None)
   val incorpUpdate3 = IncorpUpdate("transId3", "awaiting", None, None, "timepoint", None)
@@ -93,8 +89,10 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
   // TODO - LJ - add scenario for ensuring failed updates get moved into the future
 
   "fireIncorpUpdateBatch" should {
+
     "return a Sequence of a true value when one queued incorp update has been successfully fired and both the " +
       "queued incorp update and the subscription have been deleted" in new Setup {
+
       insert(sub1c)
       subCount shouldBe 1
 
