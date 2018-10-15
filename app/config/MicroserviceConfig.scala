@@ -17,10 +17,11 @@
 package config
 
 import javax.inject.Inject
-
 import play.api.Logger
 import uk.gov.hmrc.play.config.inject.ServicesConfig
 import utils.Base64
+
+import scala.util.Try
 
 class MicroserviceConfigImpl @Inject()(val config: ServicesConfig) extends MicroserviceConfig
 
@@ -65,5 +66,8 @@ trait MicroserviceConfig {
 
   lazy val transactionIdToPoll: String = getConfigString("transaction-id-to-poll")
   lazy val crnToPoll: String = getConfigString("crn-to-poll")
+
+  lazy val useHttpsFireSubs: Boolean = Try(config.getBoolean("use-https-fire-subs")).recover{case _ => throw new Exception("use-https-fire-subs not found")}.get
+
 }
 
