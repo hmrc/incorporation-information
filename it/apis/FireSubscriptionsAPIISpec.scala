@@ -40,7 +40,7 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
     "microservice.services.fire-subs-job.queueFetchSizes" -> s"2"
   )
 
-  override implicit lazy val app: Application = new GuiceApplicationBuilder(Environment.simple(mode = Mode.Test))
+  override implicit lazy val app: Application = new GuiceApplicationBuilder()
     .configure(fakeConfig(additionalConfiguration))
     .build
   lazy val reactiveMongoComponent = app.injector.instanceOf[ReactiveMongoComponent]

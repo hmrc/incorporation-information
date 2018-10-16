@@ -38,7 +38,6 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
   val mockFiringSubsConnector     = mock[FiringSubscriptionsConnector]
   val mockQueueRepository         = mock[QueueRepository]
   val mockSubscriptionsRepository = mock[SubscriptionsRepository]
-  val mockEnvironment             = mock[Environment]
   implicit val hc = HeaderCarrier()
 
   override def beforeEach() {
@@ -49,14 +48,12 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
     reset(mockFiringSubsConnector)
     reset(mockQueueRepository)
     reset(mockSubscriptionsRepository)
-    reset(mockEnvironment)
   }
 
   trait mockService extends SubscriptionFiringService {
     val firingSubsConnector = mockFiringSubsConnector
     val queueRepository = mockQueueRepository
     val subscriptionsRepository = mockSubscriptionsRepository
-    override val env: Environment = mockEnvironment
     val queueFailureDelay = 10
     val queueRetryDelay = 5
     val fetchSize = 1
@@ -64,8 +61,10 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
     implicit val hc = HeaderCarrier()
   }
 
-  trait Setup {
-    val service = new mockService {}
+  class Setup(use: Boolean = false) {
+    val service = new mockService {
+      override val useHttpsFireSubs: Boolean = use
+    }
   }
 
   val incorpUpdate = IncorpUpdate("transId1", "awaiting", None, None, "timepoint", None)
@@ -120,18 +119,15 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
     }
   }
   "httpHttpsConverter" should {
-    "convert a url to https if mode == Prod" in new Setup {
-      when(mockEnvironment.mode).thenReturn(Mode.Prod)
+    "convert a url to https if useHttpsFireSubs == true" in new Setup(true) {
       val expectedUrl = "https://foo"
       service.httpHttpsConverter("http://foo") shouldBe expectedUrl
     }
-    "convert a url to https and replace 443 if mode == prod" in new Setup {
-      when(mockEnvironment.mode).thenReturn(Mode.Prod)
+    "convert a url to https and replace 443 if useHttpsFireSubs == true" in new Setup(true) {
       val expectedUrl = "https://foo:443"
       service.httpHttpsConverter("http://foo:80") shouldBe expectedUrl
     }
-    "do not convert a url if Mode != Prod" in new Setup {
-      when(mockEnvironment.mode).thenReturn(Mode.Dev)
+    "do not convert a url if useHttpsFireSubs == false" in new Setup(false) {
       val expectedUrl = "http://foo:80"
       service.httpHttpsConverter(expectedUrl) shouldBe expectedUrl
     }
@@ -139,7 +135,6 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
 
   "fireIncorpUpdate" should {
     "recover if an exception is thrown from the connector" in new Setup {
-      when(mockEnvironment.mode).thenReturn(Mode.Dev)
       when(mockSubscriptionsRepository.getSubscriptions(Matchers.any()))
         .thenReturn(Future.successful(Seq(sub)))
       when(mockFiringSubsConnector.connectToAnyURL(Matchers.any(), Matchers.any())(Matchers.any()))
@@ -150,7 +145,6 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
       verify(mockQueueRepository).updateTimestamp(Matchers.eq(sub.transactionId), Matchers.any())
     }
     "update timestamp if 202 is received from connector" in new Setup {
-      when(mockEnvironment.mode).thenReturn(Mode.Dev)
       when(mockSubscriptionsRepository.getSubscriptions(Matchers.any()))
         .thenReturn(Future.successful(Seq(sub)))
       when(mockFiringSubsConnector.connectToAnyURL(Matchers.any(), Matchers.any())(Matchers.any()))
@@ -162,7 +156,6 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
       verify(mockQueueRepository).updateTimestamp(Matchers.eq(sub.transactionId), Matchers.any())
     }
     "delete subscription when a 200 is received from connector" in new Setup {
-      when(mockEnvironment.mode).thenReturn(Mode.Dev)
       when(mockSubscriptionsRepository.getSubscriptions(Matchers.any()))
         .thenReturn(Future.successful(Seq(sub)))
       when(mockFiringSubsConnector.connectToAnyURL(Matchers.any(), Matchers.any())(Matchers.any()))
@@ -174,6 +167,4 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
       verify(mockSubscriptionsRepository).deleteSub(Matchers.eq(sub.transactionId), Matchers.any(), Matchers.any())
     }
   }
-
-
 }

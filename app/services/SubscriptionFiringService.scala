@@ -42,6 +42,7 @@ class SubscriptionFiringServiceImpl @Inject()(fsConnector: FiringSubscriptionsCo
   override val queueFailureDelay = config.queueFailureDelay
   override val queueRetryDelay = config.queueRetryDelay
   override val fetchSize = config.queueFetchSize
+  override val useHttpsFireSubs = config.useHttpsFireSubs
 
   implicit val hc = HeaderCarrier()
 }
@@ -53,7 +54,7 @@ trait SubscriptionFiringService {
   val queueFailureDelay: Int
   val queueRetryDelay: Int
   val fetchSize: Int
-  val env: Environment
+  val useHttpsFireSubs: Boolean
 
   implicit val hc: HeaderCarrier
 
@@ -110,7 +111,7 @@ trait SubscriptionFiringService {
     }
   }
 
-  private[services] val httpHttpsConverter = (url: String) => if(env.mode == Mode.Prod) url.replace("http://", "https://").replace(":80", ":443") else url
+  private[services] val httpHttpsConverter = (url: String) => if(useHttpsFireSubs) url.replace("http://", "https://").replace(":80", ":443") else url
 
   private[services] def fireIncorpUpdate(iu: QueuedIncorpUpdate): Future[Boolean] = {
     subscriptionsRepository.getSubscriptions(iu.incorpUpdate.transactionId) flatMap { subscriptions =>
