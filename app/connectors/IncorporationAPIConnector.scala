@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,9 @@
 
 package connectors
 
-import javax.inject.{Inject, Singleton}
-
-import com.codahale.metrics.{Counter, Timer}
+import com.codahale.metrics.Counter
 import config.{MicroserviceConfig, WSHttp, WSHttpProxy}
+import javax.inject.{Inject, Singleton}
 import models.IncorpUpdate
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
@@ -31,7 +30,7 @@ import uk.gov.hmrc.http._
 import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 import uk.gov.hmrc.play.http.ws.WSProxy
-import utils.{AlertLogging, PagerDutyKeys, SCRSFeatureSwitches}
+import utils.{AlertLogging, DateCalculators, PagerDutyKeys, SCRSFeatureSwitches}
 
 import scala.concurrent.Future
 import scala.util.control.NoStackTrace
@@ -53,7 +52,8 @@ object IncorpUpdatesResponse {
 
 @Singleton
 class IncorporationAPIConnectorImpl @Inject()(config: MicroserviceConfig,
-                                              injMetricsService: MetricsService) extends IncorporationAPIConnector {
+                                              injMetricsService: MetricsService,
+                                              val dateCalculators:DateCalculators) extends IncorporationAPIConnector {
   val stubBaseUrl = config.incorpFrontendStubUrl
   val cohoBaseUrl = config.companiesHouseUrl
   val cohoApiAuthToken = config.incorpUpdateCohoApiAuthToken

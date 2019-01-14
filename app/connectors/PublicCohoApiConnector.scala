@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 package connectors
 
 import javax.inject.Inject
-
 import com.codahale.metrics.Counter
 import com.ning.http.util.Base64
 import config.{MicroserviceConfig, WSHttp, WSHttpProxy}
@@ -27,13 +26,14 @@ import services.MetricsService
 import uk.gov.hmrc.http._
 import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.http.ws.WSProxy
-import utils.{AlertLogging, PagerDutyKeys, SCRSFeatureSwitches}
+import utils.{AlertLogging, DateCalculators, PagerDutyKeys, SCRSFeatureSwitches}
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 
 import scala.concurrent.Future
 
 
-class PublicCohoApiConnectorImpl @Inject()(config: MicroserviceConfig, injMetricsService: MetricsService) extends PublicCohoApiConnector {
+class PublicCohoApiConnectorImpl @Inject()(config: MicroserviceConfig, injMetricsService: MetricsService,
+                                           val dateCalculators: DateCalculators) extends PublicCohoApiConnector {
 
   protected def httpProxy: WSHttpProxy.type = WSHttpProxy
   protected def httpNoProxy: WSHttp.type = WSHttp

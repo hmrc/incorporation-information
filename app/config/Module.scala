@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import repositories._
 import services._
 import uk.gov.hmrc.play.config.inject.{DefaultServicesConfig, ServicesConfig}
 import uk.gov.hmrc.play.scheduling.ScheduledJob
+import utils.{DateCalculators, DateCalculatorsImpl}
 
 class Module extends AbstractModule {
 
@@ -55,6 +56,8 @@ class Module extends AbstractModule {
     bind(classOf[MetricsService]).to(classOf[MetricsServiceImpl])
     bind(classOf[ProactiveMonitoringService]).to(classOf[ProactiveMonitoringServiceImpl])
 
+    // utils
+    bind(classOf[DateCalculators]).to(classOf[DateCalculatorsImpl]).asEagerSingleton()
     // jobs
     bind(classOf[ScheduledJob]).annotatedWith(Names.named("incorp-update-job")).to(classOf[IncorpUpdatesJobImpl])
     bind(classOf[ScheduledJob]).annotatedWith(Names.named("fire-subs-job")).to(classOf[FireSubscriptionsJobImpl])

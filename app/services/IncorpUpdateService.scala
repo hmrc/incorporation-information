@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,22 +16,20 @@
 
 package services
 
-import java.time.LocalTime
-import javax.inject.{Inject, Provider, Singleton}
-
 import config.MicroserviceConfig
 import connectors.IncorporationAPIConnector
-import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
-import play.api.Logger
-import repositories._
-import repositories.{IncorpUpdateRepository, InsertResult, TimepointRepository}
+import javax.inject.{Inject, Provider, Singleton}
+import models.{IncorpUpdate, QueuedIncorpUpdate}
 import org.joda.time.DateTime
+import play.api.Logger
 import reactivemongo.api.commands.UpdateWriteResult
-import utils.DateCalculators
+import repositories.{IncorpUpdateRepository, InsertResult, TimepointRepository, _}
+import uk.gov.hmrc.http.HeaderCarrier
+import utils.{AlertLogging, DateCalculators, PagerDutyKeys}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import uk.gov.hmrc.http.HeaderCarrier
+import scala.util.Try
 
 @Singleton
 class IncorpUpdateServiceImpl @Inject()(injConnector: IncorporationAPIConnector,
@@ -39,27 +37,30 @@ class IncorpUpdateServiceImpl @Inject()(injConnector: IncorporationAPIConnector,
                                         injTimepointRepo: TimepointMongo,
                                         injQueueRepo: QueueMongo,
                                         injSubscriptionService : Provider[SubscriptionService],
-                                        config: MicroserviceConfig
+                                        config: MicroserviceConfig,
+                                        val dateCalculators: DateCalculators,
+                                        val poo:DateCalculators
                                        ) extends IncorpUpdateService {
   override val incorporationCheckAPIConnector = injConnector
   override val incorpUpdateRepository = injIncorpRepo.repo
   override val timepointRepository = injTimepointRepo.repo
   override val queueRepository = injQueueRepo.repo
   override val subscriptionService = injSubscriptionService.get()
-  override val noRAILoggingDay = config.noRegisterAnInterestLoggingDay
-  override val noRAILoggingTime = config.noRegisterAnInterestLoggingTime
+  override val loggingDays = config.noRegisterAnInterestLoggingDay
+  override val loggingTimes = config.noRegisterAnInterestLoggingTime
 
 }
 
-trait IncorpUpdateService extends {
+trait IncorpUpdateService extends AlertLogging {
 
   val incorporationCheckAPIConnector: IncorporationAPIConnector
   val incorpUpdateRepository: IncorpUpdateRepository
   val timepointRepository: TimepointRepository
   val queueRepository: QueueRepository
   val subscriptionService: SubscriptionService
-  val noRAILoggingDay: String
-  val noRAILoggingTime: String
+  val loggingDays: String
+  val loggingTimes: String
+  val dateCalculators: DateCalculators
 
   private[services] def fetchIncorpUpdates(implicit hc: HeaderCarrier): Future[Seq[IncorpUpdate]] = {
     for {
@@ -114,7 +115,24 @@ trait IncorpUpdateService extends {
     } map { _.sum }
   }
 
-  private[services] def latestTimepoint(items: Seq[IncorpUpdate]): String = items.reverse.head.timepoint
+  private[services] def timepointValidator(timePoint:String): Boolean = {
+    Try(dateCalculators.dateGreaterThanNow(timePoint)).getOrElse {
+      Logger.info(s"couldn't parse $timePoint")
+      true }
+  }
+
+
+  private[services] def latestTimepoint(items: Seq[IncorpUpdate]): String = {
+
+    val log = (badTimePoint: Boolean) => (timepoint:String) =>
+      if(badTimePoint) {
+        Logger.error(s"${PagerDutyKeys.TIMEPOINT_INVALID} - last timepoint received from coho invalid: $timepoint")
+      } else {()}
+    val tp = items.reverse.head.timepoint
+    val shouldLog = timepointValidator(tp)
+    log(shouldLog)(tp)
+    tp
+  }
 
   // TODO - look to refactor this into a simpler for-comprehension
   def updateNextIncorpUpdateJobLot(implicit hc: HeaderCarrier): Future[InsertResult] = {
@@ -213,11 +231,6 @@ trait IncorpUpdateService extends {
     }
 
     Future.sequence(tps.map(processAllTPs))
-  }
-
-  def inWorkingHours: Boolean = {
-    DateCalculators.loggingDay(noRAILoggingDay, DateCalculators.getTheDay(DateTime.now)) &&
-      DateCalculators.loggingTime(noRAILoggingTime, LocalTime.now)
   }
 
   def createQueuedIncorpUpdates(incorpUpdates: Seq[IncorpUpdate], delayInMinutes: Option[Int] = None): Seq[QueuedIncorpUpdate] = {

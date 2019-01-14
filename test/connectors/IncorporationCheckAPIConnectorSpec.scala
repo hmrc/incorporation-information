@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import services.MetricsService
 import uk.gov.hmrc.http._
 import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.http.ws.{WSHttp, WSProxy}
-import utils.{FeatureSwitch, SCRSFeatureSwitches}
+import utils.{DateCalculators, FeatureSwitch, SCRSFeatureSwitches}
 
 import scala.concurrent.Future
 
@@ -57,6 +57,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
     reset(mockHttp, mockHttpProxy, mockTimerContext, mockIncorporationCheckAPIConnector)
 
     val connector = new IncorporationAPIConnector {
+      override val dateCalculators: DateCalculators = new DateCalculators {}
       val stubBaseUrl = stubUrlValue
       val cohoBaseUrl = cohoUrlValue
       val cohoApiAuthToken = "CohoPublicToken"

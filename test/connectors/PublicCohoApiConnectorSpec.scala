@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import play.api.libs.json.Json
 import services.MetricsService
 import uk.gov.hmrc.play.http._
 import uk.gov.hmrc.play.http.ws.{WSHttp, WSProxy}
-import utils.{FeatureSwitch, SCRSFeatureSwitches}
+import utils.{DateCalculators, FeatureSwitch, SCRSFeatureSwitches}
 
 import scala.concurrent.Future
 import uk.gov.hmrc.http._
@@ -56,6 +56,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
     reset(mockHttp, mockHttpProxy, mockTimerContext)
 
     val connector = new PublicCohoApiConnector {
+      override val dateCalculators: DateCalculators = new DateCalculators {}
       val incorpFrontendStubUrl = "incorp FE Stub"
       val cohoPublicUrl = "Coho public url"
       val cohoPublicApiAuthToken = "CohoPublicToken"
