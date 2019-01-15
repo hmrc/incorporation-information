@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,27 +19,40 @@ package utils
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
+import javax.inject.Inject
+import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, DateTimeZone}
+import play.api.Logger
 
 
-object DateCalculators {
+class DateCalculatorsImpl @Inject()() extends DateCalculators
+
+trait DateCalculators {
 
   def getCurrentDay: String = {
-    DateTime
-      .now(DateTimeZone.UTC)
+    getDateNow
       .dayOfWeek()
       .getAsText()
-      .substring(0,3)
+      .substring(0, 3)
       .toUpperCase
   }
 
+  def getDateNow: DateTime = DateTime.now(DateTimeZone.UTC)
   def getCurrentTime: LocalTime = LocalTime.now
-
-  def getTheDay(nowDateTime: DateTime): String = {
-    nowDateTime.dayOfWeek().getAsText().substring(0,3).toUpperCase
+  val cohoStringToDateTime:String => DateTime = (cohoString:String) => if(cohoString.size < 17) {
+    throw new Exception(s"timepoint is not 17 characters it is ${cohoString.size}")
+  } else {
+    DateTimeFormat.forPattern("yyyyMMddHHmmssSSS").parseDateTime(cohoString)
+  }
+  val dateGreaterThanNow: String => Boolean = (dateToCompare: String) => {
+    cohoStringToDateTime(dateToCompare).getMillis > getDateNow.getMillis
   }
 
-  def loggingDay(validLoggingDays: String,todaysDate: String): Boolean = {
+  def getTheDay(nowDateTime: DateTime): String = {
+    nowDateTime.dayOfWeek().getAsText().substring(0, 3).toUpperCase
+  }
+
+  def loggingDay(validLoggingDays: String, todaysDate: String): Boolean = {
     validLoggingDays.split(",").contains(todaysDate)
   }
 

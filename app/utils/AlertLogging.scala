@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package utils
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
-import DateCalculators.{getCurrentDay, getCurrentTime}
+
 import play.api.Logger
 
 object PagerDutyKeys extends Enumeration {
@@ -33,9 +33,11 @@ object PagerDutyKeys extends Enumeration {
   val COHO_PUBLIC_API_SERVICE_UNAVAILABLE = Value
   val COHO_PUBLIC_API_GATEWAY_TIMEOUT = Value
   val COHO_PUBLIC_API_5XX = Value
+  val TIMEPOINT_INVALID = Value
 }
 
 trait AlertLogging {
+  val dateCalculators: DateCalculators
 
   protected val loggingDays: String
   protected val loggingTimes: String
@@ -47,9 +49,9 @@ trait AlertLogging {
 
   def inWorkingHours: Boolean = isLoggingDay && isBetweenLoggingTimes
 
-  private[utils] def today: String = getCurrentDay
+  private[utils] def today: String = dateCalculators.getCurrentDay
 
-  private[utils] def now: LocalTime = getCurrentTime
+  private[utils] def now: LocalTime = dateCalculators.getCurrentTime
 
   private[utils] def isLoggingDay = loggingDays.split(",").contains(today)
 
