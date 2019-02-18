@@ -17,7 +17,6 @@
 package controllers.test
 
 import javax.inject.{Inject, Singleton}
-
 import play.api.Logger
 import play.api.libs.json.JsObject
 import play.api.mvc.Action

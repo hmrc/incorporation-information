@@ -17,14 +17,13 @@
 package jobs
 
 import javax.inject.{Inject, Singleton}
-
 import org.joda.time.Duration
 import play.api.Logger
+import play.modules.reactivemongo.MongoDbConnection
 import services.MetricsService
 import uk.gov.hmrc.lock.{LockKeeper, LockRepository}
 import uk.gov.hmrc.play.scheduling.ExclusiveScheduledJob
 import utils.SCRSFeatureSwitches
-import play.modules.reactivemongo.MongoDbConnection
 
 import scala.concurrent.{ExecutionContext, Future}
 

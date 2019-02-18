@@ -23,8 +23,8 @@ import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import org.mockito.Matchers
 import org.mockito.Matchers.{any, eq => eqTo}
-import play.api.libs.json._
 import org.mockito.Mockito._
+import play.api.libs.json._
 import repositories.IncorpUpdateRepository
 import utils.TimestampFormats
 

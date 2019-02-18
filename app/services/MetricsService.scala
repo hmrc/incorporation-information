@@ -16,12 +16,10 @@
 
 package services
 
-import javax.inject.Inject
-
-import com.kenshoo.play.metrics.{Metrics, MetricsDisabledException}
 import com.codahale.metrics.{Counter, Gauge, Timer}
+import com.kenshoo.play.metrics.{Metrics, MetricsDisabledException}
+import javax.inject.Inject
 import play.api.Logger
-import play.mvc.Result
 import repositories._
 
 import scala.concurrent.ExecutionContext.Implicits.global

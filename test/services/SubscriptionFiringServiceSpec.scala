@@ -25,13 +25,12 @@ import org.mockito.Matchers.any
 import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.mock.MockitoSugar
-import play.api.{Environment, Mode}
 import reactivemongo.api.commands.DefaultWriteResult
 import repositories.{QueueRepository, SubscriptionsRepository}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 
 class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEach with JSONhelpers {
 

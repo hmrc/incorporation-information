@@ -19,7 +19,7 @@ package utils
 import org.joda.time.DateTime
 import org.scalatest.BeforeAndAfterEach
 import uk.gov.hmrc.play.test.UnitSpec
-import SCRSFeatureSwitches._
+import utils.SCRSFeatureSwitches._
 
 class FeatureSwitchSpec extends UnitSpec with BeforeAndAfterEach {
 

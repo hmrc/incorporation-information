@@ -19,8 +19,8 @@ package Helpers
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import org.scalatest.mock.MockitoSugar
-import uk.gov.hmrc.play.test.UnitSpec
 import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.play.test.UnitSpec
 
 trait SCRSSpec extends UnitSpec with MockitoSugar {
 

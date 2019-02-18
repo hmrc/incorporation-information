@@ -17,15 +17,14 @@
 package repositories
 
 import javax.inject.{Inject, Singleton}
-
 import models.QueuedIncorpUpdate
 import org.joda.time.DateTime
 import play.api.Logger
-import play.api.libs.json.{Format, JsObject, Json}
+import play.api.libs.json.{Format, Json}
 import play.modules.reactivemongo.ReactiveMongoComponent
-import reactivemongo.api.{DB, ReadPreference}
 import reactivemongo.api.indexes.{Index, IndexType}
-import reactivemongo.bson.{BSONDocument, BSONLong, BSONObjectID}
+import reactivemongo.api.{DB, ReadPreference}
+import reactivemongo.bson.{BSONDocument, BSONObjectID}
 import reactivemongo.core.errors.DatabaseException
 import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats

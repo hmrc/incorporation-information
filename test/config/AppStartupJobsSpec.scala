@@ -18,13 +18,13 @@ package config
 
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
 import org.joda.time.DateTime
+import org.mockito.Matchers.{any, eq => eqTo}
+import org.mockito.Mockito._
+import org.scalatest.concurrent.Eventually
 import org.scalatest.mock.MockitoSugar
 import play.api.{Configuration, Logger}
 import repositories._
 import uk.gov.hmrc.play.test.{LogCapturing, UnitSpec}
-import org.mockito.Mockito._
-import org.mockito.Matchers.{any, eq => eqTo}
-import org.scalatest.concurrent.Eventually
 
 import scala.concurrent.Future
 

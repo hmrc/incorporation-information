@@ -21,7 +21,6 @@ import controllers.SubscriptionController
 import models.Subscription
 import org.mockito.Mockito._
 import reactivemongo.api.commands.{DefaultWriteResult, WriteError}
-import repositories._
 import services.SubscriptionService
 
 import scala.concurrent.ExecutionContext.Implicits.global

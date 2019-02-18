@@ -16,9 +16,9 @@
 
 package controllers
 
-import javax.inject.Inject
 import config.MicroserviceConfig
 import connectors.PublicCohoApiConnector
+import javax.inject.Inject
 import models.IncorpUpdate
 import play.api.Logger
 import play.api.libs.json.Json
@@ -28,7 +28,6 @@ import services.{TransactionalService, TransactionalServiceException}
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 
 
 class TransactionalControllerImpl @Inject()(config: MicroserviceConfig,

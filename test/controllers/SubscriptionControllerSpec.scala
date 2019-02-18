@@ -16,20 +16,20 @@
 
 package controllers
 
-import models.{IncorpUpdate, Subscription}
 import Helpers.{JSONhelpers, SCRSSpec}
+import models.{IncorpUpdate, Subscription}
 import org.joda.time.DateTime
 import org.mockito.Matchers
-import services.SubscriptionService
-import org.mockito.Mockito._
 import org.mockito.Matchers.{any, eq => eqTo}
+import org.mockito.Mockito._
+import play.api.libs.json.{JsObject, Json}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import play.api.libs.json.{JsObject, Json}
 import repositories._
+import services.SubscriptionService
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
 

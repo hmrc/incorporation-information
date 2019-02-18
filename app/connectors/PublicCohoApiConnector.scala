@@ -16,18 +16,18 @@
 
 package connectors
 
-import javax.inject.Inject
 import com.codahale.metrics.Counter
 import com.ning.http.util.Base64
 import config.{MicroserviceConfig, WSHttp, WSHttpProxy}
+import javax.inject.Inject
 import play.api.Logger
 import play.api.libs.json.JsValue
 import services.MetricsService
 import uk.gov.hmrc.http._
 import uk.gov.hmrc.http.logging.Authorization
+import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 import uk.gov.hmrc.play.http.ws.WSProxy
 import utils.{AlertLogging, DateCalculators, PagerDutyKeys, SCRSFeatureSwitches}
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 
 import scala.concurrent.Future
 
@@ -36,12 +36,13 @@ class PublicCohoApiConnectorImpl @Inject()(config: MicroserviceConfig, injMetric
                                            val dateCalculators: DateCalculators) extends PublicCohoApiConnector {
 
   protected def httpProxy: WSHttpProxy.type = WSHttpProxy
+
   protected def httpNoProxy: WSHttp.type = WSHttp
 
   protected val featureSwitch: SCRSFeatureSwitches.type = SCRSFeatureSwitches
 
-  protected val incorpFrontendStubUrl: String =  config.incorpFrontendStubUrl
-  protected val cohoPublicUrl: String =  config.cohoPublicBaseUrl
+  protected val incorpFrontendStubUrl: String = config.incorpFrontendStubUrl
+  protected val cohoPublicUrl: String = config.cohoPublicBaseUrl
   protected val cohoPublicApiAuthToken: String = config.cohoPublicApiAuthToken
   protected val nonSCRSPublicApiAuthToken: String = config.nonSCRSPublicApiAuthToken
   protected val cohoStubbedUrl: String = config.cohoStubbedUrl
@@ -57,14 +58,15 @@ class PublicCohoApiConnectorImpl @Inject()(config: MicroserviceConfig, injMetric
 trait PublicCohoApiConnector extends AlertLogging {
 
   protected def httpProxy: CoreGet with WSProxy
+
   protected def httpNoProxy: CoreGet
 
   protected val featureSwitch: SCRSFeatureSwitches
-  protected val incorpFrontendStubUrl : String
+  protected val incorpFrontendStubUrl: String
   protected val cohoPublicUrl: String
   protected val cohoPublicApiAuthToken: String
   protected val nonSCRSPublicApiAuthToken: String
-  protected val cohoStubbedUrl:String
+  protected val cohoStubbedUrl: String
   protected val metrics: MetricsService
   protected val successCounter: Counter
   protected val failureCounter: Counter
@@ -85,7 +87,7 @@ trait PublicCohoApiConnector extends AlertLogging {
             case _ => Some(res.json)
           }
       }
-    } recover handleGetCompanyProfileError(crn)
+    } recover handleGetCompanyProfileError(crn, isScrs)
   }
 
   def getOfficerList(crn: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
@@ -109,9 +111,9 @@ trait PublicCohoApiConnector extends AlertLogging {
 
 
   def getStubbedFirstAndLastName(url: String): (String, String) = {
-    val nUrl = url.replace("appointments", "").replaceAll("[`*{}\\[\\]()>#+:~'%^&@<?;,\"!$=|./_]","")
+    val nUrl = url.replace("appointments", "").replaceAll("[`*{}\\[\\]()>#+:~'%^&@<?;,\"!$=|./_]", "")
     nUrl.length match {
-      case x if x > 15 => (nUrl.takeRight(15),nUrl.take(15))
+      case x if x > 15 => (nUrl.takeRight(15), nUrl.take(15))
       case _ => ("testFirstName", "testSurname")
     }
   }
@@ -122,7 +124,7 @@ trait PublicCohoApiConnector extends AlertLogging {
     val (http, realHc, url) = useProxy match {
       case true => (httpProxy, createAPIAuthHeader(), s"$cohoPublicUrl$officerAppointmentUrl")
       case false =>
-        val (fName,lName) = getStubbedFirstAndLastName(officerAppointmentUrl)
+        val (fName, lName) = getStubbedFirstAndLastName(officerAppointmentUrl)
         (httpNoProxy, hc, s"$cohoStubbedUrl/get-officer-appointment?fn=$fName&sn=$lName")
     }
 
@@ -140,10 +142,15 @@ trait PublicCohoApiConnector extends AlertLogging {
     } recover handleOfficerAppointmentsError(url)
   }
 
-  private def handleGetCompanyProfileError(crn: String): PartialFunction[Throwable, Option[JsValue]] = {
+  private def handleGetCompanyProfileError(crn: String, isScrs: Boolean): PartialFunction[Throwable, Option[JsValue]] = {
     case _: NotFoundException =>
-      pagerduty(PagerDutyKeys.COHO_PUBLIC_API_NOT_FOUND, Some(s"Could not find company data for CRN - $crn"))
-      None
+      if (isScrs) {
+        pagerduty(PagerDutyKeys.COHO_PUBLIC_API_NOT_FOUND, Some(s"Could not find company data for CRN - $crn"))
+        None
+      } else {
+        Logger.info(s"Could not find company data for CRN - $crn")
+        None
+      }
     case ex: Upstream4xxResponse =>
       pagerduty(PagerDutyKeys.COHO_PUBLIC_API_4XX, Some(s"Returned status code: ${ex.upstreamResponseCode} for $crn - reason: ${ex.getMessage}"))
       None
@@ -172,6 +179,7 @@ trait PublicCohoApiConnector extends AlertLogging {
       Logger.info(s"[PublicCohoApiConnector] [getOfficerList] - Failed for $crn - reason: ${ex.getMessage}")
       None
   }
+
   private def handleOfficerAppointmentsError(officerId: String): PartialFunction[Throwable, JsValue] = {
     case ex: NotFoundException =>
       Logger.info(s"[PublicCohoApiConnector] [getOfficerAppointments] - Could not find officer appointment for Officer ID  - $officerId")
@@ -187,7 +195,7 @@ trait PublicCohoApiConnector extends AlertLogging {
   private[connectors] def useProxy: Boolean = featureSwitch.transactionalAPI.enabled
 
   private[connectors] def createAPIAuthHeader(isScrs: Boolean = true): HeaderCarrier = {
-    val encodedToken = if(isScrs) {
+    val encodedToken = if (isScrs) {
       Base64.encode(cohoPublicApiAuthToken.getBytes)
     } else {
       Base64.encode(nonSCRSPublicApiAuthToken.getBytes)

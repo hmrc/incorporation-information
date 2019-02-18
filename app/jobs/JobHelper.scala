@@ -20,8 +20,8 @@ import org.joda.time.Duration
 import play.api.Logger
 import reactivemongo.api.DefaultDB
 import uk.gov.hmrc.lock.{LockKeeper, LockRepository}
-import utils.FeatureSwitch
 import uk.gov.hmrc.play.scheduling.ExclusiveScheduledJob
+import utils.FeatureSwitch
 
 import scala.concurrent.{ExecutionContext, Future}
 

@@ -16,9 +16,8 @@
 
 package services
 
-import javax.inject.Inject
-
 import connectors._
+import javax.inject.Inject
 import play.api.Logger
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
