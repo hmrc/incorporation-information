@@ -22,7 +22,6 @@ import connectors._
 import controllers.test._
 import controllers.{SubscriptionController, SubscriptionControllerImpl, TransactionalController, TransactionalControllerImpl}
 import jobs.{FireSubscriptionsJobImpl, IncorpUpdatesJobImpl, MetricsJobImpl, ProactiveMonitoringJobImpl}
-import repositories._
 import services._
 import uk.gov.hmrc.play.config.inject.{DefaultServicesConfig, ServicesConfig}
 import uk.gov.hmrc.play.scheduling.ScheduledJob

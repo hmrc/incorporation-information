@@ -16,9 +16,10 @@
 
 package jobs
 
-import uk.gov.hmrc.play.config.ServicesConfig
-import scala.concurrent.duration.{Duration => ScalaDuration, FiniteDuration}
 import org.joda.time.{Duration => JodaDuration}
+import uk.gov.hmrc.play.config.ServicesConfig
+
+import scala.concurrent.duration.{FiniteDuration, Duration => ScalaDuration}
 
 trait JobConfig extends ServicesConfig {
 

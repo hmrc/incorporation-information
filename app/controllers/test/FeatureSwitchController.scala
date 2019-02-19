@@ -17,11 +17,10 @@
 package controllers.test
 
 import javax.inject.Inject
-
 import play.api.Logger
 import play.api.mvc.Action
 import uk.gov.hmrc.play.microservice.controller.BaseController
-import utils.{SCRSFeatureSwitches, FeatureSwitch}
+import utils.{FeatureSwitch, SCRSFeatureSwitches}
 
 import scala.concurrent.Future
 

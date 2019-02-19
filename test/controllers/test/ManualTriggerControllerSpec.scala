@@ -17,12 +17,13 @@
 package controllers.test
 
 import Helpers.SCRSSpec
+import constants.JobNames._
+import org.mockito.Matchers.any
+import org.mockito.Mockito._
 import play.api.test.FakeRequest
 import uk.gov.hmrc.play.scheduling.ScheduledJob
-import org.mockito.Mockito._
-import org.mockito.Matchers.any
+
 import scala.concurrent.Future
-import constants.JobNames._
 
 class ManualTriggerControllerSpec extends SCRSSpec {
 

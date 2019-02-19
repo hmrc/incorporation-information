@@ -22,7 +22,6 @@ import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, DateTimeZone}
-import play.api.Logger
 
 
 class DateCalculatorsImpl @Inject()() extends DateCalculators

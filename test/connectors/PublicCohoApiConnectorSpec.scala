@@ -23,17 +23,19 @@ import com.codahale.metrics.{Counter, Timer}
 import mocks.MockMetrics
 import org.mockito.Mockito._
 import org.mockito.{ArgumentCaptor, Matchers}
+import org.scalatest.concurrent.Eventually
+import play.api.Logger
 import play.api.libs.json.Json
 import services.MetricsService
-import uk.gov.hmrc.play.http._
+import uk.gov.hmrc.http._
+import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.http.ws.{WSHttp, WSProxy}
+import uk.gov.hmrc.play.test.LogCapturing
 import utils.{DateCalculators, FeatureSwitch, SCRSFeatureSwitches}
 
 import scala.concurrent.Future
-import uk.gov.hmrc.http._
-import uk.gov.hmrc.http.logging.Authorization
 
-class PublicCohoApiConnectorSpec extends SCRSSpec {
+class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventually {
 
   val testProxyUrl = "testIIUrl/incorporation-frontend-stubs"
   implicit val hc = HeaderCarrier()
@@ -126,7 +128,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
       verify(mockTimerContext, times(1)).stop()
     }
 
-    "report an error when receiving a 404" in new Setup {
+    "report an error when receiving a 404 and isSCRS is true" in new Setup {
       val url = s"$cohoPublicUrlValue"
 
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
@@ -134,9 +136,27 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
       when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
         .thenReturn(Future.failed(new NotFoundException("404")))
 
-      val result = await(connector.getCompanyProfile(testCrn))
+      withCaptureOfLoggingFrom(Logger) { logEvents =>
+        await(connector.getCompanyProfile(testCrn, isScrs = true)) shouldBe None
+        logEvents.map(_.getMessage) shouldBe List("COHO_PUBLIC_API_NOT_FOUND - Could not find company data for CRN - 1234567890")
+        logEvents.size shouldBe 1
+      }
+      urlCaptor.getValue shouldBe "stubbed/company-profile/1234567890"
+    }
 
-      result shouldBe None
+    "report an error when receiving a 404 and isSCRS is false" in new Setup {
+      val url = s"$cohoPublicUrlValue"
+
+      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
+
+      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
+        .thenReturn(Future.failed(new NotFoundException("404")))
+
+      withCaptureOfLoggingFrom(Logger) { logEvents =>
+        await(connector.getCompanyProfile(testCrn, isScrs = false)) shouldBe None
+        logEvents.map(_.getMessage) shouldBe List("Could not find company data for CRN - 1234567890")
+        logEvents.size shouldBe 1
+      }
 
       urlCaptor.getValue shouldBe "stubbed/company-profile/1234567890"
     }
@@ -393,4 +413,5 @@ class PublicCohoApiConnectorSpec extends SCRSSpec {
      }
     }
   }
+
 }

@@ -16,16 +16,14 @@
 
 package controllers.test
 
-import javax.inject.{Singleton, Named, Inject}
-
+import constants.JobNames._
+import javax.inject.{Inject, Named, Singleton}
 import play.api.Logger
 import play.api.mvc.Action
 import uk.gov.hmrc.play.microservice.controller.BaseController
-import uk.gov.hmrc.play.scheduling.{ScheduledJob, ExclusiveScheduledJob}
+import uk.gov.hmrc.play.scheduling.ScheduledJob
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import constants.JobNames._
-
 import scala.concurrent.Future
 
 @Singleton

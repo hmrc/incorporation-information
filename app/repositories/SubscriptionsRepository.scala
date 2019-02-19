@@ -17,9 +17,7 @@
 package repositories
 
 import javax.inject.{Inject, Singleton}
-
 import models.{IncorpUpdate, Subscription}
-import play.api.libs.json.JsString
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DB
 import reactivemongo.api.commands._
@@ -120,7 +118,7 @@ class SubscriptionsMongoRepository(mongo: () => DB) extends ReactiveRepository[S
   def getSubscriptionStats(): Future[Map[String, Int]] = {
 
     import play.api.libs.json._
-    import reactivemongo.json.collection.JSONBatchCommands.AggregationFramework.{Group, Match, SumValue, Project}
+    import reactivemongo.json.collection.JSONBatchCommands.AggregationFramework.{Group, Match, Project, SumValue}
 
     // needed to make it pick up the index
     val matchQuery = Match(Json.obj("regime" -> Json.obj("$ne" -> "")))

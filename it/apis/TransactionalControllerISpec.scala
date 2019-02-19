@@ -16,11 +16,10 @@
 
 package apis
 
-import com.github.tomakehurst.wiremock.client.WireMock.{aResponse, equalTo, get, stubFor, urlMatching}
+import com.github.tomakehurst.wiremock.client.WireMock._
 import helpers.IntegrationSpecBase
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.Json
 
 class TransactionalControllerISpec extends IntegrationSpecBase {
 

@@ -16,14 +16,12 @@
 
 package jobs
 
-import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.spi.ILoggingEvent
 import com.github.tomakehurst.wiremock.stubbing.StubMapping
 import helpers.{FakeAppConfig, IntegrationSpecBase}
 import org.scalatest.concurrent.Eventually
-import play.api.{Application, Logger}
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
+import play.api.{Application, Logger}
 import services.ProactiveMonitoringService
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.test.LogCapturing

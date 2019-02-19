@@ -19,7 +19,7 @@ package repositories
 import java.util.UUID
 
 import helpers.SCRSMongoSpec
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.Json
 import reactivemongo.api.commands.WriteResult
 
 import scala.concurrent.ExecutionContext.Implicits.global

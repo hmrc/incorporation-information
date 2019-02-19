@@ -17,11 +17,10 @@
 package repositories
 
 import javax.inject.{Inject, Singleton}
-
 import models.IncorpUpdate
 import org.apache.commons.lang3.StringUtils
 import play.api.Logger
-import play.api.libs.json.{Format, JsValue}
+import play.api.libs.json.Format
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DB
 import reactivemongo.api.commands.{UpdateWriteResult, WriteError}
@@ -29,8 +28,8 @@ import reactivemongo.bson.{BSONDocument, BSONObjectID}
 import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 @Singleton
 class IncorpUpdateMongo @Inject()(mongo: ReactiveMongoComponent) extends ReactiveMongoFormats {

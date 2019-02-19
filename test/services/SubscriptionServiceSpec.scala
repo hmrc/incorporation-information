@@ -17,15 +17,15 @@
 package services
 
 import Helpers.SCRSSpec
-import models.{QueuedIncorpUpdate, IncorpUpdate, Subscription}
+import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
 import org.joda.time.DateTime
-import repositories._
-import org.mockito.Mockito._
 import org.mockito.Matchers.{eq => eqTo, _}
+import org.mockito.Mockito._
 import reactivemongo.api.commands.{DefaultWriteResult, WriteError}
+import repositories._
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 
 class SubscriptionServiceSpec extends SCRSSpec {

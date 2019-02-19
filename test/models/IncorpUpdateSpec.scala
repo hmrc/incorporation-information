@@ -16,10 +16,10 @@
 
 package models
 
+import Helpers.JSONhelpers
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.json._
 import uk.gov.hmrc.play.test.UnitSpec
-import Helpers.JSONhelpers
 
 
 class IncorpUpdateSpec extends UnitSpec with JSONhelpers {

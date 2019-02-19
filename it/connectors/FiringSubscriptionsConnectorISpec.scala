@@ -18,8 +18,7 @@ package connectors
 
 import com.github.tomakehurst.wiremock.client.WireMock._
 import helpers.IntegrationSpecBase
-import models.{IncorpStatusEvent, IncorpUpdate, IncorpUpdateResponse}
-import org.joda.time.DateTime
+import models.{IncorpUpdate, IncorpUpdateResponse}
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import uk.gov.hmrc.http.HeaderCarrier

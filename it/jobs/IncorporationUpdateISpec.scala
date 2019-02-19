@@ -26,8 +26,6 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.inject.{BindingKey, QualifierInstance}
 import play.api.libs.json.{JsObject, Json}
 import reactivemongo.api.commands.WriteError
-import reactivemongo.bson.BSONDocument
-import reactivemongo.core.errors.GenericDatabaseException
 import repositories._
 import uk.gov.hmrc.play.scheduling.ScheduledJob
 

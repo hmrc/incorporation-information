@@ -17,9 +17,9 @@
 package config
 
 import java.util.Base64
-import javax.inject.{Inject, Named, Singleton}
 
 import com.typesafe.config.Config
+import javax.inject.{Inject, Named, Singleton}
 import net.ceedubs.ficus.Ficus._
 import play.api.{Application, Configuration, Logger, Play}
 import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo, TimepointMongo}

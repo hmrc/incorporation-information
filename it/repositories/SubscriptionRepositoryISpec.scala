@@ -19,7 +19,6 @@ package repositories
 import helpers.SCRSMongoSpec
 import models.Subscription
 import play.modules.reactivemongo.MongoDbConnection
-import reactivemongo.api.commands.DefaultWriteResult
 
 import scala.concurrent.ExecutionContext.Implicits.global
 

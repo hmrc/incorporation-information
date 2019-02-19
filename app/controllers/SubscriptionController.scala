@@ -17,7 +17,6 @@
 package controllers
 
 import javax.inject.{Inject, Singleton}
-
 import models.{IncorpUpdate, IncorpUpdateResponse}
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.Action

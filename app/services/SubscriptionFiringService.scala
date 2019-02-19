@@ -16,18 +16,18 @@
 
 package services
 
-import javax.inject.{Inject, Singleton}
 import config.MicroserviceConfig
 import connectors.FiringSubscriptionsConnector
+import javax.inject.{Inject, Singleton}
 import models.{IncorpUpdateResponse, QueuedIncorpUpdate}
 import org.joda.time.DateTime
-import play.api.{Environment, Logger, Mode}
+import play.api.{Environment, Logger}
 import reactivemongo.api.commands.DefaultWriteResult
 import repositories._
-
-import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
 import uk.gov.hmrc.http.HeaderCarrier
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 @Singleton
 class SubscriptionFiringServiceImpl @Inject()(fsConnector: FiringSubscriptionsConnector,

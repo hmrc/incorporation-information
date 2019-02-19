@@ -16,17 +16,16 @@
 
 package services
 
-import javax.inject.{Inject, Provider}
-
 import config.MicroserviceConfig
+import javax.inject.{Inject, Provider}
 import models.{IncorpUpdate, Subscription}
 import play.api.Logger
 import reactivemongo.api.commands.DefaultWriteResult
 import repositories._
+import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import uk.gov.hmrc.http.HeaderCarrier
 
 
 class SubscriptionServiceImpl @Inject()(injSubRepo: SubscriptionsMongo,
