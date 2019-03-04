@@ -24,9 +24,11 @@ import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.inject.{BindingKey, QualifierInstance}
 import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo, TimepointMongo}
-import uk.gov.hmrc.play.scheduling.ScheduledJob
 
+import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits._
+import scala.concurrent.duration.Duration
+import scala.util.Try
 
 class FireSubscriptionsISpec extends IntegrationSpecBase {
 
@@ -36,7 +38,13 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
     "auditing.consumer.baseUri.host" -> s"$wiremockHost",
     "auditing.consumer.baseUri.port" -> s"$wiremockPort",
     "Test.auditing.consumer.baseUri.host" -> s"$wiremockHost",
-    "Test.auditing.consumer.baseUri.port" -> s"$wiremockPort"
+    "Test.auditing.consumer.baseUri.port" -> s"$wiremockPort",
+    "schedules.fire-subs-job.lockTimeout" -> "200",
+    "schedules.fire-subs-job.expression" -> "0_0_0_1_1_?_2099/1",
+    "schedules.fire-subs-job.enabled" -> "true",
+    "schedules.incorp-update-job.enabled" -> "false",
+    "schedules.proactive-monitoring-job.enabled" -> "false",
+    "schedules.metrics-job.enabled" -> "false"
   )
 
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
@@ -48,13 +56,14 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
     val timepointRepo = app.injector.instanceOf[TimepointMongo].repo
     val queueRepo = app.injector.instanceOf[QueueMongo].repo
     val subRepo = app.injector.instanceOf[SubscriptionsMongo].repo
+    val lockRepo = app.injector.instanceOf[LockRepositoryProvider].repo
 
     def insert(u: QueuedIncorpUpdate) = await(queueRepo.collection.insert(u)(QueuedIncorpUpdate.format, global))
     def insert(s: Subscription) = await(subRepo.collection.insert(s)(Subscription.format, global))
   }
 
   override def beforeEach() = new Setup {
-    Seq(incorpRepo, timepointRepo, queueRepo, subRepo) map { r =>
+    Seq(incorpRepo, timepointRepo, queueRepo, subRepo,lockRepo) map { r =>
       await(r.drop)
       await(r.ensureIndexes)
     }
@@ -73,19 +82,7 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
     app.injector.instanceOf[ScheduledJob](key)
   }
 
-
   "fire subscriptions check with no data" should {
-
-    "Should do no processing when disabled" in new Setup {
-      setupAuditMocks()
-      setupFeatures(fireSubscriptions = false)
-
-      val job = lookupJob("fire-subs-job")
-
-      val f = job.execute
-      val r = await(f)
-      r shouldBe job.Result("Feature is turned off")
-    }
 
     "Should process successfully when enabled" in new Setup {
       setupAuditMocks()
@@ -97,9 +94,9 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
 
       val job = lookupJob("fire-subs-job")
 
-      val f = job.execute
-      val r = await(f)
-      r shouldBe job.Result("fire-subs-job")
+      val f = job.schedule
+      f shouldBe true
+      await(job.scheduledMessage.service.invoke)
 
       await(incorpRepo.collection.count()) shouldBe 0
     }
@@ -128,44 +125,12 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
       insert(sub2)
       await(subRepo.collection.count()) shouldBe 2
 
-
       val job = lookupJob("fire-subs-job")
 
-      val f = job.execute
-      val r = await(f)
-
+      val res = await(job.scheduledMessage.service.invoke.map(_.asInstanceOf[Either[Seq[Boolean], LockResponse]]))
+      res.left.get shouldBe Seq(true)
       await(subRepo.collection.count()) shouldBe 0
       await(queueRepo.collection.count()) shouldBe 0
-      r shouldBe job.Result("fire-subs-job")
-
-    }
-
-    "not be able to run two jobs at the same time" in new Setup {
-      setupAuditMocks()
-      setupFeatures(fireSubscriptions = true)
-
-      stubPost("/mockUri", 200, "")
-
-      await(queueRepo.collection.count()) shouldBe 0
-
-      val incorpUpdate = IncorpUpdate("transId1", "awaiting", None, None, "timepoint", None)
-      val QIU = QueuedIncorpUpdate(DateTime.now, incorpUpdate)
-      insert(QIU)
-      await(queueRepo.collection.count()) shouldBe 1
-
-      await(subRepo.collection.count()) shouldBe 0
-      val sub = Subscription("transId1", "CT", "subscriber", s"$mockUrl/mockUri")
-      val sub2 = Subscription("transId1", "PAYE", "subscriber", s"$mockUrl/mockUri")
-      insert(sub)
-      await(subRepo.collection.count()) shouldBe 1
-      insert(sub2)
-      await(subRepo.collection.count()) shouldBe 2
-
-      val job = lookupJob("fire-subs-job")
-      val f = job.execute
-      val f2 = await(job.execute)
-
-      f2 shouldBe job.Result("Skipping execution: job running")
     }
   }
 }

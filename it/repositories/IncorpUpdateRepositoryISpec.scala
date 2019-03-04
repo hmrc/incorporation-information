@@ -19,7 +19,8 @@ package repositories
 import helpers.SCRSMongoSpec
 import models.IncorpUpdate
 import play.api.libs.json.{JsNumber, Json}
-import reactivemongo.api.BSONSerializationPack
+import play.modules.reactivemongo.ReactiveMongoComponent
+import reactivemongo.api.{BSONSerializationPack, FailoverStrategy, ReadPreference}
 import reactivemongo.api.commands._
 import reactivemongo.bson.{BSONDocument, BSONRegex}
 
@@ -36,9 +37,9 @@ trait DocValidator {
       "collMod" -> incorpRepo.collection.name,
       "validator" -> BSONDocument("company_number" -> BSONDocument("$regex" -> BSONRegex(regex, "")))
     )
-    val runner = Command.run(BSONSerializationPack)
+    val runner = Command.run(BSONSerializationPack,FailoverStrategy.default)
     incorpRepo.collection.create() flatMap {
-      _ => runner.apply(incorpRepo.collection.db, runner.rawCommand(commandDoc)).one[BSONDocument]
+      _ => runner.apply(incorpRepo.collection.db, runner.rawCommand(commandDoc)).cursor(ReadPreference.primaryPreferred).head
     }
   }
 }
@@ -46,7 +47,9 @@ trait DocValidator {
 class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
 
   class Setup extends MongoErrorCodes {
-    val incorpRepo = new IncorpUpdateMongo(reactiveMongoComponent).repo
+    val incorpRepo = new IncorpUpdateMongo {
+      override val mongo: ReactiveMongoComponent = reactiveMongoComponent
+    }.repo
     await(incorpRepo.drop)
 
     def count = await(incorpRepo.count)

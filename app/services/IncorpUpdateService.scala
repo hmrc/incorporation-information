@@ -19,39 +19,48 @@ package services
 import config.MicroserviceConfig
 import connectors.IncorporationAPIConnector
 import javax.inject.{Inject, Provider, Singleton}
+import jobs._
 import models.{IncorpUpdate, QueuedIncorpUpdate}
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, Duration}
 import play.api.Logger
-import reactivemongo.api.commands.UpdateWriteResult
+import reactivemongo.api.commands.{LastError, UpdateWriteResult}
 import repositories.{IncorpUpdateRepository, InsertResult, TimepointRepository, _}
 import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.lock.LockKeeper
 import utils.{AlertLogging, DateCalculators, PagerDutyKeys}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
-@Singleton
+
 class IncorpUpdateServiceImpl @Inject()(injConnector: IncorporationAPIConnector,
                                         injIncorpRepo: IncorpUpdateMongo,
                                         injTimepointRepo: TimepointMongo,
                                         injQueueRepo: QueueMongo,
                                         injSubscriptionService : Provider[SubscriptionService],
-                                        config: MicroserviceConfig,
+                                        msConfig: MicroserviceConfig,
                                         val dateCalculators: DateCalculators,
-                                        val poo:DateCalculators
+                                        lockRepositoryProvider: LockRepositoryProvider
                                        ) extends IncorpUpdateService {
-  override val incorporationCheckAPIConnector = injConnector
-  override val incorpUpdateRepository = injIncorpRepo.repo
-  override val timepointRepository = injTimepointRepo.repo
-  override val queueRepository = injQueueRepo.repo
-  override val subscriptionService = injSubscriptionService.get()
-  override val loggingDays = config.noRegisterAnInterestLoggingDay
-  override val loggingTimes = config.noRegisterAnInterestLoggingTime
+  lazy val incorporationCheckAPIConnector = injConnector
+  lazy val incorpUpdateRepository = injIncorpRepo.repo
+  lazy val timepointRepository = injTimepointRepo.repo
+  lazy val queueRepository = injQueueRepo.repo
+  lazy val subscriptionService = injSubscriptionService.get()
+  lazy val loggingDays = msConfig.noRegisterAnInterestLoggingDay
+  lazy val loggingTimes = msConfig.noRegisterAnInterestLoggingTime
 
+  lazy val lockoutTimeout = msConfig.getInt("schedules.incorp-update-job.lockTimeout")
+
+  lazy val lockKeeper: LockKeeper = new LockKeeper() {
+    override val lockId = "incorp-updates-job-lock"
+    override val forceLockReleaseAfter: Duration = Duration.standardSeconds(lockoutTimeout)
+    override lazy val repo = lockRepositoryProvider.repo
+  }
 }
 
-trait IncorpUpdateService extends AlertLogging {
+trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResponse]] with AlertLogging {
 
   val incorporationCheckAPIConnector: IncorporationAPIConnector
   val incorpUpdateRepository: IncorpUpdateRepository
@@ -61,6 +70,7 @@ trait IncorpUpdateService extends AlertLogging {
   val loggingDays: String
   val loggingTimes: String
   val dateCalculators: DateCalculators
+  val lockKeeper: LockKeeper
 
   private[services] def fetchIncorpUpdates(implicit hc: HeaderCarrier): Future[Seq[IncorpUpdate]] = {
     for {
@@ -132,6 +142,21 @@ trait IncorpUpdateService extends AlertLogging {
     val shouldLog = timepointValidator(tp)
     log(shouldLog)(tp)
     tp
+  }
+def invoke(implicit ec: ExecutionContext):Future[Either[InsertResult,LockResponse]] = {
+  implicit val hc = HeaderCarrier()
+    lockKeeper.tryLock(updateNextIncorpUpdateJobLot).map {
+      case Some(res) =>
+        Logger.info("IncorpUpdateService acquired lock and returned results")
+        Logger.info(s"updateNextIncorpUpdateJobLot: result (inserted: ${res.inserted})")
+        Left(res)
+      case None =>
+        Logger.info("IncorpUpdateService cant acquire lock")
+        Right(MongoLocked)
+    }.recover {
+      case e: Exception => Logger.error(s"Error running updateNextIncorpUpdateJobLot with message: ${e.getMessage}")
+        Right(UnlockingFailed)
+    }
   }
 
   // TODO - look to refactor this into a simpler for-comprehension

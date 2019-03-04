@@ -24,6 +24,7 @@ import org.mockito.Matchers
 import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
 import repositories._
+import uk.gov.hmrc.lock.LockKeeper
 
 
 
@@ -38,6 +39,7 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
   val mockCounter = mock[Counter]
   val mockTimer = mock[Timer.Context]
   val mockTimerMetric = mock[Timer]
+  val mockLockKeeper: LockKeeper = mock[LockKeeper]
 
 
   trait Setup {
@@ -51,11 +53,12 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
       override val transactionApiSuccessCounter: Counter = mockCounter
       override val publicAPITimer = mockTimerMetric
       override val internalAPITimer = mockTimerMetric
+      override val lockKeeper = mockLockKeeper
     }
   }
 
   override def beforeEach() = {
-    Seq(mockMetrics, mockHisto1, mockHisto2, mockHisto3, mockSubRepo, mockRegistry, mockCounter, mockTimer) foreach { reset(_) }
+    Seq(mockMetrics, mockHisto1, mockHisto2, mockHisto3, mockSubRepo, mockRegistry, mockCounter, mockTimer, mockLockKeeper) foreach { reset(_) }
   }
 
   val transId = "transId123"

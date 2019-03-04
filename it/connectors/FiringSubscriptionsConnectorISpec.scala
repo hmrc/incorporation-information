@@ -22,6 +22,7 @@ import models.{IncorpUpdate, IncorpUpdateResponse}
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.play.bootstrap.http.HttpClient
 
 /**
   * Created by jackie on 05/04/17.
@@ -51,7 +52,9 @@ class FiringSubscriptionsConnectorISpec extends IntegrationSpecBase {
   "fireIncorpUpdate" should {
 
     "return a 200 HTTP response from a given callbackUrl" in {
-      val firingSubscriptionsConnector = new FiringSubscriptionsConnectorImpl()
+      val firingSubscriptionsConnector = new FiringSubscriptionsConnector {
+        override val http: HttpClient = app.injector.instanceOf[HttpClient]
+      }
 
       def connectToAnyURL = firingSubscriptionsConnector.connectToAnyURL(incorpUpdateResponse, s"$mockUrl/testuri")
 
@@ -64,7 +67,4 @@ class FiringSubscriptionsConnectorISpec extends IntegrationSpecBase {
       await(connectToAnyURL).status shouldBe 200
     }
   }
-
 }
-
-

@@ -16,19 +16,19 @@
 
 package controllers.test
 
-import javax.inject.{Inject, Singleton}
+
+import javax.inject.Inject
 import play.api.Logger
 import play.api.libs.json.JsObject
 import play.api.mvc.Action
-import uk.gov.hmrc.play.microservice.controller.BaseController
+import uk.gov.hmrc.play.bootstrap.controller.BaseController
 
 import scala.concurrent.Future
 
-@Singleton
+
 class CallbackTestEndpointControllerImpl @Inject()() extends CallbackTestEndpointController
 
 trait CallbackTestEndpointController extends BaseController {
-
   val post = Action.async(parse.json) {
     implicit request =>
       withJsonBody[JsObject] { js =>

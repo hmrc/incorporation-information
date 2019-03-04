@@ -27,16 +27,19 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.mock.MockitoSugar
 import reactivemongo.api.commands.DefaultWriteResult
 import repositories.{QueueRepository, SubscriptionsRepository}
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
+import uk.gov.hmrc.lock.LockKeeper
+
 
 class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEach with JSONhelpers {
 
   val mockFiringSubsConnector     = mock[FiringSubscriptionsConnector]
   val mockQueueRepository         = mock[QueueRepository]
   val mockSubscriptionsRepository = mock[SubscriptionsRepository]
+  val mockLockKeeper: LockKeeper = mock[LockKeeper]
   implicit val hc = HeaderCarrier()
 
   override def beforeEach() {
@@ -47,6 +50,7 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
     reset(mockFiringSubsConnector)
     reset(mockQueueRepository)
     reset(mockSubscriptionsRepository)
+    reset(mockLockKeeper)
   }
 
   trait mockService extends SubscriptionFiringService {
@@ -62,6 +66,7 @@ class SubscriptionFiringServiceSpec extends UnitSpec with MockitoSugar with Befo
 
   class Setup(use: Boolean = false) {
     val service = new mockService {
+      override val lockKeeper: LockKeeper = mockLockKeeper
       override val useHttpsFireSubs: Boolean = use
     }
   }

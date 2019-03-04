@@ -26,14 +26,17 @@ import reactivemongo.api.DB
 import reactivemongo.api.commands.{UpdateWriteResult, WriteError}
 import reactivemongo.bson.{BSONDocument, BSONObjectID}
 import uk.gov.hmrc.mongo.ReactiveRepository
+import reactivemongo.play.json.ImplicitBSONHandlers._
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-@Singleton
-class IncorpUpdateMongo @Inject()(mongo: ReactiveMongoComponent) extends ReactiveMongoFormats {
-  val repo = new IncorpUpdateMongoRepository(mongo.mongoConnector.db, IncorpUpdate.mongoFormat)
+
+class IncorpUpdateMongoImpl @Inject()(val mongo: ReactiveMongoComponent) extends IncorpUpdateMongo
+trait IncorpUpdateMongo extends ReactiveMongoFormats {
+  val mongo:ReactiveMongoComponent
+lazy val repo = new IncorpUpdateMongoRepository(mongo.mongoConnector.db, IncorpUpdate.mongoFormat)
 }
 
 trait IncorpUpdateRepository {
@@ -68,9 +71,7 @@ class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])
 
     implicit val mongoFormat=IncorpUpdate.mongoFormat
     collection.update(selector(iUpdate.transactionId), iUpdate, upsert = true)
-
   }
-
 
   private[repositories] def nonDuplicateIncorporations(updates: Seq[IncorpUpdate], errs: Seq[WriteError]): Seq[IncorpUpdate] = {
     val duplicates = errs collect {
@@ -89,8 +90,7 @@ class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])
 
 }
 
-case class InsertResult(
-                         inserted: Int,
+case class InsertResult(inserted: Int,
                          duplicate: Int,
                          errors: Seq[WriteError] = Seq(),
                          alerts: Int = 0,

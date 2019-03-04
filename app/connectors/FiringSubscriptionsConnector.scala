@@ -16,22 +16,22 @@
 
 package connectors
 
-import config.WSHttp
+import javax.inject.Inject
 import models.IncorpUpdateResponse
 import play.api.Logger
 import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.http._
-import uk.gov.hmrc.play.config.ServicesConfig
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
+import uk.gov.hmrc.play.bootstrap.http.HttpClient
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class FiringSubscriptionsConnectorImpl extends FiringSubscriptionsConnector with ServicesConfig {
-  val http = WSHttp
+class FiringSubscriptionsConnectorImpl @Inject()(val http: HttpClient) extends FiringSubscriptionsConnector {
+
 }
 
 trait FiringSubscriptionsConnector {
-  val http: HttpGet with HttpPost with HttpPatch
+  val http: HttpClient
 
   def connectToAnyURL(iuResponse: IncorpUpdateResponse, url: String)(implicit hc: HeaderCarrier): Future[HttpResponse] = {
     val json = Json.toJson[IncorpUpdateResponse](iuResponse)(IncorpUpdateResponse.writes)

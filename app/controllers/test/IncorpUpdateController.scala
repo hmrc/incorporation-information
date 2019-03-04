@@ -16,22 +16,22 @@
 
 package controllers.test
 
-import javax.inject.{Inject, Singleton}
+import javax.inject.Inject
 import models.{IncorpUpdate, QueuedIncorpUpdate}
 import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
 import play.api.mvc.Action
 import repositories.{IncorpUpdateMongo, IncorpUpdateRepository, QueueMongo, QueueRepository}
-import uk.gov.hmrc.play.microservice.controller.BaseController
+import uk.gov.hmrc.play.bootstrap.controller.BaseController
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-@Singleton
+
 class IncorpUpdateControllerImpl @Inject()(val injIncorpMongo: IncorpUpdateMongo,
                                            val injQueueMongo: QueueMongo) extends IncorpUpdateController {
-  override val repo = injIncorpMongo.repo
-  override val queueRepository = injQueueMongo.repo
+  override lazy val repo = injIncorpMongo.repo
+  override lazy val queueRepository = injQueueMongo.repo
 }
 
 trait IncorpUpdateController extends BaseController {

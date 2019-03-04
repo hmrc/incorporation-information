@@ -21,9 +21,11 @@ import com.kenshoo.play.metrics.Metrics
 import org.scalatest.mock.MockitoSugar
 import repositories.SubscriptionsMongoRepository
 import services.MetricsService
+import uk.gov.hmrc.lock.LockKeeper
 
 
 class MockMetrics extends MetricsService with MockitoSugar{
+  override val lockKeeper: LockKeeper = mock[LockKeeper]
   val mockCounter = new Counter
 
   val mockMetrics = mock[Metrics]

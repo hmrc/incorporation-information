@@ -31,6 +31,7 @@ import reactivemongo.api.commands.{UpdateWriteResult, Upserted, WriteError}
 import reactivemongo.bson.BSONString
 import repositories._
 import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.lock.LockKeeper
 import uk.gov.hmrc.play.test.{LogCapturing, UnitSpec}
 import utils.{DateCalculators, PagerDutyKeys}
 
@@ -44,6 +45,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with JSONhelper
   val mockTimepointRepository = mock[TimepointRepository]
   val mockQueueRepository = mock[QueueRepository]
   val mockSubscriptionService = mock[SubscriptionService]
+  val mockLockKeeper: LockKeeper = mock[LockKeeper]
   val mockSubRepo = mock[SubscriptionsMongoRepository]
 
   implicit val hc = HeaderCarrier()
@@ -55,7 +57,8 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with JSONhelper
       mockSubscriptionService,
       mockTimepointRepository,
       mockQueueRepository,
-      mockSubRepo
+      mockSubRepo,
+      mockLockKeeper
     )
   }
 
@@ -67,6 +70,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with JSONhelper
       val timepointRepository = mockTimepointRepository
       val queueRepository = mockQueueRepository
       val subscriptionService = mockSubscriptionService
+       override val lockKeeper: LockKeeper = mockLockKeeper
       val loggingDays = days
       val loggingTimes = "08:00:00_17:00:00"
     }
@@ -425,7 +429,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with JSONhelper
       val result = await(fResult)
 
       result.head.copy(timestamp = queuedIncorpUpdate.timestamp) shouldBe queuedIncorpUpdate
-      result.head.timestamp.getMillis shouldBe (queuedIncorpUpdate.timestamp.getMillis +- 1000)
+      result.head.timestamp.getMillis shouldBe (queuedIncorpUpdate.timestamp.getMillis +- 1500)
     }
   }
 

@@ -58,10 +58,12 @@ trait MicroService {
       retrieveManaged := true,
       evictionWarningOptions in update := EvictionWarningOptions.default.withWarnScalaVersionEviction(false),
       routesGenerator := StaticRoutesGenerator,
-      scalaVersion := "2.11.11"
+      scalaVersion := "2.11.11",
+      resolvers += Resolver.jcenterRepo
     )
     .configs(IntegrationTest)
     .settings(inConfig(IntegrationTest)(Defaults.itSettings): _*)
     .settings(integrationTestSettings())
     .settings(majorVersion := 1)
+
 }

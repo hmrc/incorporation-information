@@ -323,13 +323,14 @@ class FeatureSwitchSpec extends UnitSpec with BeforeAndAfterEach {
     }
 
     "return a proactiveMonitoring feature if it exists" in {
-      System.setProperty("feature.proactiveMonitoring", "true")
+      System.setProperty("schedules.proactive-monitoring-job.enabled", "true")
 
-      SCRSFeatureSwitches("proactiveMonitoring") shouldBe Some(BooleanFeatureSwitch(s"$KEY_PRO_MONITORING", true))
+      SCRSFeatureSwitches("proactive-monitoring-job") shouldBe Some(BooleanFeatureSwitch(s"$KEY_PRO_MONITORING", true))
     }
 
     "return an empty option if the proactiveMonitoring system property doesn't exist when using the apply function" in {
-      SCRSFeatureSwitches("proactiveMonitoring") shouldBe Some(BooleanFeatureSwitch(s"$KEY_PRO_MONITORING", false))
+      System.setProperty("schedules.proactive-monitoring-job.enabled", "")
+      SCRSFeatureSwitches("proactive-monitoring-job") shouldBe Some(BooleanFeatureSwitch(s"$KEY_PRO_MONITORING", false))
     }
   }
 }

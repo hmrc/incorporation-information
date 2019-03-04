@@ -17,27 +17,26 @@
 package connectors
 
 import com.codahale.metrics.Counter
-import com.ning.http.util.Base64
-import config.{MicroserviceConfig, WSHttp, WSHttpProxy}
+import config.{MicroserviceConfig, WSHttpProxy}
 import javax.inject.Inject
+import org.asynchttpclient.util.Base64
 import play.api.Logger
 import play.api.libs.json.JsValue
 import services.MetricsService
 import uk.gov.hmrc.http._
 import uk.gov.hmrc.http.logging.Authorization
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
+import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.http.ws.WSProxy
 import utils.{AlertLogging, DateCalculators, PagerDutyKeys, SCRSFeatureSwitches}
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-
 class PublicCohoApiConnectorImpl @Inject()(config: MicroserviceConfig, injMetricsService: MetricsService,
-                                           val dateCalculators: DateCalculators) extends PublicCohoApiConnector {
+                                           val dateCalculators: DateCalculators,
+                                           val httpProxy: WSHttpProxy,
+                                           val httpNoProxy: HttpClient) extends PublicCohoApiConnector {
 
-  protected def httpProxy: WSHttpProxy.type = WSHttpProxy
-
-  protected def httpNoProxy: WSHttp.type = WSHttp
 
   protected val featureSwitch: SCRSFeatureSwitches.type = SCRSFeatureSwitches
 

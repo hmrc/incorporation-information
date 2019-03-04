@@ -57,6 +57,7 @@
     <logger name="akka.event.EventStream" level="INFO" />
     <logger name="play.api" level="INFO" />
     <logger name="org.jboss" level="INFO"/>
+    <logger name="reactivemongo.core.actors.MongoDBSystem" level="INFO"/>
 
     <logger name="connector" level="INFO">
         <appender-ref ref="STDOUT"/>

@@ -21,16 +21,20 @@ import org.mockito.Matchers.{any, eq => eqTo}
 import org.mockito.Mockito._
 import org.scalatest.mock.MockitoSugar
 import play.api.libs.json.{JsValue, Json}
-import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.test.UnitSpec
 import utils.Base64
 
 import scala.concurrent.Future
 
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.lock.LockKeeper
+
+
 class ProactiveMonitoringServiceSpec extends UnitSpec with MockitoSugar {
 
   val mockTransactionalConnector: IncorporationAPIConnector = mock[IncorporationAPIConnector]
   val mockPublicCohoConnector: PublicCohoApiConnectorImpl = mock[PublicCohoApiConnectorImpl]
+  val mockLockKeeper: LockKeeper = mock[LockKeeper]
 
   val encodedTransactionId: String = Base64.encode("test-txid")
   val transactionId: String = "test-txid"
@@ -41,6 +45,7 @@ class ProactiveMonitoringServiceSpec extends UnitSpec with MockitoSugar {
   class Setup {
     val service: ProactiveMonitoringService = new ProactiveMonitoringService {
       val transactionalConnector: IncorporationAPIConnector = mockTransactionalConnector
+      override val lockKeeper: LockKeeper = mockLockKeeper
       val publicCohoConnector: PublicCohoApiConnectorImpl = mockPublicCohoConnector
       val transactionIdToPoll: String = encodedTransactionId
       val crnToPoll: String = encodedCrn
@@ -88,7 +93,6 @@ class ProactiveMonitoringServiceSpec extends UnitSpec with MockitoSugar {
       result shouldBe "failed"
     }
   }
-
 
   "pollAPIs" should {
 

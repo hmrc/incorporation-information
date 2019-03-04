@@ -18,9 +18,6 @@ package Helpers
 
 import play.api.libs.json.{JsObject, _}
 
-/**
-  * Created by jackie on 03/04/17.
-  */
 trait JSONhelpers {
 
   def extractTimestamp(json: JsObject): (Long, JsObject) = {

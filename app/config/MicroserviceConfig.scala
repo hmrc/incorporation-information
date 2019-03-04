@@ -17,57 +17,59 @@
 package config
 
 import javax.inject.Inject
-import play.api.Logger
-import uk.gov.hmrc.play.config.inject.ServicesConfig
+import play.api.Mode.Mode
+import play.api.{Configuration, Environment, Logger}
+import uk.gov.hmrc.play.config.ServicesConfig
 import utils.Base64
 
 import scala.util.Try
 
-class MicroserviceConfigImpl @Inject()(val config: ServicesConfig) extends MicroserviceConfig
+class MicroserviceConfigImpl @Inject()(val environment:Environment, val runModeConfiguration:Configuration) extends MicroserviceConfig {
+  override protected def mode: Mode = environment.mode
+}
 
-trait MicroserviceConfig {
-  protected val config: ServicesConfig
+trait MicroserviceConfig extends ServicesConfig {
 
-  private def getConfigInt(configKey: String) = config.getConfInt(configKey, throw new Exception(s"$configKey key not found"))
-  private def getConfigString(configKey: String) = config.getConfString(configKey, throw new Exception(s"$configKey key not found"))
 
-  lazy val incorpFrontendStubUrl = config.getConfString("incorp-update-api.stub-url", throw new Exception("incorp-update-api.stub-url not found"))
+  private def getConfigInt(configKey: String) = getConfInt(configKey, throw new Exception(s"$configKey key not found"))
+  private def getConfigString(configKey: String) = getConfString(configKey, throw new Exception(s"$configKey key not found"))
 
-  lazy val companiesHouseUrl = config.getConfString("incorp-update-api.url", throw new Exception("incorp-update-api.url not found"))
+  lazy val incorpFrontendStubUrl = getConfString("incorp-update-api.stub-url", throw new Exception("incorp-update-api.stub-url not found"))
 
-  lazy val incorpUpdateCohoApiAuthToken = config.getConfString("incorp-update-api.token", throw new Exception("incorp-update-api.token not found"))
+  lazy val companiesHouseUrl = getConfString("incorp-update-api.url", throw new Exception("incorp-update-api.url not found"))
 
-  lazy val incorpUpdateItemsToFetch = config.getConfString("incorp-update-api.itemsToFetch", throw new Exception("incorp-update-api.itemsToFetch not found"))
+  lazy val incorpUpdateCohoApiAuthToken = getConfString("incorp-update-api.token", throw new Exception("incorp-update-api.token not found"))
 
-  lazy val queueFetchSize = config.getConfInt("fire-subs-job.queueFetchSizes", {
+  lazy val incorpUpdateItemsToFetch = getConfString("incorp-update-api.itemsToFetch", throw new Exception("incorp-update-api.itemsToFetch not found"))
+
+  lazy val queueFetchSize = getConfInt("fire-subs-job.queueFetchSizes", {
     Logger.warn("[Config] fire-subs-job.queueFetchSizes missing, defaulting to 1")
     1
   })
 
-  lazy val queueFailureDelay = config.getConfInt("fire-subs-job.queueFailureDelaySeconds", throw new Exception("fire-subs-api.queueFailureDelaySeconds not found"))
+  lazy val queueFailureDelay = getConfInt("fire-subs-job.queueFailureDelaySeconds", throw new Exception("fire-subs-api.queueFailureDelaySeconds not found"))
 
-  lazy val queueRetryDelay = config.getConfInt("fire-subs-job.queueRetryDelaySeconds", throw new Exception("fire-subs-api.queueFailureDelaySeconds not found"))
+  lazy val queueRetryDelay = getConfInt("fire-subs-job.queueRetryDelaySeconds", throw new Exception("fire-subs-api.queueFailureDelaySeconds not found"))
 
-  lazy val cohoPublicBaseUrl = config.getConfString("public-coho-api.baseUrl", throw new Exception("public-coho-api.baseUrl not found"))
+  lazy val cohoPublicBaseUrl = getConfString("public-coho-api.baseUrl", throw new Exception("public-coho-api.baseUrl not found"))
 
-  lazy val cohoPublicApiAuthToken = config.getConfString("public-coho-api.authToken", throw new Exception("public-coho-api.authToken not found"))
+  lazy val cohoPublicApiAuthToken = getConfString("public-coho-api.authToken", throw new Exception("public-coho-api.authToken not found"))
 
-  lazy val nonSCRSPublicApiAuthToken = config.getConfString("public-coho-api.authTokenNonSCRS", throw new Exception("non-scrs-public-coho-api.authToken not found"))
+  lazy val nonSCRSPublicApiAuthToken = getConfString("public-coho-api.authTokenNonSCRS", throw new Exception("non-scrs-public-coho-api.authToken not found"))
 
-  lazy val cohoStubbedUrl = config.getConfString("public-coho-api.stub-url", throw new Exception("public-coho-api.stub-url not found"))
+  lazy val cohoStubbedUrl = getConfString("public-coho-api.stub-url", throw new Exception("public-coho-api.stub-url not found"))
 
   lazy val forcedSubscriptionDelay = getConfigInt("forced-submission-delay-minutes")
 
-  lazy val noRegisterAnInterestLoggingDay = config.getConfString("rai-alert-logging-day", throw new Exception("rai-alert-logging-day not found"))
+  lazy val noRegisterAnInterestLoggingDay = getConfString("rai-alert-logging-day", throw new Exception("rai-alert-logging-day not found"))
 
-  lazy val noRegisterAnInterestLoggingTime = config.getConfString("rai-alert-logging-time", throw new Exception("rai-alert-logging-time not found"))
+  lazy val noRegisterAnInterestLoggingTime = getConfString("rai-alert-logging-time", throw new Exception("rai-alert-logging-time not found"))
 
-  lazy val knownSCRSServices = Base64.decode(config.getConfString("scrs-services", throw new Exception("scrs-services not found")))
+  lazy val knownSCRSServices: String = Base64.decode(getConfString("scrs-services", throw new Exception("scrs-services not found")))
 
   lazy val transactionIdToPoll: String = getConfigString("transaction-id-to-poll")
   lazy val crnToPoll: String = getConfigString("crn-to-poll")
 
-  lazy val useHttpsFireSubs: Boolean = Try(config.getBoolean("use-https-fire-subs")).recover{case _ => throw new Exception("use-https-fire-subs not found")}.get
+  lazy val useHttpsFireSubs: Boolean = Try(getBoolean("use-https-fire-subs")).recover{case _ => throw new Exception("use-https-fire-subs not found")}.get
 
 }
-

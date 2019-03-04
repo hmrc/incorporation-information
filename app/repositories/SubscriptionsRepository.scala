@@ -16,27 +16,28 @@
 
 package repositories
 
-import javax.inject.{Inject, Singleton}
+
+import javax.inject.Inject
 import models.{IncorpUpdate, Subscription}
+import play.api.libs.json.{JsObject, JsString, Json}
 import play.modules.reactivemongo.ReactiveMongoComponent
-import reactivemongo.api.DB
 import reactivemongo.api.commands._
 import reactivemongo.api.indexes.{Index, IndexType}
+import reactivemongo.api.{Cursor, DB}
 import reactivemongo.bson.{BSONDocument, BSONObjectID}
+import reactivemongo.play.json.ImplicitBSONHandlers._
+import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
-import uk.gov.hmrc.mongo.{ReactiveRepository, Repository}
 
 import scala.collection.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-
-@Singleton
 class SubscriptionsMongo @Inject()(mongo: ReactiveMongoComponent) extends ReactiveMongoFormats {
   lazy val repo = new SubscriptionsMongoRepository(mongo.mongoConnector.db)
 }
 
-trait SubscriptionsRepository extends Repository[Subscription, BSONObjectID] {
+trait SubscriptionsRepository {
   def insertSub(sub: Subscription): Future[UpsertResult]
 
   def deleteSub(transactionId: String, regime: String, subscriber: String): Future[WriteResult]
@@ -105,41 +106,33 @@ class SubscriptionsMongoRepository(mongo: () => DB) extends ReactiveRepository[S
 
   def getSubscriptions(transactionId: String): Future[Seq[Subscription]] = {
     val query = BSONDocument("transactionId" -> transactionId)
-    collection.find(query).cursor[Subscription]().collect[Seq]()
+    collection.find(query).cursor[Subscription]().collect[Seq](-1,Cursor.DoneOnError())
   }
 
   def getSubscriptionsByRegime(regime: String, max: Int): Future[Seq[Subscription]] = {
     val query = BSONDocument("regime" -> regime)
     collection
       .find(query)
-      .cursor[Subscription]().collect[Seq](upTo = max)
+      .cursor[Subscription]().collect[Seq](maxDocs = max,Cursor.DoneOnError())
   }
-
   def getSubscriptionStats(): Future[Map[String, Int]] = {
 
-    import play.api.libs.json._
-    import reactivemongo.json.collection.JSONBatchCommands.AggregationFramework.{Group, Match, Project, SumValue}
-
     // needed to make it pick up the index
-    val matchQuery = Match(Json.obj("regime" -> Json.obj("$ne" -> "")))
-    // covering query to prevent doc fetch (optimiser would probably spot this anyway and transform the query)
-    val project = Project(Json.obj("regime" -> 1, "_id" -> 0))
+        val matchQuery: collection.PipelineOperator = collection.BatchCommands.AggregationFramework.Match(Json.obj("regime" -> Json.obj("$ne" -> "")))
+    val project = collection.BatchCommands.AggregationFramework.Project(Json.obj("regime" -> 1, "_id" -> 0))
     // calculate the regime counts
-    val group = Group(JsString("$regime"))("count" -> SumValue(1))
+    val group = collection.BatchCommands.AggregationFramework.Group(JsString("$regime"))("count" -> collection.BatchCommands.AggregationFramework.SumValue(1))
 
-    val metrics = collection.aggregate(matchQuery, List(project, group)) map {
-        _.documents map {
-          d => {
-            val regime = (d \ "_id").as[String]
-            val count = (d \ "count").as[Int]
-            regime -> count
-          }
+    val query = collection.aggregateWith[JsObject]()(_ => (matchQuery, List(project, group)))
+    val fList =  query.collect(Int.MaxValue, Cursor.FailOnError[List[JsObject]]())
+    fList.map{ _.map {
+            documentWithRegimeAndCount =>{
+              val regime = (documentWithRegimeAndCount \ "_id").as[String]
+              val count = (documentWithRegimeAndCount \ "count").as[Int]
+              regime -> count
+            }
+          }.toMap
         }
-    }
-
-    metrics map {
-      _.toMap
-    }
   }
 
   def wipeTestData(): Future[WriteResult] = {

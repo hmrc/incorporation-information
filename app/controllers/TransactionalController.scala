@@ -25,7 +25,7 @@ import play.api.libs.json.Json
 import play.api.mvc.Action
 import repositories.{IncorpUpdateMongo, IncorpUpdateRepository}
 import services.{TransactionalService, TransactionalServiceException}
-import uk.gov.hmrc.play.microservice.controller.BaseController
+import uk.gov.hmrc.play.bootstrap.controller.BaseController
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -99,6 +99,4 @@ trait TransactionalController extends BaseController {
         case None => NoContent
       }
   }
-
 }
-

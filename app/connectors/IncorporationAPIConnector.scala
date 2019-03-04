@@ -17,8 +17,8 @@
 package connectors
 
 import com.codahale.metrics.Counter
-import config.{MicroserviceConfig, WSHttp, WSHttpProxy}
-import javax.inject.{Inject, Singleton}
+import config.{MicroserviceConfig, WSHttpProxy}
+import javax.inject.Inject
 import models.IncorpUpdate
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
@@ -28,7 +28,8 @@ import play.api.libs.json.{JsValue, Reads, __}
 import services.MetricsService
 import uk.gov.hmrc.http._
 import uk.gov.hmrc.http.logging.Authorization
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
+import uk.gov.hmrc.play.bootstrap.http.HttpClient
+import scala.concurrent.ExecutionContext.Implicits.global
 import uk.gov.hmrc.play.http.ws.WSProxy
 import utils.{AlertLogging, DateCalculators, PagerDutyKeys, SCRSFeatureSwitches}
 
@@ -47,26 +48,24 @@ object IncorpUpdatesResponse {
     ( __ \ "items" ).read[Seq[IncorpUpdate]] and
       (__ \ "links" \ "next").read[String]
     )(IncorpUpdatesResponse.apply _)
-
 }
 
-@Singleton
 class IncorporationAPIConnectorImpl @Inject()(config: MicroserviceConfig,
                                               injMetricsService: MetricsService,
-                                              val dateCalculators:DateCalculators) extends IncorporationAPIConnector {
-  val stubBaseUrl = config.incorpFrontendStubUrl
-  val cohoBaseUrl = config.companiesHouseUrl
-  val cohoApiAuthToken = config.incorpUpdateCohoApiAuthToken
-  val itemsToFetch = config.incorpUpdateItemsToFetch
-  val httpNoProxy = WSHttp
-  val httpProxy = WSHttpProxy
-  val featureSwitch = SCRSFeatureSwitches
-  override val metrics: MetricsService = injMetricsService
+                                              val dateCalculators:DateCalculators,
+                                              val httpNoProxy: HttpClient,
+                                              val httpProxy: WSHttpProxy) extends IncorporationAPIConnector {
+  lazy val stubBaseUrl = config.incorpFrontendStubUrl
+  lazy val cohoBaseUrl = config.companiesHouseUrl
+  lazy val cohoApiAuthToken = config.incorpUpdateCohoApiAuthToken
+  lazy val itemsToFetch = config.incorpUpdateItemsToFetch
+  lazy val featureSwitch = SCRSFeatureSwitches
+  override lazy val metrics: MetricsService = injMetricsService
   override lazy val successCounter: Counter = metrics.transactionApiSuccessCounter
   override lazy val failureCounter: Counter = metrics.transactionApiFailureCounter
 
-  protected val loggingDays: String = config.noRegisterAnInterestLoggingDay
-  protected val loggingTimes: String = config.noRegisterAnInterestLoggingTime
+  protected lazy val loggingDays: String = config.noRegisterAnInterestLoggingDay
+  protected lazy val loggingTimes: String = config.noRegisterAnInterestLoggingTime
 }
 
 case class IncorpUpdateAPIFailure(ex: Exception) extends NoStackTrace

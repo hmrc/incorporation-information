@@ -18,16 +18,23 @@ package services
 
 import com.codahale.metrics.{Counter, Gauge, Timer}
 import com.kenshoo.play.metrics.{Metrics, MetricsDisabledException}
+import config.MicroserviceConfig
 import javax.inject.Inject
+import jobs._
+import org.joda.time.Duration
 import play.api.Logger
+import reactivemongo.api.commands.LastError
 import repositories._
+import uk.gov.hmrc.lock.LockKeeper
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 
 class MetricsServiceImpl @Inject()(val injSubRepo: SubscriptionsMongo,
-                                   val injMetrics: Metrics
+                                   val injMetrics: Metrics,
+                                   val msConfig: MicroserviceConfig,
+                                   val lockRepositoryProvider: LockRepositoryProvider
                                   ) extends MetricsService {
   override val subRepo = injSubRepo.repo
   override val metrics = injMetrics
@@ -38,9 +45,17 @@ class MetricsServiceImpl @Inject()(val injSubRepo: SubscriptionsMongo,
 
   override val publicAPITimer: Timer = metrics.defaultRegistry.timer("public-api-timer")
   override val internalAPITimer: Timer = metrics.defaultRegistry.timer("internal-api-timer")
+
+  lazy val lockoutTimeout = msConfig.getInt("schedules.metrics-job.lockTimeout")
+
+  lazy val lockKeeper: LockKeeper = new LockKeeper() {
+    override val lockId = "metrics-job-lock"
+    override val forceLockReleaseAfter: Duration = Duration.standardSeconds(lockoutTimeout)
+    override lazy val repo = lockRepositoryProvider.repo
+  }
 }
 
-trait MetricsService {
+trait MetricsService extends ScheduledService[Either[Map[String, Int], LockResponse]]{
 
   protected val metrics: Metrics
   protected val subRepo: SubscriptionsRepository
@@ -48,9 +63,24 @@ trait MetricsService {
   val publicCohoApiFailureCounter: Counter
   val transactionApiSuccessCounter: Counter
   val transactionApiFailureCounter: Counter
+  val lockKeeper: LockKeeper
 
   val publicAPITimer: Timer
   val internalAPITimer: Timer
+
+    def invoke(implicit ec:ExecutionContext):Future[Either[Map[String, Int],LockResponse]] = {
+      lockKeeper.tryLock(updateSubscriptionMetrics).map {
+        case Some(res) =>
+          Logger.info("MetricsService acquired lock and returned results")
+          Left(res)
+        case None =>
+          Logger.info("MetricsService cant acquire lock")
+          Right(MongoLocked)
+      }.recover {
+        case e: Exception => Logger.error(s"Error running updateSubscriptionMetrics with message: ${e.getMessage}")
+          Right(UnlockingFailed)
+      }
+    }
 
   def updateSubscriptionMetrics(): Future[Map[String, Int]] = {
     subRepo.getSubscriptionStats() map {
@@ -92,6 +122,4 @@ trait MetricsService {
         throw e
     }
   }
-
 }
-

@@ -31,9 +31,14 @@ class ProactiveMonitoringISpec extends IntegrationSpecBase with FakeAppConfig
 
   val txId = "test-txid"
   val crn = "test-crn"
-
+  val additionalConfiguration = Map(
+    "schedules.fire-subs-job.enabled" -> "false",
+    "schedules.incorp-update-job.enabled" -> "false",
+    "schedules.proactive-monitoring-job.enabled" -> "false",
+    "schedules.metrics-job.enabled" -> "false"
+  )
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
-    .configure(fakeConfig())
+    .configure(fakeConfig(additionalConfiguration))
     .build
 
   val service: ProactiveMonitoringService = app.injector.instanceOf[ProactiveMonitoringService]

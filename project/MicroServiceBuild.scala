@@ -10,21 +10,21 @@ object MicroServiceBuild extends Build with MicroService {
 
   val compile = Seq(
     ws,
-    "uk.gov.hmrc" %% "play-reactivemongo" % "5.2.0",
-    "uk.gov.hmrc" %% "microservice-bootstrap" % "6.18.0",
+    "com.enragedginger" %% "akka-quartz-scheduler" % "1.8.0-akka-2.5.x",
+    "uk.gov.hmrc" %% "bootstrap-play-25" % "4.9.0",
     "uk.gov.hmrc" %% "domain" % "5.3.0",
-    "uk.gov.hmrc" %% "play-scheduling" % "5.0.0",
-    "uk.gov.hmrc" %% "mongo-lock" % "4.1.0"
+    "uk.gov.hmrc" %% "mongo-lock" % "6.10.0-play-25",
+    "uk.gov.hmrc" %% "simple-reactivemongo" % "7.12.0-play-25" force()
   )
 
   def test(scope: String = "test,it") = Seq(
-    "uk.gov.hmrc" %% "hmrctest" % "3.1.0" % scope,
+    "uk.gov.hmrc" %% "hmrctest" % "3.5.0-play-25" % scope,
     "org.scalatest" %% "scalatest" % "3.0.0" % scope,
     "org.scalatestplus.play" %% "scalatestplus-play" % "2.0.0" % scope,
     "org.pegdown" % "pegdown" % "1.6.0" % scope,
-    "com.github.tomakehurst" % "wiremock" % "2.6.0" % "it",
+    "com.github.tomakehurst" % "wiremock" % "2.21.0" % "it",
     "com.typesafe.play" %% "play-test" % PlayVersion.current % scope,
-    "uk.gov.hmrc" %% "reactivemongo-test" % "2.0.0" % scope,
-    "org.mockito" % "mockito-all" % "2.0.2-beta" % scope
+    "org.mockito" % "mockito-all" % "2.0.2-beta" % scope,
+    "uk.gov.hmrc" %% "reactivemongo-test" % "4.7.0-play-25" % scope
   )
 }

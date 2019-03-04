@@ -17,16 +17,15 @@
 package controllers.test
 
 import constants.JobNames._
-import javax.inject.{Inject, Named, Singleton}
+import javax.inject.{Inject, Named}
+import jobs.ScheduledJob
 import play.api.Logger
 import play.api.mvc.Action
-import uk.gov.hmrc.play.microservice.controller.BaseController
-import uk.gov.hmrc.play.scheduling.ScheduledJob
+import uk.gov.hmrc.play.bootstrap.controller.BaseController
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-@Singleton
 class ManualTriggerControllerImpl @Inject()(@Named("incorp-update-job") val incUpdatesJob: ScheduledJob,
                                             @Named("fire-subs-job") val fireSubJob: ScheduledJob) extends ManualTriggerController
 
@@ -47,6 +46,12 @@ trait ManualTriggerController extends BaseController {
       }
   }
 
-  private def triggerIncorpUpdateJob = incUpdatesJob.execute map (res => Ok(res.message))
-  private def triggerFireSubsJob = fireSubJob.execute map (res => Ok(res.message))
+  private def triggerIncorpUpdateJob = incUpdatesJob
+    .scheduledMessage
+    .service
+    .invoke map (res => Ok(res.toString))
+  private def triggerFireSubsJob = fireSubJob
+    .scheduledMessage
+    .service
+    .invoke map (res => Ok(res.toString))
 }

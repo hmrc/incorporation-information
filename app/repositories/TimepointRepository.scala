@@ -16,14 +16,16 @@
 
 package repositories
 
-import javax.inject.{Inject, Singleton}
+
+import javax.inject.Inject
 import play.api.Logger
 import play.api.libs.json.{JsValue, Json}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DB
 import reactivemongo.bson.{BSONDocument, BSONObjectID}
+import reactivemongo.play.json.ImplicitBSONHandlers._
+import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
-import uk.gov.hmrc.mongo.{ReactiveRepository, Repository}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -38,12 +40,12 @@ object TimePoint {
   implicit val formats = Json.format[TimePoint]
 }
 
-@Singleton
+
 class TimepointMongo @Inject()(mongo: ReactiveMongoComponent) extends ReactiveMongoFormats {
-  val repo = new TimepointMongoRepository(mongo.mongoConnector.db)
+  lazy val repo = new TimepointMongoRepository(mongo.mongoConnector.db)
 }
 
-trait TimepointRepository extends Repository[TimePoint, BSONObjectID] {
+trait TimepointRepository {
   def updateTimepoint(s: String) : Future[String]
   def retrieveTimePoint : Future[Option[String]]
   def resetTimepointTo(timepoint: String): Future[Boolean]

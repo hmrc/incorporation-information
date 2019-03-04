@@ -19,6 +19,7 @@ package repositories
 import helpers.SCRSMongoSpec
 import models.{IncorpUpdate, QueuedIncorpUpdate}
 import org.joda.time.DateTime
+import play.modules.reactivemongo.ReactiveMongoComponent
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -26,7 +27,9 @@ import scala.concurrent.Future
 class QueueRepositoryISpec extends SCRSMongoSpec {
 
   class Setup extends MongoErrorCodes {
-    val repo = new QueueMongo(reactiveMongoComponent).repo
+    val repo = new QueueMongo {
+      override val mongo: ReactiveMongoComponent = reactiveMongoComponent
+    }.repo
     await(repo.drop)
     await(repo.ensureIndexes)
 

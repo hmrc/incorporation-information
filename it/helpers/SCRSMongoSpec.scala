@@ -18,15 +18,15 @@ package helpers
 
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import play.api.Application
 import play.api.inject.DefaultApplicationLifecycle
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json._
+import play.api.{Application, Environment}
 import play.modules.reactivemongo.ReactiveMongoComponentImpl
 import uk.gov.hmrc.mongo.MongoSpecSupport
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 
-trait SCRSMongoSpec extends UnitSpec with MongoSpecSupport with BeforeAndAfterEach
+trait SCRSMongoSpec extends UnitSpec with  MongoSpecSupport with BeforeAndAfterEach
   with ScalaFutures with Eventually with WithFakeApplication with FakeAppConfig {
 
   override lazy val fakeApplication: Application = new GuiceApplicationBuilder()
@@ -35,7 +35,7 @@ trait SCRSMongoSpec extends UnitSpec with MongoSpecSupport with BeforeAndAfterEa
     .build()
 
   lazy val applicationLifeCycle = new DefaultApplicationLifecycle
-  val reactiveMongoComponent = new ReactiveMongoComponentImpl(fakeApplication, applicationLifeCycle)
+  lazy val reactiveMongoComponent = new ReactiveMongoComponentImpl(fakeApplication.configuration,fakeApplication.injector.instanceOf[Environment],applicationLifeCycle)
 
   implicit def formatToOFormat[T](implicit format: Format[T]): OFormat[T] = new OFormat[T] {
     override def writes(o: T): JsObject = format.writes(o).as[JsObject]

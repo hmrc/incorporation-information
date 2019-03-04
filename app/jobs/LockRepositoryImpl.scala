@@ -15,17 +15,15 @@
  */
 
 package jobs
-import akka.actor.ActorSystem
+
 import javax.inject.Inject
-import jobs.SchedulingActor.IncorpUpdates
-import play.api.Configuration
-import services.IncorpUpdateService
+import play.modules.reactivemongo.ReactiveMongoComponent
+import uk.gov.hmrc.lock.{LockMongoRepository, LockRepository}
 
+class LockRepositoryProviderImpl @Inject()(reactiveMongoComponent: ReactiveMongoComponent) extends LockRepositoryProvider {
 
-class IncorpUpdatesJob @Inject()( incorpUpdateService: IncorpUpdateService,
-                                  val config: Configuration) extends ScheduledJob {
-  val jobName = "incorp-updates-job"
-  val actorSystem = ActorSystem(jobName)
-  val scheduledMessage = IncorpUpdates(incorpUpdateService)
-  schedule
+  lazy val repo = LockMongoRepository(reactiveMongoComponent.mongoConnector.db)
+}
+trait LockRepositoryProvider {
+  val repo: LockRepository
 }

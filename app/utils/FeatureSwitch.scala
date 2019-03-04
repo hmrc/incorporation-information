@@ -78,7 +78,18 @@ object FeatureSwitch {
     }
   }
 
-  private[utils] def systemPropertyName(name: String) = s"feature.$name"
+  private[utils] def systemPropertyName(name: String) = {
+    val seqOfJobs = Seq(
+      SCRSFeatureSwitches.KEY_INCORP_UPDATE,
+      SCRSFeatureSwitches.KEY_FIRE_SUBS,
+      SCRSFeatureSwitches.KEY_PRO_MONITORING,
+      SCRSFeatureSwitches.KEY_SCHED_METRICS)
+    if (seqOfJobs.contains(name)) {
+      s"schedules.$name.enabled"
+    } else {
+      s"feature.$name"
+    }
+  }
 
   def enable(fs: FeatureSwitch): FeatureSwitch = setProperty(fs.name, "true")
   def disable(fs: FeatureSwitch): FeatureSwitch = setProperty(fs.name, "false")
@@ -91,10 +102,10 @@ object FeatureSwitch {
 
 object SCRSFeatureSwitches extends SCRSFeatureSwitches {
   val KEY_TX_API = "transactionalAPI"
-  val KEY_INCORP_UPDATE = "incorpUpdate"
-  val KEY_FIRE_SUBS = "fireSubs"
-  val KEY_SCHED_METRICS = "scheduledMetrics"
-  val KEY_PRO_MONITORING = "proactiveMonitoring"
+  val KEY_INCORP_UPDATE = "incorp-update-job"
+  val KEY_FIRE_SUBS = "fire-subs-job"
+  val KEY_SCHED_METRICS = "metrics-job"
+  val KEY_PRO_MONITORING = "proactive-monitoring-job"
 }
 
 trait SCRSFeatureSwitches {

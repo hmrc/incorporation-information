@@ -17,20 +17,31 @@
 package controllers.test
 
 import Helpers.SCRSSpec
+import com.typesafe.akka.extension.quartz.QuartzSchedulerExtension
+import jobs.ScheduledJob
 import org.scalatest.BeforeAndAfterEach
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import utils.SCRSFeatureSwitches.{KEY_INCORP_UPDATE, KEY_TX_API}
+import org.mockito.Matchers.any
+import org.mockito.Mockito._
 
 class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
 
   override def beforeEach() {
-    System.clearProperty(s"feature.$KEY_INCORP_UPDATE")
     System.clearProperty(s"feature.$KEY_TX_API")
   }
-
+  val mockSched =  mock[ScheduledJob]
+  val mockQuartz = mock[QuartzSchedulerExtension]
   class Setup {
-    val controller = new FeatureSwitchController {}
+    reset(mockSched)
+    reset(mockQuartz)
+    val controller = new FeatureSwitchController {
+      override val incUpdatesJob: ScheduledJob = mockSched
+      override val metricsJob: ScheduledJob = mockSched
+      override val fireSubsJob: ScheduledJob = mockSched
+      override val proJob: ScheduledJob = mockSched
+    }
   }
 
   "calling switch" should {
@@ -40,19 +51,23 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
     "return an incorp update feature state set to false when we specify stub" in new Setup {
       val featureName = KEY_INCORP_UPDATE
       val featureState = "stub"
+      when(mockSched.scheduler).thenReturn(mockQuartz)
+      when(mockQuartz.suspendJob(any())).thenReturn(false)
 
       val result = controller.switch(featureName, featureState)(FakeRequest())
       status(result) shouldBe OK
-      bodyOf(await(result)) shouldBe message(featureName, "disabled")
+      bodyOf(await(result)) shouldBe message(featureName, "false")
     }
 
     "return an incorp update feature state set to true when we specify coho" in new Setup {
       val featureName = KEY_INCORP_UPDATE
       val featureState = "coho"
+      when(mockSched.scheduler).thenReturn(mockQuartz)
+      when(mockQuartz.resumeJob(any())).thenReturn(false)
 
       val result = controller.switch(featureName, featureState)(FakeRequest())
       status(result) shouldBe OK
-      bodyOf(await(result)) shouldBe message(featureName, "enabled")
+      bodyOf(await(result)) shouldBe message(featureName, "true")
     }
 
     "return a transactional API feature state set to false when we specify stub" in new Setup {
@@ -61,7 +76,7 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
 
       val result = controller.switch(featureName, featureState)(FakeRequest())
       status(result) shouldBe OK
-      bodyOf(await(result)) shouldBe message(featureName, "disabled")
+      bodyOf(await(result)) shouldBe message(featureName, "false")
     }
 
     "return a transactional API feature state set to true when we specify coho" in new Setup {
@@ -70,35 +85,28 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
 
       val result = controller.switch(featureName, featureState)(FakeRequest())
       status(result) shouldBe OK
-      bodyOf(await(result)) shouldBe message(featureName, "enabled")
+      bodyOf(await(result)) shouldBe message(featureName, "true")
     }
-
 
     "return a transactional API feature state set to false as a default when we specify xxxx" in new Setup {
       val featureName = KEY_TX_API
       val featureState = "xxxx"
 
-      val ex = intercept[Exception](await(controller.switch(featureName, featureState)(FakeRequest())))
-      ex.getMessage shouldBe s"[FeatureSwitchController] xxxx was not a valid state for $KEY_TX_API - try coho / on to enable or stub / off to disable"
+      val result = await(controller.switch(featureName, featureState)(FakeRequest()))
+      status(result) shouldBe OK
+      bodyOf(await(result)) shouldBe message(featureName, "false")
 
     }
 
     "return a incorp update feature state set to false as a default when we specify xxxx" in new Setup {
       val featureName = KEY_INCORP_UPDATE
       val featureState = "xxxx"
+      when(mockSched.scheduler).thenReturn(mockQuartz)
+      when(mockQuartz.resumeJob(any())).thenReturn(false)
 
-      val ex = intercept[Exception](await(controller.switch(featureName, featureState)(FakeRequest())))
-      ex.getMessage shouldBe s"[FeatureSwitchController] xxxx was not a valid state for $KEY_INCORP_UPDATE - try coho / on to enable or stub / off to disable"
-    }
-
-
-    "return an incorp update feature state set to false as a default when we specify a non implemented feature name" in new Setup {
-      val featureName = "Rubbish"
-      val featureState = "coho"
-
-      val result = controller.switch(featureName, featureState)(FakeRequest())
-
-      status(result) shouldBe BAD_REQUEST
+      val result = await(controller.switch(featureName, featureState)(FakeRequest()))
+      status(result) shouldBe OK
+      bodyOf(await(result)) shouldBe message(featureName, "false")
     }
   }
 }
