@@ -187,6 +187,4 @@ class IncorpUpdateSpec extends UnitSpec with JSONhelpers {
       Json.toJson[IncorpUpdate](result.get)(IncorpUpdate.responseFormat) shouldBe json
     }
   }
-
-
 }

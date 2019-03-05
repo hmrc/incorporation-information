@@ -27,7 +27,7 @@ import services.SubscriptionFiringService
 import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext.Implicits.global
-
+@javax.inject.Singleton
 class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
 
   val mockUrl = s"http://$wiremockHost:$wiremockPort"
@@ -48,7 +48,9 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
 
 
     val subRepo = new SubscriptionsMongo(reactiveMongoComponent).repo
-    val queueRepo = new QueueMongo(reactiveMongoComponent).repo
+    val queueRepo = new QueueMongo {
+      override val mongo: ReactiveMongoComponent = reactiveMongoComponent
+    }.repo
 
     def insert(sub: Subscription) = await(subRepo.insert(sub))
     def insert(queuedIncorpUpdate: QueuedIncorpUpdate) = await(queueRepo.insert(queuedIncorpUpdate))

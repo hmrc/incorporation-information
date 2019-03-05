@@ -18,37 +18,47 @@ package services
 
 import config.MicroserviceConfig
 import connectors.FiringSubscriptionsConnector
-import javax.inject.{Inject, Singleton}
+import javax.inject.Inject
+import jobs._
 import models.{IncorpUpdateResponse, QueuedIncorpUpdate}
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, Duration}
 import play.api.{Environment, Logger}
-import reactivemongo.api.commands.DefaultWriteResult
+import reactivemongo.api.commands.{DefaultWriteResult, LastError}
 import repositories._
 import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.lock.LockKeeper
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
-@Singleton
+
 class SubscriptionFiringServiceImpl @Inject()(fsConnector: FiringSubscriptionsConnector,
                                               injQueueRepo: QueueMongo,
                                               injSubRepo: SubscriptionsMongo,
-                                              config: MicroserviceConfig,
-                                              val env: Environment
+                                              msConfig: MicroserviceConfig,
+                                              val env: Environment,
+                                              lockRepository: LockRepositoryProvider
                                              ) extends SubscriptionFiringService {
-  override val firingSubsConnector = fsConnector
-  override val queueRepository = injQueueRepo.repo
-  override val subscriptionsRepository = injSubRepo.repo
-  override val queueFailureDelay = config.queueFailureDelay
-  override val queueRetryDelay = config.queueRetryDelay
-  override val fetchSize = config.queueFetchSize
-  override val useHttpsFireSubs = config.useHttpsFireSubs
+  override lazy val firingSubsConnector = fsConnector
+  override lazy val queueRepository = injQueueRepo.repo
+  override lazy val subscriptionsRepository = injSubRepo.repo
+  override lazy val queueFailureDelay = msConfig.queueFailureDelay
+  override lazy val queueRetryDelay = msConfig.queueRetryDelay
+  override lazy val fetchSize = msConfig.queueFetchSize
+  override lazy val useHttpsFireSubs = msConfig.useHttpsFireSubs
+  lazy val lockoutTimeout = msConfig.getInt("schedules.fire-subs-job.lockTimeout")
 
+  lazy val lockKeeper: LockKeeper = new LockKeeper() {
+    override val lockId = "fire-subs-job-lock"
+    override val forceLockReleaseAfter: Duration = Duration.standardSeconds(lockoutTimeout)
+    override lazy val repo = lockRepository.repo
+  }
   implicit val hc = HeaderCarrier()
 }
 
-trait SubscriptionFiringService {
+trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], LockResponse]] {
   val firingSubsConnector: FiringSubscriptionsConnector
+  val lockKeeper: LockKeeper
   val queueRepository: QueueRepository
   val subscriptionsRepository: SubscriptionsRepository
   val queueFailureDelay: Int
@@ -58,7 +68,19 @@ trait SubscriptionFiringService {
 
   implicit val hc: HeaderCarrier
 
-
+def invoke(implicit ec: ExecutionContext): Future[Either[Seq[Boolean], LockResponse]] = {
+  lockKeeper.tryLock(fireIncorpUpdateBatch).map {
+    case Some(res) =>
+      Logger.info("SubscriptionFiringService acquired lock and returned results")
+      Left(res)
+    case None =>
+      Logger.info("SubscriptionFiringService cant acquire lock")
+      Right(MongoLocked)
+  }.recover {
+    case e: Exception => Logger.error(s"Error running fireIncorpUpdateBatch with message: ${e.getMessage}")
+      Right(UnlockingFailed)
+  }
+}
   def fireIncorpUpdateBatch: Future[Seq[Boolean]] = {
     queueRepository.getIncorpUpdates(fetchSize) flatMap { updates =>
       Future.sequence( updates map { update => for {

@@ -59,7 +59,6 @@ trait IntegrationSpecBase extends UnitSpec
     startWiremock()
   }
 
-
   override def afterAll() = {
     stopWiremock()
     super.afterAll()

@@ -31,12 +31,12 @@ import scala.concurrent.Future
 class SubscriptionServiceImpl @Inject()(injSubRepo: SubscriptionsMongo,
                                         injIncorpRepo: IncorpUpdateMongo,
                                         config: MicroserviceConfig,
-                                        incorpUpdateServiceInj: Provider[IncorpUpdateService]
+                                        incorpUpdateServiceInj: IncorpUpdateService
                                        ) extends SubscriptionService {
-  lazy val incorpUpdateService = incorpUpdateServiceInj.get()
-  override val subRepo = injSubRepo.repo
-  override val incorpRepo = injIncorpRepo.repo
-  override val forcedSubDelay = config.forcedSubscriptionDelay
+  lazy val incorpUpdateService = incorpUpdateServiceInj
+  override lazy val subRepo = injSubRepo.repo
+  override lazy val incorpRepo = injIncorpRepo.repo
+  override lazy val forcedSubDelay = config.forcedSubscriptionDelay
 }
 
 trait SubscriptionService {
@@ -99,7 +99,4 @@ trait SubscriptionService {
   def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] = {
     subRepo.getSubscription(transactionId, regime, subscriber)
   }
-
-
 }
-

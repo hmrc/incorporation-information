@@ -23,7 +23,6 @@ import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.inject.{BindingKey, QualifierInstance}
 import repositories.SubscriptionsMongo
-import uk.gov.hmrc.play.scheduling.ScheduledJob
 
 import scala.concurrent.ExecutionContext.Implicits._
 
@@ -36,7 +35,11 @@ class MetricsISpec extends IntegrationSpecBase {
     "auditing.consumer.baseUri.host" -> s"$wiremockHost",
     "auditing.consumer.baseUri.port" -> s"$wiremockPort",
     "Test.auditing.consumer.baseUri.host" -> s"$wiremockHost",
-    "Test.auditing.consumer.baseUri.port" -> s"$wiremockPort"
+    "Test.auditing.consumer.baseUri.port" -> s"$wiremockPort",
+    "schedules.fire-subs-job.enabled" -> "false",
+    "schedules.incorp-update-job.enabled" -> "false",
+    "schedules.proactive-monitoring-job.enabled" -> "false",
+    "schedules.metrics-job.enabled" -> "false"
   )
 
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
@@ -77,41 +80,55 @@ class MetricsISpec extends IntegrationSpecBase {
 
       val job = lookupJob("metrics-job")
 
-      val f = job.execute
-      val r = await(f)
-      r shouldBe job.Result("Feature is turned off")
+      val f = job.schedule
+      f shouldBe false
     }
   }
 
   "If enabled, update metrics" should {
     "do no updates if no subscriptions" in new Setup {
       setupAuditMocks()
-      setupFeatures(scheduledMetrics = true)
+      setupFeatures(scheduledMetrics = false)
 
       await(subRepo.collection.count()) shouldBe 0
 
       val job = lookupJob("metrics-job")
 
-      val f = job.execute
-      val r = await(f)
-      r shouldBe job.Result("metrics-job")
-
+      val f = job.scheduledMessage.service.invoke.map(_.asInstanceOf[Either[Map[String, Int], LockResponse]])
+      val res = await(f)
+      res shouldBe Left(Map.empty)
     }
   }
 
   "If enabled, update metrics" should {
     "do a single update if one subscriptions" in new Setup {
       setupAuditMocks()
-      setupFeatures(scheduledMetrics = true)
+      setupFeatures(scheduledMetrics = false)
 
       await(insert(Subscription("tx1", "regime", "sub1", "url1")))
       await(subRepo.collection.count()) shouldBe 1
 
       val job = lookupJob("metrics-job")
 
-      val f = job.execute
-      val r = await(f)
-      r shouldBe job.Result("metrics-job")
+      val f = job.scheduledMessage.service.invoke.map(_.asInstanceOf[Either[Map[String, Int], LockResponse]])
+      val res = await(f)
+      res shouldBe Left(Map("regime" -> 1))
+    }
+    "do a single update if multiple subscriptions" in new Setup {
+      setupAuditMocks()
+      setupFeatures(scheduledMetrics = false)
+
+      await(insert(Subscription("tx1", "regime", "sub1", "url1")))
+      await(insert(Subscription("tx2", "regime", "sub2", "url2")))
+      await(insert(Subscription("tx3", "regime1", "sub2", "url2")))
+      await(insert(Subscription("tx4", "regime1", "sub2", "url2")))
+      await(subRepo.collection.count()) shouldBe 4
+
+      val job = lookupJob("metrics-job")
+
+      val f = job.scheduledMessage.service.invoke.map(_.asInstanceOf[Either[Map[String, Int], LockResponse]])
+      val res = await(f)
+      res shouldBe Left(Map("regime" -> 2, "regime1" -> 2))
     }
   }
 }

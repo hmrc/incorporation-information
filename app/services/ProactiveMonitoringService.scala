@@ -18,23 +18,38 @@ package services
 
 import config.MicroserviceConfig
 import connectors.{IncorporationAPIConnector, PublicCohoApiConnectorImpl, SuccessfulTransactionalAPIResponse}
-import javax.inject.{Inject, Singleton}
+
+import javax.inject.Inject
+import jobs._
+import org.joda.time.Duration
+import play.api.Logger
+import reactivemongo.api.commands.LastError
 import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.lock.LockKeeper
 import utils.Base64
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
-@Singleton
 class ProactiveMonitoringServiceImpl @Inject()(val transactionalConnector: IncorporationAPIConnector,
                                                val publicCohoConnector: PublicCohoApiConnectorImpl,
-                                               config: MicroserviceConfig) extends ProactiveMonitoringService {
-  protected val transactionIdToPoll: String = config.transactionIdToPoll
-  protected val crnToPoll: String = config.crnToPoll
+                                               msConfig: MicroserviceConfig,
+                                               val lockRepositoryProvider: LockRepositoryProvider) extends ProactiveMonitoringService {
+  protected val transactionIdToPoll: String = msConfig.transactionIdToPoll
+  protected val crnToPoll: String = msConfig.crnToPoll
+
+  lazy val lockoutTimeout = msConfig.getInt("schedules.proactive-monitoring-job.lockTimeout")
+
+  lazy val lockKeeper: LockKeeper = new LockKeeper() {
+    override val lockId = "incorp-updates-job-lock"
+    override val forceLockReleaseAfter: Duration = Duration.standardSeconds(lockoutTimeout)
+    override lazy val repo = lockRepositoryProvider.repo
+  }
 }
 
-trait ProactiveMonitoringService {
+trait ProactiveMonitoringService extends ScheduledService[Either[(String, String), LockResponse]] {
 
+  val lockKeeper: LockKeeper
   protected val transactionalConnector: IncorporationAPIConnector
   protected val publicCohoConnector: PublicCohoApiConnectorImpl
 
@@ -43,6 +58,21 @@ trait ProactiveMonitoringService {
 
   lazy val decodedTxId: String = Base64.decode(transactionIdToPoll)
   lazy val decodedCrn: String = Base64.decode(crnToPoll)
+
+  def invoke(implicit ec: ExecutionContext): Future[Either[(String, String), LockResponse]] = {
+    implicit val hc = HeaderCarrier()
+    lockKeeper.tryLock(pollAPIs).map {
+      case Some(res) =>
+        Logger.info("ProactiveMonitoringService acquired lock and returned results")
+        Left(res)
+      case None =>
+        Logger.info("ProactiveMonitoringService cant acquire lock")
+        Right(MongoLocked)
+    }.recover {
+      case e: Exception => Logger.error(s"Error running pollAPIs with message: ${e.getMessage}")
+        Right(UnlockingFailed)
+    }
+  }
 
   def pollAPIs(implicit hc: HeaderCarrier): Future[(String, String)] = {
     for {

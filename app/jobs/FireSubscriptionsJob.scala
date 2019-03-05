@@ -16,63 +16,18 @@
 
 package jobs
 
-import javax.inject.{Inject, Singleton}
-import org.joda.time.Duration
-import play.api.Logger
-import play.modules.reactivemongo.MongoDbConnection
+
+import akka.actor.ActorSystem
+import javax.inject.Inject
+import jobs.SchedulingActor.FireSubscriptions
+import play.api.Configuration
 import services.SubscriptionFiringService
-import uk.gov.hmrc.lock.{LockKeeper, LockRepository}
-import uk.gov.hmrc.play.scheduling.ExclusiveScheduledJob
-import utils.SCRSFeatureSwitches
 
-import scala.concurrent.{ExecutionContext, Future}
+class FireSubscriptionsJob @Inject()( fireSubsService: SubscriptionFiringService,
+                                      val config: Configuration) extends ScheduledJob {
+  val jobName = "fire-subs-job"
+  val actorSystem = ActorSystem(jobName)
+  val scheduledMessage = FireSubscriptions(fireSubsService)
 
-@Singleton
-class FireSubscriptionsJobImpl @Inject()(fireSubsService: SubscriptionFiringService) extends FireSubscriptionsJob {
-  val name = "fire-subs-job"
-  lazy val subscriptionFiringService = fireSubsService
-
-  override lazy val lock: LockKeeper = new LockKeeper() {
-    override val lockId = s"$name-lock"
-    override val forceLockReleaseAfter: Duration = lockTimeout
-    private implicit val mongo = new MongoDbConnection {}.db
-    override val repo = new LockRepository
-  }
+  schedule
 }
-
-trait FireSubscriptionsJob extends ExclusiveScheduledJob with JobConfig {
-
-  val lock: LockKeeper
-  val subscriptionFiringService: SubscriptionFiringService
-
-
-  override def executeInMutex(implicit ec: ExecutionContext): Future[Result] = {
-    SCRSFeatureSwitches.fireSubs.enabled match {
-      case true => {
-        lock.tryLock {
-          Logger.info(s"Triggered $name")
-          subscriptionFiringService.fireIncorpUpdateBatch map { result =>
-            val message = s"Feature is turned on - result = ${result}"
-            Logger.info(message)
-            Result(message)
-          }
-        } map {
-          case Some(x) =>
-            Logger.info(s"successfully acquired lock for $name - result ${x}")
-            Result(s"$name")
-          case None =>
-            Logger.info(s"failed to acquire lock for $name")
-            Result(s"$name failed")
-        } recover {
-          case e: Exception => {
-            Logger.error(s"$name failed - ${e.getMessage}", e)
-            Result(s"$name failed")
-          }
-        }
-      }
-      case false => Future.successful(Result(s"Feature is turned off"))
-    }
-  }
-
-}
-

@@ -15,17 +15,13 @@
  */
 
 package jobs
-import akka.actor.ActorSystem
-import javax.inject.Inject
-import jobs.SchedulingActor.IncorpUpdates
-import play.api.Configuration
-import services.IncorpUpdateService
 
+import scala.concurrent.{ExecutionContext, Future}
 
-class IncorpUpdatesJob @Inject()( incorpUpdateService: IncorpUpdateService,
-                                  val config: Configuration) extends ScheduledJob {
-  val jobName = "incorp-updates-job"
-  val actorSystem = ActorSystem(jobName)
-  val scheduledMessage = IncorpUpdates(incorpUpdateService)
-  schedule
+sealed trait LockResponse
+case object MongoLocked extends LockResponse
+case object UnlockingFailed extends LockResponse
+
+trait ScheduledService[R] {
+  def invoke(implicit ec : ExecutionContext) : Future[R]
 }

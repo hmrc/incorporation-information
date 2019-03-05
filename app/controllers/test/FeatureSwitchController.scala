@@ -16,37 +16,47 @@
 
 package controllers.test
 
-import javax.inject.Inject
-import play.api.Logger
+import javax.inject.{Inject, Named}
+import jobs.ScheduledJob
 import play.api.mvc.Action
-import uk.gov.hmrc.play.microservice.controller.BaseController
-import utils.{FeatureSwitch, SCRSFeatureSwitches}
+import uk.gov.hmrc.play.bootstrap.controller.BaseController
+import utils.FeatureSwitch
 
 import scala.concurrent.Future
 
-class FeatureSwitchControllerImpl @Inject()() extends FeatureSwitchController
+class FeatureSwitchControllerImpl @Inject()(
+                                             @Named("incorp-update-job") val incUpdatesJob: ScheduledJob,
+                                             @Named("metrics-job") val metricsJob: ScheduledJob,
+                                             @Named("fire-subs-job") val fireSubsJob: ScheduledJob,
+                                             @Named("proactive-monitoring-job") val proJob: ScheduledJob
+                                           ) extends FeatureSwitchController
 
 trait FeatureSwitchController extends BaseController {
+  val incUpdatesJob: ScheduledJob
+  val metricsJob: ScheduledJob
+  val fireSubsJob: ScheduledJob
+  val proJob: ScheduledJob
 
   val fs = FeatureSwitch
 
   def switch(featureName: String, state: String) = Action.async {
     implicit request =>
 
-      lazy val feature = state.toLowerCase match {
-        case "stub" | "off" => fs.disable(FeatureSwitch(featureName, enabled = false))
-        case "coho" | "on" => fs.enable(FeatureSwitch(featureName, enabled = true))
-        case _ => throw new Exception(s"[FeatureSwitchController] $state was not a valid state for $featureName - try coho / on to enable or stub / off to disable")
-      }
+      val truthy: Boolean = Seq("coho","on","true","enable").contains(state)
 
-      SCRSFeatureSwitches(featureName) match {
-        case Some(_) =>
-          val message = s"[FeatureSwitch] Feature switch for ${feature.name} is now ${if(feature.enabled) "enabled" else "disabled"}"
-          Logger.info(message)
-          Future.successful(Ok(message))
-        case None =>
-          Logger.info(s"[FeatureSwitch] No feature switch with the name $featureName could not be found")
-          Future.successful(BadRequest)
+        val feature = (featureName, truthy) match {
+          case ("metrics-job", true) => metricsJob.scheduler.resumeJob("metrics-job")
+          case ("metrics-job", false) => metricsJob.scheduler.suspendJob("metrics-job")
+          case ("fire-subs-job", true) => fireSubsJob.scheduler.resumeJob("fire-subs-job")
+          case ("fire-subs-job", false) => fireSubsJob.scheduler.suspendJob("fire-subs-job")
+          case ("incorp-update-job", true) => fireSubsJob.scheduler.resumeJob("incorp-update-job")
+          case ("incorp-update-job", false) => fireSubsJob.scheduler.suspendJob("incorp-update-job")
+          case ("proactive-monitoring-job", true) => fireSubsJob.scheduler.resumeJob("proactive-monitoring-job")
+          case ("proactive-monitoring-job", false) => fireSubsJob.scheduler.suspendJob("proactive-monitoring-job")
+          case (_, true)   => fs.enable(FeatureSwitch(featureName, enabled = true))
+          case _ => fs.disable(FeatureSwitch(featureName, enabled = false))
+
       }
+          Future.successful(Ok(s"[FeatureSwitch] Feature switch for $featureName is now $truthy"))
   }
 }

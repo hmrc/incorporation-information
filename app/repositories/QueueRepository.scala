@@ -16,16 +16,17 @@
 
 package repositories
 
-import javax.inject.{Inject, Singleton}
+import javax.inject.Inject
 import models.QueuedIncorpUpdate
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.json.{Format, Json}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.indexes.{Index, IndexType}
-import reactivemongo.api.{DB, ReadPreference}
+import reactivemongo.api.{Cursor, DB, ReadPreference}
 import reactivemongo.bson.{BSONDocument, BSONObjectID}
 import reactivemongo.core.errors.DatabaseException
+import reactivemongo.play.json.ImplicitBSONHandlers._
 import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
 
@@ -33,9 +34,12 @@ import scala.collection.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-@Singleton
-class QueueMongo @Inject()(mongo: ReactiveMongoComponent) extends ReactiveMongoFormats {
-  val repo = new QueueMongoRepository(mongo.mongoConnector.db, QueuedIncorpUpdate.format)
+
+class QueueMongoImpl @Inject()(val mongo: ReactiveMongoComponent) extends QueueMongo
+
+  trait QueueMongo extends ReactiveMongoFormats {
+    val mongo: ReactiveMongoComponent
+    lazy val repo = new QueueMongoRepository(mongo.mongoConnector.db, QueuedIncorpUpdate.format)
 }
 
 trait QueueRepository {
@@ -101,7 +105,7 @@ class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate]) 
     val selector = Json.obj("timestamp" -> Json.obj("$lte" -> DateTime.now.getMillis))
     val rp = ReadPreference.primaryPreferred
 
-    collection.find(selector).sort(Json.obj("timestamp" -> 1)).cursor[QueuedIncorpUpdate](rp).collect[List](upTo = fetchSize)
+    collection.find(selector).sort(Json.obj("timestamp" -> 1)).cursor[QueuedIncorpUpdate](rp).collect[List](maxDocs = fetchSize, Cursor.FailOnError())
   }
 
   override def removeQueuedIncorpUpdate(transactionId: String): Future[Boolean] = {
@@ -109,10 +113,22 @@ class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate]) 
   }
 
   override def updateTimestamp(transactionId: String, newTS: DateTime): Future[Boolean] = {
-    val modifier = BSONDocument("$set" -> BSONDocument("timestamp" -> newTS.getMillis))
+   val ts = newTS.getMillis
+    val modifier = BSONDocument("$set" -> BSONDocument("timestamp" -> ts))
     collection.findAndUpdate(txSelector(transactionId), modifier, true, false).map {
-      _.result.fold(false)(_ => true)
+      res => res.value.fold(false){
+        _.value("timestamp").validate[Long]
+          .fold(_ => {
+            Logger.error("updateTimestamp could not be converted to a long")
+            false
+          }, tsFromUpdate =>
+            if(tsFromUpdate == ts) {
+              true
+            } else {
+              Logger.info(s"updateTimestamp did not return the correct timestamp that was inserted on doc: $tsFromUpdate inserted: $ts")
+              false
+            }
+        )}
     }
   }
 }
-

@@ -16,7 +16,7 @@
 
 package jobs
 
-import com.github.tomakehurst.wiremock.client.WireMock._
+  import com.github.tomakehurst.wiremock.client.WireMock._
 import com.google.inject.name.Names
 import helpers.IntegrationSpecBase
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
@@ -26,17 +26,22 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.inject.{BindingKey, QualifierInstance}
 import play.api.libs.json.{JsObject, Json}
 import reactivemongo.api.commands.WriteError
+import reactivemongo.play.json.ImplicitBSONHandlers._
 import repositories._
-import uk.gov.hmrc.play.scheduling.ScheduledJob
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class   IncorporationUpdateISpec extends IntegrationSpecBase {
+class IncorporationUpdateISpec extends IntegrationSpecBase {
 
   val mockUrl = s"http://$wiremockHost:$wiremockPort"
-
+  val additionalConfiguration = Map(
+    "schedules.fire-subs-job.enabled" -> "false",
+    "schedules.incorp-update-job.enabled" -> "false",
+    "schedules.proactive-monitoring-job.enabled" -> "false",
+    "schedules.metrics-job.enabled" -> "false"
+  )
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
-    .configure(fakeConfig())
+    .configure(fakeConfig(additionalConfiguration))
     .build
 
   class Setup {
@@ -91,14 +96,13 @@ class   IncorporationUpdateISpec extends IntegrationSpecBase {
 
       val job = lookupJob("incorp-update-job")
 
-      val f = job.execute
-      val r = await(f)
-      r shouldBe job.Result("Feature incorpUpdate is turned off")
+      val f = job.schedule
+      f shouldBe false
     }
 
     "process successfully when enabled" in new Setup {
       setupAuditMocks()
-      setupFeatures(submissionCheck = true)
+      setupFeatures(submissionCheck = false)
 
       val emptyChResponse = chResponse("")
       stubGet("/incorporation-frontend-stubs/submissions.*", 200, emptyChResponse)
@@ -107,10 +111,9 @@ class   IncorporationUpdateISpec extends IntegrationSpecBase {
 
       val job = lookupJob("incorp-update-job")
 
-      val f = job.execute
+      val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult,LockResponse]])
       val r = await(f)
-      r.message should include("incorp-updates-job")
-      r.message should include(InsertResult(0,0).toString)
+      r shouldBe Left(InsertResult(0,0))
 
       await(incorpRepo.collection.count()) shouldBe 0
     }
@@ -119,7 +122,7 @@ class   IncorporationUpdateISpec extends IntegrationSpecBase {
   "incorp update check with some data" should {
     "insert one" in new Setup {
       setupAuditMocks()
-      setupFeatures(submissionCheck = true)
+      setupFeatures(submissionCheck = false)
 
       val timepoint = "23456"
       val json = jsonItem("12345", timepoint)
@@ -131,11 +134,11 @@ class   IncorporationUpdateISpec extends IntegrationSpecBase {
 
       val job = lookupJob("incorp-update-job")
 
-      val f = job.execute
+      val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult,LockResponse]])
       val r = await(f)
-      r.message should include("incorp-updates-job")
+
       val inserted = Seq(iu(json))
-      r.message should include(InsertResult(1,0,alerts = 1, insertedItems = inserted).toString)
+      r shouldBe Left(InsertResult(1,0,alerts = 1, insertedItems = inserted))
 
       await(incorpRepo.collection.count()) shouldBe 1
       await(timepointRepo.retrieveTimePoint) shouldBe Some(timepoint)
@@ -146,7 +149,7 @@ class   IncorporationUpdateISpec extends IntegrationSpecBase {
 
     "not update the timepoint if there's an error in processing" in new Setup with DocValidator {
       setupAuditMocks()
-      setupFeatures(submissionCheck = true)
+      setupFeatures(submissionCheck = false)
 
       await(validateCRN("^bar[12345679]$"))
 
@@ -160,13 +163,12 @@ class   IncorporationUpdateISpec extends IntegrationSpecBase {
 
       val job = lookupJob("incorp-update-job")
 
-      val f = job.execute
+      val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult,LockResponse]])
       val r = await(f)
-      r.message should include("incorp-updates-job")
       val inserted = Seq(iu(json1), iu(json2))
       val errors = Seq(WriteError(1,121,"Document failed validation"))
-      r.message should include(errors.toString)
-      r.message should include(InsertResult(1,0, errors, 2, inserted).toString)
+
+      r shouldBe Left(InsertResult(1,0, errors, 2, inserted))
 
       await(incorpRepo.collection.count()) shouldBe 1
 
@@ -176,12 +178,10 @@ class   IncorporationUpdateISpec extends IntegrationSpecBase {
     }
 
     "not re-insert a document if it exists (but process ok)" in new Setup {
-      setupFeatures(submissionCheck = true)
+      setupFeatures(submissionCheck = false)
 
       val (tx1, tx2) = ("12345", "23456")
       val (tp1, tp2) = ("12345", "23456")
-
-      import reactivemongo.json._
 
       val item = Json.parse(jsonItem(tx1, txFieldName = "_id")).as[JsObject]
       await(incorpRepo.collection.insert(item))
@@ -197,11 +197,12 @@ class   IncorporationUpdateISpec extends IntegrationSpecBase {
 
       val job = lookupJob("incorp-update-job")
 
-      val f = job.execute
+
+      val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult,LockResponse]])
       val r = await(f)
-      r.message should include("incorp-updates-job")
+
       val inserted = Seq(iu(json2))
-      r.message should include(InsertResult(1,1,alerts = 1, insertedItems = inserted).toString)
+      r shouldBe Left(InsertResult(1,1,alerts = 1, insertedItems = inserted))
 
       await(incorpRepo.collection.count()) shouldBe 2
       await(queueRepo.collection.count()) shouldBe 1
@@ -217,8 +218,6 @@ class   IncorporationUpdateISpec extends IntegrationSpecBase {
       val (tx1, tp1) = ("12345", "12345")
       val (tx2, tp2) = ("23456", "23456")
       val (tx3, tp3) = ("34567", "34567")
-
-      import reactivemongo.json._
 
       Seq(
         Json.parse(jsonItem(tx1, tp1, txFieldName = "_id")).as[JsObject],
@@ -238,10 +237,9 @@ class   IncorporationUpdateISpec extends IntegrationSpecBase {
 
       val job = lookupJob("incorp-update-job")
 
-      val f = job.execute
+      val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult,LockResponse]])
       val r = await(f)
-      r.message should include("incorp-updates-job")
-      r.message should include(InsertResult(0,3,alerts = 0).toString)
+      r shouldBe Left(InsertResult(0,3,alerts = 0))
 
       await(incorpRepo.collection.count()) shouldBe 3
       await(queueRepo.collection.count()) shouldBe 0
@@ -252,13 +250,11 @@ class   IncorporationUpdateISpec extends IntegrationSpecBase {
     }
 
     "insert 2, 1 duplicate, 1 alert" in new Setup {
-      setupFeatures(submissionCheck = true)
+      setupFeatures(submissionCheck = false)
 
       val (tx1, tp1) = ("12345", "12345")
       val (tx2, tp2) = ("23456", "23456")
       val (tx3, tp3) = ("34567", "34567")
-
-      import reactivemongo.json._
 
       Seq(
         Json.parse(jsonItem(tx3, tp3, txFieldName = "_id")).as[JsObject]
@@ -280,11 +276,10 @@ class   IncorporationUpdateISpec extends IntegrationSpecBase {
 
       val job = lookupJob("incorp-update-job")
 
-      val f = job.execute
+      val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult,LockResponse]])
       val r = await(f)
-      r.message should include("incorp-updates-job")
       val inserted = Seq(iu(json1), iu(json2))
-      r.message should include(InsertResult(2,1,alerts = 1, insertedItems = inserted).toString)
+      r shouldBe Left(InsertResult(2,1,alerts = 1, insertedItems = inserted))
 
       await(incorpRepo.collection.count()) shouldBe 3
       await(queueRepo.collection.count()) shouldBe 2
@@ -297,7 +292,7 @@ class   IncorporationUpdateISpec extends IntegrationSpecBase {
 
   "incorp update queue" should {
     "not accept duplicate incorp update documents" in new Setup {
-      setupFeatures(submissionCheck = true)
+      setupFeatures(submissionCheck = false)
 
       val iu = IncorpUpdate("1234", "awaiting", None, None, "tp", None)
       val qiu1 = QueuedIncorpUpdate(DateTime.now, iu)

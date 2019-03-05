@@ -16,39 +16,35 @@
 
 package config
 
-import uk.gov.hmrc.http._
-import uk.gov.hmrc.http.hooks.HttpHooks
+import akka.actor.ActorSystem
+import com.typesafe.config.Config
+import javax.inject.Inject
+import play.api.Configuration
+import uk.gov.hmrc.http.hooks.HttpHook
 import uk.gov.hmrc.play.audit.http.HttpAuditing
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
-import uk.gov.hmrc.play.auth.microservice.connectors.AuthConnector
-import uk.gov.hmrc.play.config.{AppName, RunMode, ServicesConfig}
+import uk.gov.hmrc.play.bootstrap.config.AppName
+import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.http.ws._
-import uk.gov.hmrc.play.microservice.config.LoadAuditingConfig
 
-trait Hooks extends HttpHooks with HttpAuditing {
-  override val hooks = Seq(AuditingHook)
-  override lazy val auditConnector: AuditConnector = MicroserviceAuditConnector
+
+
+
+class WSHttpProxyImpl @Inject()(val microserviceConfig: MicroserviceConfig,
+                                val config: Configuration,
+                                val actorSystem: ActorSystem,
+                                val auditConnector: AuditConnector) extends  WSHttpProxy
+
+trait WSHttpProxy extends HttpClient with WSHttp with HttpAuditing with WSProxy {
+  val config: Configuration
+  lazy val wsProxyServer = WSProxyConfiguration(s"proxy", config)
+
+  override lazy val configuration: Option[Config] = Option(config.underlying)
+
+  override val appName: String = new AppName {
+    override def configuration: Configuration = config
+  }.appName
+
+  override val hooks: Seq[HttpHook] = Seq(AuditingHook)
 }
 
-object WSHttp extends WSHttp
-
-trait WSHttp extends
-  WSGet with HttpGet with
-  WSPut with HttpPut with
-  WSPost with HttpPost with
-  WSDelete with HttpDelete with
-  WSPatch with HttpPatch with AppName with Hooks
-
-object MicroserviceAuditConnector extends AuditConnector with RunMode {
-  override lazy val auditingConfig = LoadAuditingConfig(s"auditing")
-}
-
-object MicroserviceAuthConnector extends AuthConnector with ServicesConfig with WSHttp {
-  override val authBaseUrl = baseUrl("auth")
-}
-
-object WSHttpProxy extends WSHttp with WSProxy with RunMode with HttpAuditing with ServicesConfig {
-  override lazy val appName = getString("appName")
-  override lazy val wsProxyServer = WSProxyConfiguration(s"proxy")
-  override lazy val auditConnector = MicroserviceAuditConnector
-}

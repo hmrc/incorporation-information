@@ -16,17 +16,21 @@
 
 package apis.test
 
+import com.google.inject.AbstractModule
 import helpers.IntegrationSpecBase
-import models.IncorpUpdate
+import models.{IncorpUpdate, QueuedIncorpUpdate}
+import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.modules.reactivemongo.ReactiveMongoComponent
-import repositories.{IncorpUpdateMongo, QueueMongo}
+import reactivemongo.play.json.collection.JSONCollection
+import repositories._
+import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase {
+class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase with MongoSpecSupport {
 
   val mockUrl = s"http://$wiremockHost:$wiremockPort"
 
@@ -37,29 +41,54 @@ class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase {
     "Test.auditing.consumer.baseUri.port" -> s"$wiremockPort",
     "application.router" -> "testOnlyDoNotUseInAppConf.Routes"
   )
+  val mongoTest = mongo
+  val dbNameExtraForDbToBeUnique = ("iu" -> "qr")
+  def rmComp(dbNameExtra:String) = new ReactiveMongoComponent {
+    override def mongoConnector: MongoConnector = mongoConnectorForTest.copy(mongoUri + dbNameExtra)
+  }
+  lazy val incRepo = new IncorpUpdateMongoRepository(mongoTest, IncorpUpdate.mongoFormat){
+    override lazy val collection: JSONCollection = mongoTest().collection[JSONCollection](databaseName + dbNameExtraForDbToBeUnique._1)
+  }
+  lazy val queueRepository = new QueueMongoRepository(mongoTest, QueuedIncorpUpdate.format){
 
+    override lazy val collection: JSONCollection = mongoTest().collection[JSONCollection](databaseName + dbNameExtraForDbToBeUnique._2)
+  }
+  object m extends AbstractModule {
+    override def configure(): Unit = {
+      bind(classOf[QueueMongo]).toInstance(QueueMongoFake)
+      bind(classOf[IncorpUpdateMongo]).toInstance(IncorpUpdateMongoFake)
+    }
+  }
+   object IncorpUpdateMongoFake extends IncorpUpdateMongo {
+    override lazy val repo: IncorpUpdateMongoRepository = incRepo
+    override lazy val mongo: ReactiveMongoComponent = rmComp(dbNameExtraForDbToBeUnique._1)
+  }
+  object QueueMongoFake extends QueueMongo {
+    override lazy val repo: QueueMongoRepository = queueRepository
+    override lazy val mongo: ReactiveMongoComponent = rmComp(dbNameExtraForDbToBeUnique._2)
+  }
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
     .configure(fakeConfig(additionalConfiguration))
+    .overrides(m)
     .build
 
   private def client(path: String) =
     ws.url(s"http://localhost:$port/incorporation-information/$path").
       withFollowRedirects(false)
 
-  lazy val reactiveMongoComponent = app.injector.instanceOf[ReactiveMongoComponent]
-
   class Setup {
-    val incRepo = new IncorpUpdateMongo(reactiveMongoComponent).repo
-    val queueRepository = new QueueMongo(reactiveMongoComponent).repo
-
-    def getIncorp(txid: String) = await(incRepo.getIncorpUpdate(txid))
-  }
-
-  override def beforeEach() = new Setup {
+    val i = IncorpUpdate("foo","bar",None,None,"",None)
     await(incRepo.drop)
     await(incRepo.ensureIndexes)
+    await(incRepo.insert(IncorpUpdate("foo","bar",None,None,"",None)))
+    await(incRepo.remove("_id" -> "foo"))
+    await(incRepo.count) shouldBe 0
     await(queueRepository.drop)
     await(queueRepository.ensureIndexes)
+    await(queueRepository.insert(QueuedIncorpUpdate(DateTime.now(),i)))
+    await(queueRepository.removeAll())
+    await(queueRepository.count) shouldBe 0
+    def getIncorp(txid: String) = await(incRepo.getIncorpUpdate(txid))
   }
 
   override def afterEach() = new Setup {
@@ -95,16 +124,15 @@ class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase {
 
       setupSimpleAuthMocks()
 
-      await(incRepo.count) shouldBe 0
-      await(queueRepository.count) shouldBe 0
+      await(incRepo.find()).size shouldBe 0
+      await(queueRepository.find()).size shouldBe 0
 
       val response = client(s"test-only/add-incorp-update?txId=${transactionId}&date=${incorpDate}&success=true&crn=1234").get().futureValue
       response.status shouldBe 200
 
-      await(incRepo.count) shouldBe 1
-      await(queueRepository.count) shouldBe 1
+      await(incRepo.find()).size shouldBe 1
+      await(queueRepository.find()).size shouldBe 1
       getIncorp(transactionId) shouldBe Some(IncorpUpdate("123abc","accepted",Some("1234"),Some(toDateTime(incorpDate)),"-1",None))
     }
-
   }
 }

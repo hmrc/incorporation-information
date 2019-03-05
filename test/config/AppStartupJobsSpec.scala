@@ -24,6 +24,7 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.mock.MockitoSugar
 import play.api.{Configuration, Logger}
 import repositories._
+import services.{IncorpUpdateService, SubscriptionService}
 import uk.gov.hmrc.play.test.{LogCapturing, UnitSpec}
 
 import scala.concurrent.Future
@@ -34,6 +35,9 @@ class AppStartupJobsSpec extends UnitSpec with MockitoSugar with LogCapturing wi
 
   val mockSubsMongo: SubscriptionsMongo = mock[SubscriptionsMongo]
   val mockSubsRepo: SubscriptionsMongoRepository = mock[SubscriptionsMongoRepository]
+  val mockIIService = mock[IncorpUpdateService]
+  val mocksubService = mock[SubscriptionService]
+  val mocktpRepo = mock[TimepointMongo]
 
   val mockIncorpUpdateMongo: IncorpUpdateMongo = mock[IncorpUpdateMongo]
   val mockIncorpUpdateRepo: IncorpUpdateMongoRepository = mock[IncorpUpdateMongoRepository]
@@ -46,20 +50,18 @@ class AppStartupJobsSpec extends UnitSpec with MockitoSugar with LogCapturing wi
     reset(
       mockConfig, mockSubsMongo, mockSubsRepo,
       mockIncorpUpdateMongo, mockIncorpUpdateRepo,
-      mockQueueMongo, mockQueueRepo
+      mockQueueMongo, mockQueueRepo,mockIIService, mocksubService
     )
 
-    val appStartupJobs = new AppStartupJobs(
-      mockConfig,
-      mockSubsMongo,
-      mockIncorpUpdateMongo,
-      mockQueueMongo
-    )
-
-    when(mockSubsMongo.repo).thenReturn(mockSubsRepo)
-    when(mockIncorpUpdateMongo.repo).thenReturn(mockIncorpUpdateRepo)
-    when(mockQueueMongo.repo).thenReturn(mockQueueRepo)
-
+    val appStartupJobs = (config:Configuration) => new StartUpJobs {
+      override lazy val configuration: Configuration = config
+      override lazy val incorpUpdateService: IncorpUpdateService = mockIIService
+      override lazy val subscriptionService: SubscriptionService = mocksubService
+      override lazy val timepointMongo: TimepointMongo = mocktpRepo
+      override lazy val subsRepo: SubscriptionsMongo = mockSubsMongo
+      override lazy val incorpUpdateRepo: IncorpUpdateMongo = mockIncorpUpdateMongo
+      override lazy val queueRepo: QueueMongo = mockQueueMongo
+    }
   }
 
   "logIncorpInfo" should {
@@ -79,12 +81,13 @@ class AppStartupJobsSpec extends UnitSpec with MockitoSugar with LogCapturing wi
     val queuedUpdate = QueuedIncorpUpdate(dateTime, incorpUpdate1)
 
     "log specific incorporation information relating to each transaction ID found in config" in new Setup {
-
-      when(mockConfig.getString(eqTo("transactionIdList"), any()))
-        .thenReturn(Some(encodedTransIds))
-
+      when(mockSubsMongo.repo).thenReturn(mockSubsRepo)
+      when(mockIncorpUpdateMongo.repo).thenReturn(mockIncorpUpdateRepo)
+      when(mockQueueMongo.repo).thenReturn(mockQueueRepo)
+      when(mockIIService.updateSpecificIncorpUpdateByTP(any(),any())(any())).thenReturn(Future.successful(Seq()))
       when(mockSubsRepo.getSubscriptions(eqTo(transId1)))
         .thenReturn(Future.successful(Seq(subscription1)))
+      when(mockSubsRepo.getSubscriptionsByRegime(any(),any())).thenReturn(Future.successful(Seq(subscription1)))
       when(mockSubsRepo.getSubscriptions(eqTo(transId2)))
         .thenReturn(Future.successful(Seq()))
 
@@ -99,78 +102,85 @@ class AppStartupJobsSpec extends UnitSpec with MockitoSugar with LogCapturing wi
         .thenReturn(Future.successful(None))
 
       withCaptureOfLoggingFrom(Logger) { logEvents =>
-        appStartupJobs.logIncorpInfo()
+        appStartupJobs(Configuration.from(Map("transactionIdList" -> "dHJhbnMtMSx0cmFucy0y", "timepointList" -> "MTIzNDU=")))
 
         eventually {
-          logEvents.size shouldBe 2
 
           val expectedLogs = List(
             "[HeldDocs] For txId: trans-1 - subscriptions: List(Subscription(trans-1,testRegime,testSubscriber,testCallbackUrl)) - " +
               "incorp update: incorp status: accepted - incorp date: Some(2010-06-30T01:20:00.000Z) - crn: Some(crn-1) - timepoint: 12345 - queue: In queue",
             "[HeldDocs] For txId: trans-2 - subscriptions: No subs - incorp update: No incorp update - queue: No queued incorp update"
           )
-
-          logEvents.map(_.getMessage) should contain theSameElementsAs expectedLogs
+          logEvents.map(_.getMessage).filter(expectedLogs.contains(_)).size shouldBe 2
         }
       }
     }
 
     "not log anything is an encoded transaction ID list is not provided in config" in new Setup {
-
-      when(mockConfig.getString(eqTo("transactionIdList"), any()))
-        .thenReturn(None)
-
+      when(mockSubsMongo.repo).thenReturn(mockSubsRepo)
+      when(mockIncorpUpdateMongo.repo).thenReturn(mockIncorpUpdateRepo)
+      when(mockQueueMongo.repo).thenReturn(mockQueueRepo)
+      when(mockIIService.updateSpecificIncorpUpdateByTP(any(),any())(any())).thenReturn(Future.successful(Seq()))
+      when(mockSubsRepo.getSubscriptionsByRegime(any(),any())).thenReturn(Future.successful(Seq()))
       withCaptureOfLoggingFrom(Logger) { logEvents =>
-        appStartupJobs.logIncorpInfo()
-        logEvents.size shouldBe 0
+        appStartupJobs(Configuration.from(Map("timepointList" -> "MTIzNDU=")))
+        eventually {
+          logEvents.map(_.getMessage).filter(_.contains("[HeldDocs]")).isEmpty shouldBe true
+        }
       }
     }
   }
 
   "logRemainingSubscriptionIdentifiers" should {
+
     val subscription1 = Subscription("transId", "testRegime", "testSubscriber", "testCallbackUrl")
 
     "log information about subscriptions with default values as nothing exists in config" in new Setup {
+      when(mockSubsMongo.repo).thenReturn(mockSubsRepo)
+      when(mockIncorpUpdateMongo.repo).thenReturn(mockIncorpUpdateRepo)
+      when(mockQueueMongo.repo).thenReturn(mockQueueRepo)
+      when(mockIIService.updateSpecificIncorpUpdateByTP(any(),any())(any())).thenReturn(Future.successful(Seq()))
+      when(mockSubsRepo.getSubscriptions(any()))
+        .thenReturn(Future.successful(Seq(subscription1)))
+      when(mockSubsRepo.getSubscriptionsByRegime(any(),any())).thenReturn(Future.successful(Seq(subscription1)))
+
       val subscriptions = List.fill(5)(subscription1)
       val expectedLogOfSubscriptions = {
         List("Logging existing subscriptions for ct regime, found 5 subscriptions") ++
        List.fill(5)("[Subscription] [ct] Transaction ID: transId, Subscriber: testSubscriber")
       }
-
-      when(mockConfig.getString(eqTo("log-regime"), any())) thenReturn None
-      when(mockConfig.getInt(eqTo("log-count"))) thenReturn None
       when(mockSubsRepo.getSubscriptionsByRegime(any(), any())) thenReturn Future.successful(subscriptions)
 
       withCaptureOfLoggingFrom(Logger) { logEvents =>
-        appStartupJobs.logRemainingSubscriptionIdentifiers()
+        appStartupJobs(Configuration.from(Map("transactionIdList" -> "dHJhbnMtMSx0cmFucy0y", "timepointList" -> "MTIzNDU=")))
 
         eventually {
-          logEvents.size shouldBe 6
-
-          logEvents.map(_.getMessage) should contain theSameElementsAs expectedLogOfSubscriptions
+          logEvents.map(_.getMessage).filter(r => expectedLogOfSubscriptions.contains(r)).size shouldBe 6
         }
       }
     }
 
     "log the job ran but retrieved nothing when there are no subscriptions" in new Setup {
-      when(mockConfig.getString(eqTo("log-regime"), any())) thenReturn None
-      when(mockConfig.getInt(eqTo("log-count"))) thenReturn None
+      when(mockSubsMongo.repo).thenReturn(mockSubsRepo)
+      when(mockIncorpUpdateMongo.repo).thenReturn(mockIncorpUpdateRepo)
+      when(mockQueueMongo.repo).thenReturn(mockQueueRepo)
+      when(mockIIService.updateSpecificIncorpUpdateByTP(any(),any())(any())).thenReturn(Future.successful(Seq()))
+      when(mockSubsRepo.getSubscriptions(any()))
+        .thenReturn(Future.successful(Seq()))
+
       when(mockSubsRepo.getSubscriptionsByRegime(any(), any())) thenReturn Future.successful(Seq())
 
       withCaptureOfLoggingFrom(Logger) { logEvents =>
-        appStartupJobs.logRemainingSubscriptionIdentifiers()
+        appStartupJobs(Configuration.from(Map("transactionIdList" -> "dHJhbnMtMSx0cmFucy0y", "timepointList" -> "MTIzNDU=")))
 
         eventually {
-          logEvents.size shouldBe 1
 
           val expectedLogs = List(
             "Logging existing subscriptions for ct regime, found 0 subscriptions"
           )
-
-          logEvents.map(_.getMessage) should contain theSameElementsAs expectedLogs
+          logEvents.map(_.getMessage).filter(r => expectedLogs.contains(r)).size shouldBe 1
         }
       }
     }
   }
-
 }

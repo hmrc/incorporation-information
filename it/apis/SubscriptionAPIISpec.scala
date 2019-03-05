@@ -49,9 +49,13 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
   lazy val reactiveMongoComponent = app.injector.instanceOf[ReactiveMongoComponent]
 
   class Setup {
-    val incRepo = new IncorpUpdateMongo(reactiveMongoComponent).repo
+    val incRepo = new IncorpUpdateMongo {
+      override val mongo: ReactiveMongoComponent = reactiveMongoComponent
+    }.repo
     val repository = new SubscriptionsMongo(reactiveMongoComponent).repo
-    val queueRepo = new QueueMongo(reactiveMongoComponent).repo
+    val queueRepo = new QueueMongo {
+      override val mongo: ReactiveMongoComponent = reactiveMongoComponent
+    }.repo
 
     def insert(sub: Subscription) = await(repository.insert(sub))
     def insert(update: IncorpUpdate) = await(incRepo.insert(update))

@@ -206,7 +206,8 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
   "wipeTestData" should {
     "remove all test data from submissions status" in new Setup {
       val result = await(repository.wipeTestData())
-      result.hasErrors shouldBe false
+      result.writeErrors.isEmpty shouldBe true
+      result.writeConcernError.isEmpty shouldBe true
     }
   }
 

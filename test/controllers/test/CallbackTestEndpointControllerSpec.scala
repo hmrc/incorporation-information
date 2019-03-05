@@ -27,7 +27,6 @@ class CallbackTestEndpointControllerSpec extends SCRSSpec {
 
     "return a 200" in {
       val controller = new CallbackTestEndpointController {}
-     // val res = await(controller.post(FakeRequest()))
       val request = FakeRequest().withBody[JsObject](Json.parse("""{"test":"tesste"}""").as[JsObject])
       val res = call(controller.post,request)
       status(res) shouldBe 200
