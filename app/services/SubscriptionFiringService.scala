@@ -72,6 +72,7 @@ def invoke(implicit ec: ExecutionContext): Future[Either[Seq[Boolean], LockRespo
   lockKeeper.tryLock(fireIncorpUpdateBatch).map {
     case Some(res) =>
       Logger.info("SubscriptionFiringService acquired lock and returned results")
+      Logger.info(s"Result: $res")
       Left(res)
     case None =>
       Logger.info("SubscriptionFiringService cant acquire lock")

@@ -148,7 +148,7 @@ def invoke(implicit ec: ExecutionContext):Future[Either[InsertResult,LockRespons
     lockKeeper.tryLock(updateNextIncorpUpdateJobLot).map {
       case Some(res) =>
         Logger.info("IncorpUpdateService acquired lock and returned results")
-        Logger.info(s"updateNextIncorpUpdateJobLot: result (inserted: ${res.inserted})")
+        Logger.info(s"Result: $res")
         Left(res)
       case None =>
         Logger.info("IncorpUpdateService cant acquire lock")
