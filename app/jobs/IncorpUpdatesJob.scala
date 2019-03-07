@@ -24,7 +24,7 @@ import services.IncorpUpdateService
 
 class IncorpUpdatesJob @Inject()( incorpUpdateService: IncorpUpdateService,
                                   val config: Configuration) extends ScheduledJob {
-  val jobName = "incorp-updates-job"
+  val jobName = "incorp-update-job"
   val actorSystem = ActorSystem(jobName)
   val scheduledMessage = IncorpUpdates(incorpUpdateService)
   schedule
