@@ -72,6 +72,7 @@ trait MetricsService extends ScheduledService[Either[Map[String, Int], LockRespo
       lockKeeper.tryLock(updateSubscriptionMetrics).map {
         case Some(res) =>
           Logger.info("MetricsService acquired lock and returned results")
+          Logger.info(s"Result: $res")
           Left(res)
         case None =>
           Logger.info("MetricsService cant acquire lock")

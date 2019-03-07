@@ -64,6 +64,7 @@ trait ProactiveMonitoringService extends ScheduledService[Either[(String, String
     lockKeeper.tryLock(pollAPIs).map {
       case Some(res) =>
         Logger.info("ProactiveMonitoringService acquired lock and returned results")
+        Logger.info(s"Result: $res")
         Left(res)
       case None =>
         Logger.info("ProactiveMonitoringService cant acquire lock")
