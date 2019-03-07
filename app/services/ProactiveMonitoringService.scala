@@ -41,7 +41,7 @@ class ProactiveMonitoringServiceImpl @Inject()(val transactionalConnector: Incor
   lazy val lockoutTimeout = msConfig.getInt("schedules.proactive-monitoring-job.lockTimeout")
 
   lazy val lockKeeper: LockKeeper = new LockKeeper() {
-    override val lockId = "incorp-updates-job-lock"
+    override val lockId = "proactive-monitoring-job-lock"
     override val forceLockReleaseAfter: Duration = Duration.standardSeconds(lockoutTimeout)
     override lazy val repo = lockRepositoryProvider.repo
   }
