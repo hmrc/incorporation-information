@@ -173,3 +173,35 @@ A ```200``` response:
 ```
 
 A ```204``` response: ```no body```
+
+
+| Path                                                          | Supported Methods | Description |
+| ------------------------------------------------------------- | ----------------- | ----------- |
+|```/incorporation-information/shareholders/:txId```            |       GET         | Fetches a pre-incorporated companies shareholder list keyed on the transactionId
+
+Responds with:
+
+| Status        | Message       |
+|:--------------|:--------------|
+| 200           | OK            |
+| 204           | No Content    |
+| 404           | NotFound      |
+
+A ```200``` response:
+```json
+[
+  {
+  "subscriber_type": "corporate",
+    "name": "big company",
+    "address": {
+    "premises": "11",
+    "address_line_1": " Add l 1",
+    "address_line_2": "Add l 2",
+    "locality": "London",
+    "country": "United Kingdom",
+    "postal_code": "postcode"
+    },
+  "percentage_voting_rights": 75.34
+  }
+  ]
+```

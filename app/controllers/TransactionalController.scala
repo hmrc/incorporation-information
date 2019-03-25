@@ -53,6 +53,15 @@ trait TransactionalController extends BaseController {
       }
   }
 
+  def fetchShareholders(transactionId: String) = Action.async {
+    implicit request =>
+      service.fetchShareholders(transactionId).map {
+        case Some(json) if json.value.nonEmpty => Ok(json)
+        case Some(_) => NoContent
+        case _ => NotFound
+      }
+  }
+
   def fetchIncorporatedCompanyProfile(crn: String) = Action.async {
     implicit request =>
       val callingService = request.headers.get("User-Agent").getOrElse("unknown")

@@ -24,101 +24,107 @@ import org.joda.time.format.DateTimeFormat
 import org.mockito.Matchers
 import org.mockito.Matchers.{any, eq => eqTo}
 import org.mockito.Mockito._
+import org.slf4j.event.Level
+import play.api.Logger
 import play.api.libs.json._
 import repositories.IncorpUpdateRepository
+import uk.gov.hmrc.play.test.LogCapturing
 import utils.TimestampFormats
 
 import scala.concurrent.Future
 
-class TransactionalServiceSpec extends SCRSSpec {
+class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
 
   val mockConnector = mock[IncorporationAPIConnector]
   val mockRepos = mock[IncorpUpdateRepository]
   val mockCohoConnector = mock[PublicCohoApiConnectorImpl]
+
   class Setup {
     val service = new TransactionalService {
       override protected val connector = mockConnector
       override val incorpRepo = mockRepos
-      override val publicCohoConnector =  mockCohoConnector
+      override val publicCohoConnector = mockCohoConnector
 
     }
   }
+
   class SetupForCohoTransform {
     val service = new TransactionalService {
       override protected val connector = mockConnector
       override val incorpRepo = mockRepos
-      override val publicCohoConnector =  mockCohoConnector
+      override val publicCohoConnector = mockCohoConnector
       val jsonObj = Json.obj("foo" -> Json.toJson("fooValue"))
-      override def transformDataFromCoho(js: JsObject):Option[JsValue] = Future.successful(Some(jsonObj))
+
+      override def transformDataFromCoho(js: JsObject): Option[JsValue] = Future.successful(Some(jsonObj))
     }
   }
 
   def buildJson(txId: String = "000-033808") = Json.parse(
     s"""
-      |{
-      |  "transaction_id": "$txId",
+       |{
+       |  "transaction_id": "$txId",
         "company_name": "MOOO LIMITED",
-      |  "type": "ltd",
-      |  "registered_office_address": {
-      |    "country": "United Kingdom",
-      |    "address_line_2": "foo2",
-      |    "premises": "prem1",
-      |    "postal_code": "post1",
-      |    "address_line_1": "address1",
-      |    "locality": "locality1"
-      |  },
-      |  "officers": [
-      |    {
-      |      "date_of_birth": {
-      |        "month": "11",
-      |        "day": "12",
-      |        "year": "1973"
-      |      },
-      |      "name_elements": {
-      |        "forename": "Bob",
-      |        "surname": "Bobbings",
-      |        "other_forenames": "Bimbly Bobblous"
-      |      },
-      |      "address": {
-      |        "country": "United Kingdom",
-      |        "address_line_2": "address22",
-      |        "premises": "Prem2",
-      |        "postal_code": "post2",
-      |        "address_line_1": "add11",
-      |        "locality": "locality2"
-      |      }
-      |    },
-      |    {
-      |      "date_of_birth": {
-      |        "month": "07",
-      |        "day": "12",
-      |        "year": "1988"
-      |      },
-      |      "name_elements": {
-      |        "title": "Mx",
-      |        "forename": "Jingly",
-      |        "surname": "Jingles"
-      |      },
-      |      "address": {
-      |        "country": "England",
-      |        "premises": "Prem3",
-      |        "postal_code": "post3",
-      |        "address_line_1": "Add111",
-      |        "locality": "locality3"
-      |      }
-      |    }
-      |  ],
-      |  "sic_codes": [
-      |    {
-      |      "sic_description": "Public order and safety activities",
-      |      "sic_code": "84240"
-      |    },
-      |    {
-      |      "sic_description": "Raising of dairy cattle",
-      |      "sic_code": "01410"
-      |    }
-      |  ]
-      |}
+       |  "type": "ltd",
+       |  "registered_office_address": {
+       |    "country": "United Kingdom",
+       |    "address_line_2": "foo2",
+       |    "premises": "prem1",
+       |    "postal_code": "post1",
+       |    "address_line_1": "address1",
+       |    "locality": "locality1"
+       |  },
+       |  "officers": [
+       |    {
+       |      "date_of_birth": {
+       |        "month": "11",
+       |        "day": "12",
+       |        "year": "1973"
+       |      },
+       |      "name_elements": {
+       |        "forename": "Bob",
+       |        "surname": "Bobbings",
+       |        "other_forenames": "Bimbly Bobblous"
+       |      },
+       |      "address": {
+       |        "country": "United Kingdom",
+       |        "address_line_2": "address22",
+       |        "premises": "Prem2",
+       |        "postal_code": "post2",
+       |        "address_line_1": "add11",
+       |        "locality": "locality2"
+       |      }
+       |    },
+       |    {
+       |      "date_of_birth": {
+       |        "month": "07",
+       |        "day": "12",
+       |        "year": "1988"
+       |      },
+       |      "name_elements": {
+       |        "title": "Mx",
+       |        "forename": "Jingly",
+       |        "surname": "Jingles"
+       |      },
+       |      "address": {
+       |        "country": "England",
+       |        "premises": "Prem3",
+       |        "postal_code": "post3",
+       |        "address_line_1": "Add111",
+       |        "locality": "locality3"
+       |      }
+       |    }
+       |  ],
+       |  "sic_codes": [
+       |    {
+       |      "sic_description": "Public order and safety activities",
+       |      "sic_code": "84240"
+       |    },
+       |    {
+       |      "sic_description": "Raising of dairy cattle",
+       |      "sic_code": "01410"
+       |    }
+       |  ]
+       |}
     """.stripMargin)
 
   val officerAppointmentJson = Json.parse(
@@ -175,46 +181,46 @@ class TransactionalServiceSpec extends SCRSSpec {
 
   def publicOfficerListJson(officerAppointmentUrl: String = "/test/link") = Json.parse(
     s"""
-      |{
-      |  "active-count" : 1,
-      |  "etag" : "f3f1374e8d4d3640fc1a117ac3cc4addfa11e19f",
-      |  "inactive_count" : 0,
-      |  "items" : [ {
-      |    "address" : {
-      |      "premises" : "14",
-      |      "address_line_1" : "test avenue",
-      |      "locality" : "testville",
-      |      "country" : "United Kingdom",
-      |      "postal_code" : "TE1 1ST",
-      |      "region" : "testshire"
-      |    },
-      |    "appointed_on" : 1494866745000,
-      |    "country_of_residence" : "England",
-      |    "date_of_birth" : {
-      |      "month" : 3,
-      |      "year" : 1990
-      |    },
-      |    "former_names" : [ ],
-      |    "links" : {
-      |      "officer" : {
-      |        "appointments" : "$officerAppointmentUrl"
-      |      }
-      |    },
-      |    "name" : "TESTINGTON, Test Tester",
-      |    "nationality" : "British",
-      |    "occupation" : "Consultant",
-      |    "officer_role" : "director",
-      |    "resigned_on" : "$dateTime"
-      |  } ],
-      |  "items_per_page" : 35,
-      |  "kind" : "officer-list",
-      |  "links" : {
-      |    "self" : "/test/self-link"
-      |  },
-      |  "resigned_count" : 0,
-      |  "start_index" : 0,
-      |  "total_results" : 1
-      |}
+       |{
+       |  "active-count" : 1,
+       |  "etag" : "f3f1374e8d4d3640fc1a117ac3cc4addfa11e19f",
+       |  "inactive_count" : 0,
+       |  "items" : [ {
+       |    "address" : {
+       |      "premises" : "14",
+       |      "address_line_1" : "test avenue",
+       |      "locality" : "testville",
+       |      "country" : "United Kingdom",
+       |      "postal_code" : "TE1 1ST",
+       |      "region" : "testshire"
+       |    },
+       |    "appointed_on" : 1494866745000,
+       |    "country_of_residence" : "England",
+       |    "date_of_birth" : {
+       |      "month" : 3,
+       |      "year" : 1990
+       |    },
+       |    "former_names" : [ ],
+       |    "links" : {
+       |      "officer" : {
+       |        "appointments" : "$officerAppointmentUrl"
+       |      }
+       |    },
+       |    "name" : "TESTINGTON, Test Tester",
+       |    "nationality" : "British",
+       |    "occupation" : "Consultant",
+       |    "officer_role" : "director",
+       |    "resigned_on" : "$dateTime"
+       |  } ],
+       |  "items_per_page" : 35,
+       |  "kind" : "officer-list",
+       |  "links" : {
+       |    "self" : "/test/self-link"
+       |  },
+       |  "resigned_count" : 0,
+       |  "start_index" : 0,
+       |  "total_results" : 1
+       |}
     """.stripMargin)
 
   val officersJson = Json.obj("officers" -> (buildJson() \ "officers").get.as[JsArray])
@@ -277,13 +283,6 @@ class TransactionalServiceSpec extends SCRSSpec {
           .thenReturn(Future.successful(response))
         await(service.fetchCompanyProfileFromTx(transactionId)) shouldBe None
       }
-
-//      "a SuccessfulTransactionalAPIResponse is returned for the supplied transaction Id but an incorrect json document is provided" in new Setup {
-//        val response = SuccessfulTransactionalAPIResponse(incorrectJson)
-//        when(mockTransactionalConnector.fetchTransactionalData(Matchers.any())(Matchers.any()))
-//          .thenReturn(Future.successful(response))
-//        await(service.fetchCompanyProfile(transactionId)) shouldBe None
-//      }
     }
   }
 
@@ -327,32 +326,32 @@ class TransactionalServiceSpec extends SCRSSpec {
 
       val expected = Json.parse(
         s"""
-          |{
-          |  "officers" : [
-          |    {
-          |      "date_of_birth" : {
-          |        "month" : 3,
-          |        "year" : 1990
-          |      },
-          |      "address" : {
-          |        "address_line_1" : "test avenue",
-          |        "country" : "United Kingdom",
-          |        "locality" : "testville",
-          |        "premises" : "14",
-          |        "postal_code" : "TE1 1ST"
-          |      },
-          |      "name_elements" : {
-          |        "other_forenames" : "Testy",
-          |        "title" : "Mr",
-          |        "surname" : "TESTERSON",
-          |        "forename" : "Test"
-          |      },
-          |        "officer_role" : "director",
-          |        "resigned_on" : "$dateTime",
-          |        "appointment_link":"/test/link"
-          |    }
-          |  ]
-          |}
+           |{
+           |  "officers" : [
+           |    {
+           |      "date_of_birth" : {
+           |        "month" : 3,
+           |        "year" : 1990
+           |      },
+           |      "address" : {
+           |        "address_line_1" : "test avenue",
+           |        "country" : "United Kingdom",
+           |        "locality" : "testville",
+           |        "premises" : "14",
+           |        "postal_code" : "TE1 1ST"
+           |      },
+           |      "name_elements" : {
+           |        "other_forenames" : "Testy",
+           |        "title" : "Mr",
+           |        "surname" : "TESTERSON",
+           |        "forename" : "Test"
+           |      },
+           |        "officer_role" : "director",
+           |        "resigned_on" : "$dateTime",
+           |        "appointment_link":"/test/link"
+           |    }
+           |  ]
+           |}
         """.stripMargin)
 
       await(service.fetchOfficerList(transactionId)) shouldBe expected
@@ -377,12 +376,12 @@ class TransactionalServiceSpec extends SCRSSpec {
         val incorpUpdate = IncorpUpdate("transId", "foo", None, None, "", None)
         when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(Some(incorpUpdate)))
 
-        await(service.checkIfCompIncorporated("fooBarTest")) shouldBe  None
+        await(service.checkIfCompIncorporated("fooBarTest")) shouldBe None
       }
 
       "Company does not exist" in new Setup {
         when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(None))
-        await(service.checkIfCompIncorporated("fooBarTest")) shouldBe  None
+        await(service.checkIfCompIncorporated("fooBarTest")) shouldBe None
       }
     }
   }
@@ -393,152 +392,152 @@ class TransactionalServiceSpec extends SCRSSpec {
       val response = FailedTransactionalAPIResponse
       when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any())).thenReturn(Future.successful(None))
       when(mockConnector.fetchTransactionalData(Matchers.any[String])(any())).thenReturn(Future.successful(response))
-      await(service.fetchCompanyProfileFromCoho("num","")) shouldBe None
+      await(service.fetchCompanyProfileFromCoho("num", "")) shouldBe None
     }
 
     "return Some(json) when companyProfile can be found" in new SetupForCohoTransform {
       val json = buildJson("foo")
       when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any())).thenReturn(Future.successful(Some(service.jsonObj)))
-      await(service.fetchCompanyProfileFromCoho("num","")) shouldBe Some(service.jsonObj)
+      await(service.fetchCompanyProfileFromCoho("num", "")) shouldBe Some(service.jsonObj)
     }
   }
 
   "transformDataFromCoho" should {
 
-      "return JSValue containing formatted data successfully" in new Setup {
-        val input = Json.parse(
-          s"""
+    "return JSValue containing formatted data successfully" in new Setup {
+      val input = Json.parse(
+        s"""
              {
-             |   "accounts" : {
-             |      "accounting_reference_date" : {
-             |         "day" : "integer",
-             |         "month" : "integer"
-             |      },
-             |      "last_accounts" : {
-             |         "made_up_to" : "date",
-             |         "period_end_on" : "date",
-             |         "period_start_on" : "date",
-             |         "type" : "string"
-             |      },
-             |      "next_accounts" : {
-             |         "due_on" : "date",
-             |         "overdue" : "boolean",
-             |         "period_end_on" : "date",
-             |         "period_start_on" : "date"
-             |      },
-             |      "next_due" : "date",
-             |      "next_made_up_to" : "date",
-             |      "overdue" : "boolean"
-             |   },
-             |   "annual_return" : {
-             |      "last_made_up_to" : "date",
-             |      "next_due" : "date",
-             |      "next_made_up_to" : "date",
-             |      "overdue" : "boolean"
-             |   },
-             |   "branch_company_details" : {
-             |      "business_activity" : "string",
-             |      "parent_company_name" : "string",
-             |      "parent_company_number" : "string"
-             |   },
-             |   "can_file" : "boolean",
-             |   "company_name" : "string",
-             |   "company_number" : "string",
-             |   "company_status" : "string",
-             |   "company_status_detail" : "string",
-             |   "confirmation_statement" : {
-             |      "last_made_up_to" : "date",
-             |      "next_due" : "date",
-             |      "next_made_up_to" : "date",
-             |      "overdue" : "boolean"
-             |   },
-             |   "date_of_cessation" : "date",
-             |   "date_of_creation" : "date",
-             |   "etag" : "string",
-             |   "foreign_company_details" : {
-             |      "accounting_requirement" : {
-             |         "foreign_account_type" : "string",
-             |         "terms_of_account_publication" : "string"
-             |      },
-             |      "accounts" : {
-             |         "account_period_from" : {
-             |            "day" : "integer",
-             |            "month" : "integer"
-             |         },
-             |         "account_period_to" : {
-             |            "day" : "integer",
-             |            "month" : "integer"
-             |         },
-             |         "must_file_within" : {
-             |            "months" : "integer"
-             |         }
-             |      },
-             |      "business_activity" : "string",
-             |      "company_type" : "string",
-             |      "governed_by" : "string",
-             |      "is_a_credit_finance_institution" : "boolean",
-             |      "originating_registry" : {
-             |         "country" : "string",
-             |         "name" : "string"
-             |      },
-             |      "registration_number" : "string"
-             |   },
-             |   "has_been_liquidated" : "boolean",
-             |   "has_charges" : "boolean",
-             |   "has_insolvency_history" : "boolean",
-             |   "is_community_interest_company" : "boolean",
-             |   "jurisdiction" : "string",
-             |   "last_full_members_list_date" : "date",
-             |   "links" : {
-             |      "charges" : "string",
-             |      "filing_history" : "string",
-             |      "insolvency" : "string",
-             |      "officers" : "string",
-             |      "persons_with_significant_control" : "string",
-             |      "persons_with_significant_control_statements" : "string",
-             |      "registers" : "string",
-             |      "self" : "string"
-             |   },
-             |   "partial_data_available" : "string",
-             |   "previous_company_names" : [
-             |      {
-             |         "ceased_on" : "date",
-             |         "effective_from" : "date",
-             |         "name" : "string"
-             |      }
-             |   ],
-             |   "registered_office_is_in_dispute" : "boolean",
-             |   "sic_codes" : [
-             |      "string"
-             |   ],
-             |   "type" : "string",
-             |   "undeliverable_registered_office_address" : "boolean"
-             |}
+           |   "accounts" : {
+           |      "accounting_reference_date" : {
+           |         "day" : "integer",
+           |         "month" : "integer"
+           |      },
+           |      "last_accounts" : {
+           |         "made_up_to" : "date",
+           |         "period_end_on" : "date",
+           |         "period_start_on" : "date",
+           |         "type" : "string"
+           |      },
+           |      "next_accounts" : {
+           |         "due_on" : "date",
+           |         "overdue" : "boolean",
+           |         "period_end_on" : "date",
+           |         "period_start_on" : "date"
+           |      },
+           |      "next_due" : "date",
+           |      "next_made_up_to" : "date",
+           |      "overdue" : "boolean"
+           |   },
+           |   "annual_return" : {
+           |      "last_made_up_to" : "date",
+           |      "next_due" : "date",
+           |      "next_made_up_to" : "date",
+           |      "overdue" : "boolean"
+           |   },
+           |   "branch_company_details" : {
+           |      "business_activity" : "string",
+           |      "parent_company_name" : "string",
+           |      "parent_company_number" : "string"
+           |   },
+           |   "can_file" : "boolean",
+           |   "company_name" : "string",
+           |   "company_number" : "string",
+           |   "company_status" : "string",
+           |   "company_status_detail" : "string",
+           |   "confirmation_statement" : {
+           |      "last_made_up_to" : "date",
+           |      "next_due" : "date",
+           |      "next_made_up_to" : "date",
+           |      "overdue" : "boolean"
+           |   },
+           |   "date_of_cessation" : "date",
+           |   "date_of_creation" : "date",
+           |   "etag" : "string",
+           |   "foreign_company_details" : {
+           |      "accounting_requirement" : {
+           |         "foreign_account_type" : "string",
+           |         "terms_of_account_publication" : "string"
+           |      },
+           |      "accounts" : {
+           |         "account_period_from" : {
+           |            "day" : "integer",
+           |            "month" : "integer"
+           |         },
+           |         "account_period_to" : {
+           |            "day" : "integer",
+           |            "month" : "integer"
+           |         },
+           |         "must_file_within" : {
+           |            "months" : "integer"
+           |         }
+           |      },
+           |      "business_activity" : "string",
+           |      "company_type" : "string",
+           |      "governed_by" : "string",
+           |      "is_a_credit_finance_institution" : "boolean",
+           |      "originating_registry" : {
+           |         "country" : "string",
+           |         "name" : "string"
+           |      },
+           |      "registration_number" : "string"
+           |   },
+           |   "has_been_liquidated" : "boolean",
+           |   "has_charges" : "boolean",
+           |   "has_insolvency_history" : "boolean",
+           |   "is_community_interest_company" : "boolean",
+           |   "jurisdiction" : "string",
+           |   "last_full_members_list_date" : "date",
+           |   "links" : {
+           |      "charges" : "string",
+           |      "filing_history" : "string",
+           |      "insolvency" : "string",
+           |      "officers" : "string",
+           |      "persons_with_significant_control" : "string",
+           |      "persons_with_significant_control_statements" : "string",
+           |      "registers" : "string",
+           |      "self" : "string"
+           |   },
+           |   "partial_data_available" : "string",
+           |   "previous_company_names" : [
+           |      {
+           |         "ceased_on" : "date",
+           |         "effective_from" : "date",
+           |         "name" : "string"
+           |      }
+           |   ],
+           |   "registered_office_is_in_dispute" : "boolean",
+           |   "sic_codes" : [
+           |      "string"
+           |   ],
+           |   "type" : "string",
+           |   "undeliverable_registered_office_address" : "boolean"
+           |}
     """.stripMargin).as[JsObject]
 
 
-        val expected = Json.parse(
-          s"""
-             |{
-             |  "company_name": "string",
-             |  "type": "string",
-             |  "company_type": "string",
-             |  "company_number": "string",
-             |  "company_status": "string",
-             |
+      val expected = Json.parse(
+        s"""
+           |{
+           |  "company_name": "string",
+           |  "type": "string",
+           |  "company_type": "string",
+           |  "company_number": "string",
+           |  "company_status": "string",
+           |
              |
              |   "sic_codes": [
-             |    {
-             |      "sic_description": "",
-             |      "sic_code": "string"
-             |    }
-             |
+           |    {
+           |      "sic_description": "",
+           |      "sic_code": "string"
+           |    }
+           |
              |  ]
-             |             }
+           |             }
     """.stripMargin).as[JsObject]
 
-         await(service.transformDataFromCoho(input)) shouldBe Some(expected)
-      }
+      await(service.transformDataFromCoho(input)) shouldBe Some(expected)
+    }
 
     "return JSValue containing formatted data successfully without sic codes & company status as these are optional" in new Setup {
       val input = Json.parse(
@@ -624,27 +623,27 @@ class TransactionalServiceSpec extends SCRSSpec {
     }
 
   }
-    "sicCodesConverter" should {
-      "return Some(List[JsObjects]) of sicCodes when SicCodes are passed into the method" in new Setup {
-        val input = Json.parse(
-          s"""
-             |{
-             |"sic_codes": [
-             |    "84240","01410"
-             |  ]
+  "sicCodesConverter" should {
+    "return Some(List[JsObjects]) of sicCodes when SicCodes are passed into the method" in new Setup {
+      val input = Json.parse(
+        s"""
+           |{
+           |"sic_codes": [
+           |    "84240","01410"
+           |  ]
 
            |             }
     """.stripMargin)
 
-        val sicCodes = (input \ "sic_codes").toOption
-        val output1 = Json.obj("sic_code" -> Json.toJson("84240"), "sic_description" -> Json.toJson(""))
-        val output2 = Json.obj("sic_code" -> Json.toJson("01410"), "sic_description" -> Json.toJson(""))
-        val listOfJsObjects = List(output1,output2)
-        await(service.sicCodesConverter(sicCodes)) shouldBe Some(listOfJsObjects)
+      val sicCodes = (input \ "sic_codes").toOption
+      val output1 = Json.obj("sic_code" -> Json.toJson("84240"), "sic_description" -> Json.toJson(""))
+      val output2 = Json.obj("sic_code" -> Json.toJson("01410"), "sic_description" -> Json.toJson(""))
+      val listOfJsObjects = List(output1, output2)
+      await(service.sicCodesConverter(sicCodes)) shouldBe Some(listOfJsObjects)
 
 
-      }
     }
+  }
 
   "sicCodesConverter" should {
     "return None when None is passed in" in new Setup {
@@ -712,57 +711,57 @@ class TransactionalServiceSpec extends SCRSSpec {
 
     val publicOfficerJson = Json.parse(
       s"""
-        |{
-        |   "address" : {
-        |      "premises" : "14",
-        |      "address_line_1" : "test avenue",
-        |      "address_line_2" : "test line 2",
-        |      "locality" : "testville",
-        |      "country" : "United Kingdom",
-        |      "postal_code" : "TE1 1ST",
-        |      "region" : "testshire"
-        |    },
-        |    "appointed_on" : 1494866745000,
-        |    "country_of_residence" : "England",
-        |    "date_of_birth" : {
-        |      "month" : 3,
-        |      "year" : 1990
-        |    },
-        |    "former_names" : [ ],
-        |    "links" : {
-        |      "officer" : {
-        |        "appointments" : "/test/link"
-        |      }
-        |    },
-        |    "name" : "TESTINGTON, Test Tester",
-        |    "nationality" : "British",
-        |    "occupation" : "Consultant",
-        |    "officer_role" : "director",
-        |    "resigned_on" : "$dateTime"
-        | }
+         |{
+         |   "address" : {
+         |      "premises" : "14",
+         |      "address_line_1" : "test avenue",
+         |      "address_line_2" : "test line 2",
+         |      "locality" : "testville",
+         |      "country" : "United Kingdom",
+         |      "postal_code" : "TE1 1ST",
+         |      "region" : "testshire"
+         |    },
+         |    "appointed_on" : 1494866745000,
+         |    "country_of_residence" : "England",
+         |    "date_of_birth" : {
+         |      "month" : 3,
+         |      "year" : 1990
+         |    },
+         |    "former_names" : [ ],
+         |    "links" : {
+         |      "officer" : {
+         |        "appointments" : "/test/link"
+         |      }
+         |    },
+         |    "name" : "TESTINGTON, Test Tester",
+         |    "nationality" : "British",
+         |    "occupation" : "Consultant",
+         |    "officer_role" : "director",
+         |    "resigned_on" : "$dateTime"
+         | }
       """.stripMargin)
 
     "transform the supplied json into the pre-incorp officer list json structure" in new Setup {
 
       val expected = Json.parse(
         s"""
-          |{
-          |  "date_of_birth": {
-          |    "month": 3,
-          |    "year": 1990
-          |  },
-          |  "address": {
-          |    "address_line_1": "test avenue",
-          |    "country": "United Kingdom",
-          |    "address_line_2": "test line 2",
-          |    "premises": "14",
-          |    "postal_code": "TE1 1ST",
-          |    "locality" : "testville"
-          |  },
-          |  "officer_role": "director",
-          |  "resigned_on" : "$dateTime",
-          |  "appointment_link": "/test/link"
-          |}
+           |{
+           |  "date_of_birth": {
+           |    "month": 3,
+           |    "year": 1990
+           |  },
+           |  "address": {
+           |    "address_line_1": "test avenue",
+           |    "country": "United Kingdom",
+           |    "address_line_2": "test line 2",
+           |    "premises": "14",
+           |    "postal_code": "TE1 1ST",
+           |    "locality" : "testville"
+           |  },
+           |  "officer_role": "director",
+           |  "resigned_on" : "$dateTime",
+           |  "appointment_link": "/test/link"
+           |}
         """.stripMargin)
 
       val result = service.transformOfficerList(publicOfficerJson)
@@ -836,33 +835,33 @@ class TransactionalServiceSpec extends SCRSSpec {
 
       val expected = Json.parse(
         s"""
-          |{
-          |  "officers" : [
-          |    {
-          |      "date_of_birth" : {
-          |        "month" : 3,
-          |        "year" : 1990
-          |      },
-          |      "address" : {
-          |        "address_line_1" : "test avenue",
-          |        "country" : "United Kingdom",
-          |        "locality" : "testville",
-          |        "premises" : "14",
-          |        "postal_code" : "TE1 1ST"
-          |      },
-          |      "name_elements" : {
-          |        "other_forenames" : "Testy",
-          |        "title" : "Mr",
-          |        "surname" : "TESTERSON",
-          |        "forename" : "Test"
-          |      },
-          |       "officer_role" : "director",
-          |       "resigned_on" : "$dateTime",
-          |       "appointment_link":"/test/link"
-          |    }
-          |
+           |{
+           |  "officers" : [
+           |    {
+           |      "date_of_birth" : {
+           |        "month" : 3,
+           |        "year" : 1990
+           |      },
+           |      "address" : {
+           |        "address_line_1" : "test avenue",
+           |        "country" : "United Kingdom",
+           |        "locality" : "testville",
+           |        "premises" : "14",
+           |        "postal_code" : "TE1 1ST"
+           |      },
+           |      "name_elements" : {
+           |        "other_forenames" : "Testy",
+           |        "title" : "Mr",
+           |        "surname" : "TESTERSON",
+           |        "forename" : "Test"
+           |      },
+           |       "officer_role" : "director",
+           |       "resigned_on" : "$dateTime",
+           |       "appointment_link":"/test/link"
+           |    }
+           |
           |  ]
-          |}
+           |}
         """.stripMargin)
 
       when(mockCohoConnector.getOfficerList(any())(any()))
@@ -990,53 +989,53 @@ class TransactionalServiceSpec extends SCRSSpec {
 
       val expected = Json.parse(
         s"""
-          |{
-          |  "officers" : [
-          |    {
-          |      "date_of_birth" : {
-          |        "month" : 3,
-          |        "year" : 1990
-          |      },
-          |      "address" : {
-          |        "address_line_1" : "test avenue",
-          |        "country" : "United Kingdom",
-          |        "locality" : "testville",
-          |        "premises" : "14",
-          |        "postal_code" : "TE1 1ST"
-          |      },
-          |      "name_elements" : {
-          |        "other_forenames" : "Testy",
-          |        "title" : "Mr",
-          |        "surname" : "TESTERSON",
-          |        "forename" : "Test"
-          |      },
-          |      "officer_role" : "director",
-          |      "resigned_on" : "$dateTime",
-          |      "appointment_link": "/test/link"
-          |    },
-          |    {
-          |      "date_of_birth" : {
-          |        "month" : 3,
-          |        "year" : 1990
-          |      },
-          |      "address" : {
-          |        "address_line_1" : "test avenue",
-          |        "country" : "United Kingdom",
-          |        "locality" : "testville",
-          |        "premises" : "14",
-          |        "postal_code" : "TE1 1ST"
-          |      },
-          |      "name_elements" : {
-          |        "other_forenames" : "Testy",
-          |        "title" : "Mr",
-          |        "surname" : "TESTERSON",
-          |        "forename" : "Test"
-          |      },
-          |        "officer_role" : "director",
-          |        "appointment_link": "/test/link"
-          |    }
-          |  ]
-          |}
+           |{
+           |  "officers" : [
+           |    {
+           |      "date_of_birth" : {
+           |        "month" : 3,
+           |        "year" : 1990
+           |      },
+           |      "address" : {
+           |        "address_line_1" : "test avenue",
+           |        "country" : "United Kingdom",
+           |        "locality" : "testville",
+           |        "premises" : "14",
+           |        "postal_code" : "TE1 1ST"
+           |      },
+           |      "name_elements" : {
+           |        "other_forenames" : "Testy",
+           |        "title" : "Mr",
+           |        "surname" : "TESTERSON",
+           |        "forename" : "Test"
+           |      },
+           |      "officer_role" : "director",
+           |      "resigned_on" : "$dateTime",
+           |      "appointment_link": "/test/link"
+           |    },
+           |    {
+           |      "date_of_birth" : {
+           |        "month" : 3,
+           |        "year" : 1990
+           |      },
+           |      "address" : {
+           |        "address_line_1" : "test avenue",
+           |        "country" : "United Kingdom",
+           |        "locality" : "testville",
+           |        "premises" : "14",
+           |        "postal_code" : "TE1 1ST"
+           |      },
+           |      "name_elements" : {
+           |        "other_forenames" : "Testy",
+           |        "title" : "Mr",
+           |        "surname" : "TESTERSON",
+           |        "forename" : "Test"
+           |      },
+           |        "officer_role" : "director",
+           |        "appointment_link": "/test/link"
+           |    }
+           |  ]
+           |}
         """.stripMargin)
 
       when(mockCohoConnector.getOfficerList(any())(any()))
@@ -1208,7 +1207,7 @@ class TransactionalServiceSpec extends SCRSSpec {
         """.stripMargin).as[JsObject]
     val expectedCodes: JsValue = Json.parse("""{"sic_codes": ["12345","67890"]}""")
 
-    def incorporated(boolean: Boolean) = Future.successful(Option(IncorpUpdate(transactionId, "", if(boolean) Some(crn) else None, None, "")))
+    def incorporated(boolean: Boolean) = Future.successful(Option(IncorpUpdate(transactionId, "", if (boolean) Some(crn) else None, None, "")))
 
     "return some SIC codes from the public API if an incorporation update exists for the given transaction ID" in new Setup {
       when(mockRepos.getIncorpUpdate(eqTo(transactionId)))
@@ -1264,6 +1263,105 @@ class TransactionalServiceSpec extends SCRSSpec {
         .thenReturn(Future.successful(FailedTransactionalAPIResponse))
 
       await(service.fetchSicByTransId(transactionId)) shouldBe None
+    }
+  }
+  "fetchShareholders" should {
+    val txJsonContainingShareholders = Json.parse(
+      s"""
+         |{
+         |  "transaction_id": "$transactionId",
+         |  "company_name": "MOOO LIMITED",
+         |  "type": "ltd",
+         |  "shareholders": [
+         |  {
+         |  "subscriber_type": "corporate",
+         |    "name": "big company",
+         |    "address": {
+         |    "premises": "11",
+         |    "address_line_1": "Drury Lane",
+         |    "address_line_2": "West End",
+         |    "locality": "London",
+         |    "country": "United Kingdom",
+         |    "postal_code": "SW2 B2B"
+         |    },
+         |  "percentage_voting_rights": 75.34
+         |  }
+         |  ]
+         |}""".stripMargin)
+
+    "return JsArray containing the list of shareholders logging the amount of shareholders in the array" in new Setup {
+      val extractedJson = Json.parse(
+        """[
+          |  {
+          |  "subscriber_type": "corporate",
+          |  "name": "big company",
+          |  "address": {
+          |    "premises": "11",
+          |    "address_line_1": "Drury Lane",
+          |    "address_line_2": "West End",
+          |    "locality": "London",
+          |    "country": "United Kingdom",
+          |    "postal_code": "SW2 B2B"
+          |    },
+          |  "percentage_voting_rights": 75.34
+          |   }
+          | ]
+          |  """.stripMargin).as[JsArray]
+
+      when(mockConnector.fetchTransactionalData(Matchers.any[String])(any()))
+        .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(txJsonContainingShareholders)))
+      withCaptureOfLoggingFrom(Logger) { logEvents =>
+        await(service.fetchShareholders(transactionId)) shouldBe Some(extractedJson)
+        val message = "[fetchShareholders] returned an array with the size - 1"
+        val log =  logEvents.map(l => (l.getLevel, l.getMessage)).head
+        log._1.toString shouldBe "INFO"
+        log._2 shouldBe message
+      }
+    }
+    "return JsArray containing empty list of shareholders, but key exists logging size at level WARN" in new Setup {
+      val txJsonContainingEmptyListOfShareholders =
+        Json.parse(
+          s"""
+             |{
+             |  "transaction_id": "$transactionId",
+             |  "company_name": "MOOO LIMITED",
+             |  "type": "ltd",
+             |  "shareholders" : []
+             |
+             |  }""".stripMargin)
+      val extractedJson =
+        Json.parse(
+          """[]
+          """.stripMargin)
+      when(mockConnector.fetchTransactionalData(Matchers.any[String])(any()))
+        .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(txJsonContainingEmptyListOfShareholders)))
+      withCaptureOfLoggingFrom(Logger) { logEvents =>
+        await(service.fetchShareholders(transactionId)) shouldBe Some(extractedJson)
+        val message = "[fetchShareholders] returned an array with the size - 0"
+        val log = logEvents.map(l => (l.getLevel, l.getMessage)).head
+        log._1.toString shouldBe "WARN"
+        log._2 shouldBe message
+      }
+    }
+    "return None when key does not exist" in new Setup {
+      val txJsonContainingNOShareholdersKey =
+        Json.parse(
+          s"""
+             |{
+             |  "transaction_id": "$transactionId",
+             |  "company_name": "MOOO LIMITED",
+             |  "type": "ltd"
+             |  }""".stripMargin)
+
+      when(mockConnector.fetchTransactionalData(Matchers.any[String])(any()))
+        .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(txJsonContainingNOShareholdersKey)))
+      withCaptureOfLoggingFrom(Logger) { logEvents =>
+        await(service.fetchShareholders(transactionId)) shouldBe None
+        val message = "[fetchShareholders] returned nothing as key 'shareholders' was not found"
+        val log = logEvents.map(l => (l.getLevel, l.getMessage)).head
+        log._1.toString shouldBe "INFO"
+        log._2 shouldBe message
+      }
     }
   }
 }

@@ -20,6 +20,7 @@ import com.github.tomakehurst.wiremock.client.WireMock._
 import helpers.IntegrationSpecBase
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
+import play.api.libs.json.{JsArray, Json}
 
 class TransactionalControllerISpec extends IntegrationSpecBase {
 
@@ -199,5 +200,80 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
       result.status shouldBe 204
     }
   }
+  "fetchShareholders" should {
+    val txid = "transid"
 
+    "return 200 with a list of shareholders" in {
+      stubFor(get(urlMatching(s"/submissionData/$txid"))
+        .willReturn(
+          aResponse()
+            .withStatus(200)
+            .withBody(
+              """{
+                |"foo":"bar",
+                |"shareholders": [
+                |  {
+                |  "subscriber_type": "corporate",
+                |    "name": "big company",
+                |    "address": {
+                |    "premises": "11",
+                |    "address_line_1": "Drury Lane",
+                |    "address_line_2": "West End",
+                |    "locality": "London",
+                |    "country": "United Kingdom",
+                |    "postal_code": "SW2 B2B"
+                |    },
+                |  "percentage_voting_rights": 75.34
+                |  },
+                |   {
+                |  "subscriber_type": "corporate",
+                |    "name": "big company 1",
+                |    "address": {
+                |    "premises": "11",
+                |    "address_line_1": "Drury Lane 1",
+                |    "address_line_2": "West End 1",
+                |    "locality": "London 1",
+                |    "country": "United Kingdom 1",
+                |    "postal_code": "SW2 B2B 1"
+                |    },
+                |  "percentage_voting_rights": 20.34
+                |  }
+                |  ]
+                | }
+              """.stripMargin)))
+
+      val result = client(s"shareholders/$txid").get().futureValue
+      result.status shouldBe 200
+      result.json.as[JsArray] shouldBe Json.parse("""
+          |[
+          |  {
+          |  "subscriber_type": "corporate",
+          |    "name": "big company",
+          |    "address": {
+          |    "premises": "11",
+          |    "address_line_1": "Drury Lane",
+          |    "address_line_2": "West End",
+          |    "locality": "London",
+          |    "country": "United Kingdom",
+          |    "postal_code": "SW2 B2B"
+          |    },
+          |  "percentage_voting_rights": 75.34
+          |  },
+          |   {
+          |  "subscriber_type": "corporate",
+          |    "name": "big company 1",
+          |    "address": {
+          |    "premises": "11",
+          |    "address_line_1": "Drury Lane 1",
+          |    "address_line_2": "West End 1",
+          |    "locality": "London 1",
+          |    "country": "United Kingdom 1",
+          |    "postal_code": "SW2 B2B 1"
+          |    },
+          |  "percentage_voting_rights": 20.34
+          |  }
+          |  ]
+        """.stripMargin).as[JsArray]
+    }
+  }
 }

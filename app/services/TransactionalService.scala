@@ -18,6 +18,7 @@ package services
 
 import connectors._
 import javax.inject.Inject
+import models.Shareholders
 import play.api.Logger
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
@@ -53,6 +54,29 @@ trait TransactionalService {
       case None => fetchCompanyProfileFromTx(transactionId)(hc)
     }
   }
+
+  def fetchShareholders(transactionId: String)(implicit hc: HeaderCarrier): Future[Option[JsArray]] = {
+     val logExistenceOfShareholders = (optShareholders: Option[JsArray]) => {
+       optShareholders.fold(Logger.info("[fetchShareholders] returned nothing as key 'shareholders' was not found")){ jsArray =>
+         val arraySize = jsArray.value.size
+         val message = s"[fetchShareholders] returned an array with the size - $arraySize"
+         if(arraySize > 0) {
+           Logger.info(message)
+         } else { Logger.warn(message) }
+       }
+     }
+
+    connector.fetchTransactionalData(transactionId).map {
+      case SuccessfulTransactionalAPIResponse(js) =>
+        val shareholders = js.as[Option[JsArray]](Shareholders.reads)
+        logExistenceOfShareholders(shareholders)
+        shareholders
+      case _ =>
+        Logger.error("[fetchShareholders] call to transactionalApi failed, returning None to controller")
+        None
+    }
+  }
+
 
   def fetchOfficerList(transactionId: String)(implicit hc: HeaderCarrier): Future[JsValue] = {
     checkIfCompIncorporated(transactionId) flatMap {

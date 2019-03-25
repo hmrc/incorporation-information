@@ -11,3 +11,5 @@ GET        /subscribe/:transId/regime/:regime/subscriber/:sub          @controll
 
 GET        /sic-codes/transaction/:txId                                @controllers.TransactionalController.fetchSicCodesByTransactionID(txId)
 GET        /sic-codes/crn/:crn                                         @controllers.TransactionalController.fetchSicCodesByCRN(crn)
+
+GET        /shareholders/:txId                                         @controllers.TransactionalController.fetchShareholders(txId)
