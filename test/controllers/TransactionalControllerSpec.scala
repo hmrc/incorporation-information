@@ -272,4 +272,33 @@ class TransactionalControllerSpec extends SCRSSpec {
       status(result) shouldBe 204
     }
   }
+  "fetchShareholders" should {
+    "return 204 if array is empty" in new Setup {
+      when(mockService.fetchShareholders(eqTo(transactionId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Some(Json.arr())))
+      val res = await(controller.fetchShareholders(transactionId)(FakeRequest()))
+      status(res) shouldBe 204
+    }
+
+    "return 200 if array is returned and size > 0" in new Setup {
+      when(mockService.fetchShareholders(eqTo(transactionId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Some(Json.arr(Json.obj("foo" -> "bar")))))
+      val res = await(controller.fetchShareholders(transactionId)(FakeRequest()))
+      status(res) shouldBe 200
+      jsonBodyOf(res) shouldBe Json.parse(
+        """[
+          | {
+          |   "foo": "bar"
+          | }
+          |]
+        """.stripMargin)
+
+    }
+    "return 404 if key does not exist in the json and service returned None" in new Setup {
+      when(mockService.fetchShareholders(eqTo(transactionId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(None))
+      val res = await(controller.fetchShareholders(transactionId)(FakeRequest()))
+      status(res) shouldBe 404
+    }
+  }
 }

@@ -137,7 +137,6 @@ trait IncorporationAPIConnector extends AlertLogging {
     } recover handleError(timepoint)
   }
 
-
   def fetchTransactionalData(transactionID: String)(implicit hc: HeaderCarrier): Future[TransactionalAPIResponse] = {
     val (http, realHc, url) = useProxy match {
       case true => (httpProxy, createAPIAuthHeader, s"$cohoBaseUrl/submissionData/$transactionID")
