@@ -37,6 +37,7 @@ trait DateCalculators {
   }
 
   def getDateNow: DateTime = DateTime.now(DateTimeZone.UTC)
+  def getDateNowUkZonedTime: DateTime = DateTime.now()
   def getCurrentTime: LocalTime = LocalTime.now
   val cohoStringToDateTime:String => DateTime = (cohoString:String) => if(cohoString.size < 17) {
     throw new Exception(s"timepoint is not 17 characters it is ${cohoString.size}")
@@ -44,7 +45,7 @@ trait DateCalculators {
     DateTimeFormat.forPattern("yyyyMMddHHmmssSSS").parseDateTime(cohoString)
   }
   val dateGreaterThanNow: String => Boolean = (dateToCompare: String) => {
-    cohoStringToDateTime(dateToCompare).getMillis > getDateNow.getMillis
+    cohoStringToDateTime(dateToCompare).getMillis > getDateNowUkZonedTime.getMillis
   }
 
   def getTheDay(nowDateTime: DateTime): String = {
