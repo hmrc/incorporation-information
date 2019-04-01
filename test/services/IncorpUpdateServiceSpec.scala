@@ -203,7 +203,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with JSONhelper
     val todaysDateToCohoMinus1 =  20190107000000004L
     val todaysDateToCohoPlus1 = 20190107010000006L
     def nDCalc(date:DateTime): DateCalculators = new DateCalculators {
-      override def getDateNow: DateTime = date
+      override def getDateNowUkZonedTime: DateTime = date
     }
     "return false if timepoint < now" in new Setup(nDCalc(todaysDate)) {
       service.timepointValidator(todaysDateToCohoMinus1.toString) shouldBe false
@@ -244,7 +244,7 @@ class IncorpUpdateServiceSpec extends UnitSpec with MockitoSugar with JSONhelper
       def time(h: Int, m: Int, s: Int) = LocalTime.of(h,m,s)
       def nDCalc(time:LocalTime, date:DateTime): DateCalculators = new DateCalculators {
         override def getCurrentTime: LocalTime = time
-        override def getDateNow: DateTime = date
+        override def getDateNowUkZonedTime: DateTime = date
       }
 
       "throw a PAGER DUTY log message if working day true and timepoint > now" in new Setup(nDCalc(time(8,0,1), mondayWorking)) {
