@@ -40,7 +40,7 @@ class DateCalculatorsSpec extends UnitSpec with BeforeAndAfterEach {
 
   class SetupWithDateTimeOverrides(now:DateTime) {
     val nDCalc = new DateCalculators {
-      override val getDateNowUkZonedTime = now
+      override def getDateNowUkZonedTime = now
     }
   }
   "epochToDateTime" should {

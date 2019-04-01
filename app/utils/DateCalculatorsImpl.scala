@@ -16,13 +16,12 @@
 
 package utils
 
-import java.time.{LocalTime, ZonedDateTime}
 import java.time.format.DateTimeFormatter
+import java.time.{LocalDateTime, LocalTime, ZoneId, ZonedDateTime}
 
 import javax.inject.Inject
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, DateTimeZone}
-import play.Logger
 
 
 class DateCalculatorsImpl @Inject()() extends DateCalculators
@@ -38,11 +37,11 @@ trait DateCalculators {
   }
 
   def getDateNow: DateTime = DateTime.now(DateTimeZone.UTC)
+
   def getDateNowUkZonedTime: DateTime = {
-   val now = DateTime.now()
-    Logger.info(s"anotherVersionOfNow = ${ZonedDateTime.now()}")
-    Logger.info(s"getDateNowUkZonedTime - $now")
-    now
+    getDateNow
+      .plusSeconds(ZonedDateTime.of(LocalDateTime.now(), ZoneId.of("Europe/London"))
+        .getOffset.getTotalSeconds)
   }
   def getCurrentTime: LocalTime = LocalTime.now
   val cohoStringToDateTime:String => DateTime = (cohoString:String) => if(cohoString.size < 17) {
