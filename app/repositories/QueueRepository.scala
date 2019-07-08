@@ -94,22 +94,26 @@ class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate]) 
   override def upsertIncorpUpdate(update: QueuedIncorpUpdate): Future[InsertResult] = {
     val selector = txSelector(update.incorpUpdate.transactionId)
     implicit val formatter = QueuedIncorpUpdate.format
-    collection.update(selector, update, upsert = true) map (res => InsertResult(res.nModified, res.upserted.size, res.writeErrors))
+    collection.update(false).one(selector, update, upsert = true) map (res => InsertResult(res.nModified, res.upserted.size, res.writeErrors))
   }
 
   override def getIncorpUpdate(transactionId: String): Future[Option[QueuedIncorpUpdate]] = {
-    collection.find(txSelector(transactionId)).one[QueuedIncorpUpdate]
+    collection.find(txSelector(transactionId),Option.empty)(BSONDocumentWrites,BSONDocumentWrites).one[QueuedIncorpUpdate]
   }
 
   override def getIncorpUpdates(fetchSize: Int): Future[Seq[QueuedIncorpUpdate]] = {
     val selector = Json.obj("timestamp" -> Json.obj("$lte" -> DateTime.now.getMillis))
     val rp = ReadPreference.primaryPreferred
 
-    collection.find(selector).sort(Json.obj("timestamp" -> 1)).cursor[QueuedIncorpUpdate](rp).collect[List](maxDocs = fetchSize, Cursor.FailOnError())
+    collection
+      .find(selector, Option.empty)(JsObjectDocumentWriter, JsObjectDocumentWriter)
+      .sort(Json.obj("timestamp" -> 1))
+      .cursor[QueuedIncorpUpdate](rp)
+      .collect[List](maxDocs = fetchSize, Cursor.FailOnError())
   }
 
   override def removeQueuedIncorpUpdate(transactionId: String): Future[Boolean] = {
-    collection.remove(txSelector(transactionId)).map(_.n > 0)
+    collection.delete().one(txSelector(transactionId)).map(_.n > 0)
   }
 
   override def updateTimestamp(transactionId: String, newTS: DateTime): Future[Boolean] = {

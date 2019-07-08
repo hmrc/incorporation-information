@@ -35,7 +35,7 @@ trait WiremockHelper {
   val wiremockHost = WiremockHelper.wiremockHost
   val wiremockUrl = s"http://$wiremockHost:$wiremockPort"
 
-  val wmConfig = wireMockConfig().port(wiremockPort) //.notifier(new ConsoleNotifier(true))
+  val wmConfig = wireMockConfig().port(wiremockPort)
   val wireMockServer = new WireMockServer(wmConfig)
 
   def startWiremock() = {

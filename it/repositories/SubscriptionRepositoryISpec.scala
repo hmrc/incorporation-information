@@ -70,8 +70,8 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
   )
 
 
-  class Setup extends MongoDbConnection {
-    val repository = new SubscriptionsMongoRepository(db)
+  class Setup {
+    val repository = new SubscriptionsMongoRepository(reactiveMongoComponent.mongoConnector.db)
     await(repository.drop)
     await(repository.ensureIndexes)
 

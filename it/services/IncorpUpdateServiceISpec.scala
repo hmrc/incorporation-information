@@ -23,6 +23,7 @@ import play.api.libs.json._
 import repositories.{IncorpUpdateMongo, IncorpUpdateMongoRepository, QueueMongo, QueueMongoRepository}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.MongoSpecSupport
+import reactivemongo.play.json.ImplicitBSONHandlers._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -135,10 +136,10 @@ class IncorpUpdateServiceISpec extends IntegrationSpecBase with MongoSpecSupport
 
       stubGet(s"/incorporation-frontend-stubs/submissions\\?timepoint=$timepointToFetch&items_per_page=1", 200, incorpInfoResponse.toString())
 
-      await(incorpInfoRepo.collection.insert(existingIncorpInfoNoIncorpDate))
+      await(incorpInfoRepo.collection.insert(false).one(existingIncorpInfoNoIncorpDate))
       await(incorpInfoRepo.count) shouldBe 1
 
-      await(incorpQueueRepo.collection.insert(existingQueueItemNoIncorpDate))
+      await(incorpQueueRepo.collection.insert(false).one(existingQueueItemNoIncorpDate))
       await(incorpQueueRepo.count) shouldBe 1
 
       val result: Seq[Boolean] = service.updateSpecificIncorpUpdateByTP(timepointList)
@@ -148,9 +149,9 @@ class IncorpUpdateServiceISpec extends IntegrationSpecBase with MongoSpecSupport
       await(incorpInfoRepo.count) shouldBe 1
       await(incorpQueueRepo.count) shouldBe 1
 
-      await(incorpInfoRepo.collection.find(Json.obj()).one[JsObject]) shouldBe Some(newIncorpInfo)
+      await(incorpInfoRepo.collection.find(Json.obj(),Option.empty)(JsObjectDocumentWriter, JsObjectDocumentWriter).one[JsObject]) shouldBe Some(newIncorpInfo)
 
-      val Some(queueItem) = await(incorpQueueRepo.collection.find(Json.obj()).one[JsObject])
+      val Some(queueItem) = await(incorpQueueRepo.collection.find(Json.obj(), Option.empty)(JsObjectDocumentWriter, JsObjectDocumentWriter).one[JsObject])
 
       queueItem.withoutTimestamp.withoutOID shouldBe newQueueItem.withoutTimestamp.withoutOID
     }

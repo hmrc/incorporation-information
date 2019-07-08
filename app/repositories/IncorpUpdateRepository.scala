@@ -16,7 +16,7 @@
 
 package repositories
 
-import javax.inject.{Inject, Singleton}
+import javax.inject.Inject
 import models.IncorpUpdate
 import org.apache.commons.lang3.StringUtils
 import play.api.Logger
@@ -25,8 +25,8 @@ import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DB
 import reactivemongo.api.commands.{UpdateWriteResult, WriteError}
 import reactivemongo.bson.{BSONDocument, BSONObjectID}
-import uk.gov.hmrc.mongo.ReactiveRepository
 import reactivemongo.play.json.ImplicitBSONHandlers._
+import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -68,9 +68,8 @@ class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])
   }
 
   def storeSingleIncorpUpdate(iUpdate: IncorpUpdate): Future[UpdateWriteResult] = {
-
-    implicit val mongoFormat=IncorpUpdate.mongoFormat
-    collection.update(selector(iUpdate.transactionId), iUpdate, upsert = true)
+    implicit val mongoFormat = IncorpUpdate.mongoFormat
+    collection.update(false).one(selector(iUpdate.transactionId), iUpdate, upsert = true)
   }
 
   private[repositories] def nonDuplicateIncorporations(updates: Seq[IncorpUpdate], errs: Seq[WriteError]): Seq[IncorpUpdate] = {
@@ -85,9 +84,8 @@ class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])
   }
 
   def getIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]] = {
-    collection.find(selector(transactionId)).one[IncorpUpdate]
+    collection.find(selector(transactionId), Option.empty)(BSONDocumentWrites, BSONDocumentWrites).one[IncorpUpdate]
   }
-
 }
 
 case class InsertResult(inserted: Int,
