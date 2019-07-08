@@ -32,7 +32,7 @@ trait DocValidator {
   val MONGO_RESULT_OK = Json.obj("ok" -> JsNumber(1))
 
   def validateCRN(regex: String = "^bar[1-7]$") = {
-    // db.runCommand( {collMod: "incorp-info", validator: { crn: { $regex: /^bar[1-7]?$/  } } } )
+
     val commandDoc = BSONDocument(
       "collMod" -> incorpRepo.collection.name,
       "validator" -> BSONDocument("company_number" -> BSONDocument("$regex" -> BSONRegex(regex, "")))
@@ -182,7 +182,6 @@ def individualUpdatedDoc(num: Int = 1) = IncorpUpdate(
 
   }
 
-
   "getIncorpUpdate" should {
 
     val incorpUpdate = docs(1).head
@@ -196,6 +195,4 @@ def individualUpdatedDoc(num: Int = 1) = IncorpUpdate(
       await(res) shouldBe Some(incorpUpdate)
     }
   }
-
 }
-

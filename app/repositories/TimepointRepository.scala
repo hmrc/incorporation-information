@@ -35,11 +35,9 @@ case class TimePoint(
                       timepoint: String
                     )
 
-
 object TimePoint {
   implicit val formats = Json.format[TimePoint]
 }
-
 
 class TimepointMongo @Inject()(mongo: ReactiveMongoComponent) extends ReactiveMongoFormats {
   lazy val repo = new TimepointMongoRepository(mongo.mongoConnector.db)
@@ -66,7 +64,8 @@ class TimepointMongoRepository(mongo: () => DB)
   }
 
   def retrieveTimePoint = {
-    collection.find(selector).one[TimePoint] map {
+    collection.find(selector, Option.empty)(BSONDocumentWrites, BSONDocumentWrites)
+      .one[TimePoint] map {
       case Some(res) => Some(res.timepoint)
       case _ =>
         Logger.warn("Could not find an existing Timepoint - this is ok for first run of the system")
@@ -76,6 +75,6 @@ class TimepointMongoRepository(mongo: () => DB)
 
   def resetTimepointTo(timepoint: String): Future[Boolean] = {
     val update = BSONDocument("$set" -> BSONDocument("_id" -> "CH-INCORPSTATUS-TIMEPOINT", "timepoint" -> timepoint))
-    collection.update(Json.obj(), update, upsert = true).map(_.ok)
+    collection.update(false).one(Json.obj(), update, upsert = true).map(_.ok)
   }
 }

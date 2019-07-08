@@ -23,12 +23,10 @@ import org.joda.time.DateTime
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.inject.{BindingKey, QualifierInstance}
+import reactivemongo.api.ReadConcern
 import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo, TimepointMongo}
 
-import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits._
-import scala.concurrent.duration.Duration
-import scala.util.Try
 
 class FireSubscriptionsISpec extends IntegrationSpecBase {
 
@@ -90,7 +88,7 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
 
       stubPost("/mockUri", 200, "")
 
-      await(incorpRepo.collection.count()) shouldBe 0
+      await(incorpRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
 
       val job = lookupJob("fire-subs-job")
 
@@ -98,7 +96,7 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
       f shouldBe true
       await(job.scheduledMessage.service.invoke)
 
-      await(incorpRepo.collection.count()) shouldBe 0
+      await(incorpRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
     }
   }
 
@@ -109,28 +107,28 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
 
       stubPost("/mockUri", 200, "")
 
-      await(queueRepo.collection.count()) shouldBe 0
+      await(queueRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
       await(timepointRepo.retrieveTimePoint) shouldBe None
 
       val incorpUpdate = IncorpUpdate("transId1", "awaiting", None, None, "timepoint", None)
       val QIU = QueuedIncorpUpdate(DateTime.now, incorpUpdate)
       insert(QIU)
-      await(queueRepo.collection.count()) shouldBe 1
+      await(queueRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 1
 
-      await(subRepo.collection.count()) shouldBe 0
+      await(subRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
       val sub = Subscription("transId1", "CT", "subscriber", s"$mockUrl/mockUri")
       val sub2 = Subscription("transId1", "PAYE", "subscriber", s"$mockUrl/mockUri")
       insert(sub)
-      await(subRepo.collection.count()) shouldBe 1
+      await(subRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 1
       insert(sub2)
-      await(subRepo.collection.count()) shouldBe 2
+      await(subRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 2
 
       val job = lookupJob("fire-subs-job")
 
       val res = await(job.scheduledMessage.service.invoke.map(_.asInstanceOf[Either[Seq[Boolean], LockResponse]]))
       res.left.get shouldBe Seq(true)
-      await(subRepo.collection.count()) shouldBe 0
-      await(queueRepo.collection.count()) shouldBe 0
+      await(subRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
+      await(queueRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
     }
   }
 }

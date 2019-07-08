@@ -21,25 +21,26 @@ import java.util.UUID
 import helpers.SCRSMongoSpec
 import play.api.libs.json.Json
 import reactivemongo.api.commands.WriteResult
+import reactivemongo.play.json.ImplicitBSONHandlers._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class TimepointMongoRepositorySpec extends SCRSMongoSpec {
+class TimepointMongoRepositoryISpec extends SCRSMongoSpec {
 
   class Setup {
     val repository: TimepointMongoRepository = new TimepointMongo(reactiveMongoComponent).repo
-    await(repository.drop)
+    await(repository.removeAll())
     await(repository.ensureIndexes)
 
     def insertTimepoint(tp: String): WriteResult = {
-      repository.collection.insert(TimePoint("CH-INCORPSTATUS-TIMEPOINT", tp))
+      repository.collection.insert(false).one(TimePoint("CH-INCORPSTATUS-TIMEPOINT", tp))
     }
 
-    def fetchTimepoint: Option[TimePoint] = await(repository.collection.find(Json.obj()).one[TimePoint])
+    def fetchTimepoint: Option[TimePoint] = await(repository.collection.find(Json.obj(), Option.empty)(JsObjectDocumentWriter,JsObjectDocumentWriter).one[TimePoint])
   }
 
   override def afterAll() = new Setup {
-    await(repository.drop)
+    await(repository.removeAll())
   }
 
   def generateTimepoint: String = UUID.randomUUID().toString

@@ -22,8 +22,10 @@ import models.Subscription
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.inject.{BindingKey, QualifierInstance}
+import reactivemongo.api.ReadConcern
 import repositories.SubscriptionsMongo
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits._
 
 class MetricsISpec extends IntegrationSpecBase {
@@ -49,7 +51,7 @@ class MetricsISpec extends IntegrationSpecBase {
   class Setup {
     val subRepo = app.injector.instanceOf[SubscriptionsMongo].repo
 
-    def insert(s: Subscription) = await(subRepo.collection.insert(s)(Subscription.format, global))
+    def insert(s: Subscription) = await(subRepo.collection.insert(false).one(s)(implicitly[ExecutionContext], Subscription.format))
   }
 
   override def beforeEach() = new Setup {
@@ -90,7 +92,7 @@ class MetricsISpec extends IntegrationSpecBase {
       setupAuditMocks()
       setupFeatures(scheduledMetrics = false)
 
-      await(subRepo.collection.count()) shouldBe 0
+      await(subRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
 
       val job = lookupJob("metrics-job")
 
@@ -106,7 +108,7 @@ class MetricsISpec extends IntegrationSpecBase {
       setupFeatures(scheduledMetrics = false)
 
       await(insert(Subscription("tx1", "regime", "sub1", "url1")))
-      await(subRepo.collection.count()) shouldBe 1
+      await(subRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 1
 
       val job = lookupJob("metrics-job")
 
@@ -122,7 +124,7 @@ class MetricsISpec extends IntegrationSpecBase {
       await(insert(Subscription("tx2", "regime", "sub2", "url2")))
       await(insert(Subscription("tx3", "regime1", "sub2", "url2")))
       await(insert(Subscription("tx4", "regime1", "sub2", "url2")))
-      await(subRepo.collection.count()) shouldBe 4
+      await(subRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 4
 
       val job = lookupJob("metrics-job")
 

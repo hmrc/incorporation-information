@@ -59,7 +59,6 @@ case object FailedSub extends SubscriptionStatus
 case class IncorpExists(update: IncorpUpdate) extends SubscriptionStatus
 case class SubExists(update: IncorpUpdate) extends SubscriptionStatus
 
-
 sealed trait UnsubscribeStatus
 case object DeletedSub extends UnsubscribeStatus
 case object NotDeletedSub extends UnsubscribeStatus
@@ -88,7 +87,7 @@ class SubscriptionsMongoRepository(mongo: () => DB) extends ReactiveRepository[S
 
   def insertSub(sub: Subscription) : Future[UpsertResult] = {
     val selector = BSONDocument("transactionId" -> sub.transactionId, "regime" -> sub.regime, "subscriber" -> sub.subscriber)
-    collection.update(selector, sub, upsert = true) map {
+    collection.update(false).one(selector, sub, upsert = true) map {
       res =>
         UpsertResult(res.nModified, res.upserted.size, res.writeErrors)
     }
@@ -96,23 +95,26 @@ class SubscriptionsMongoRepository(mongo: () => DB) extends ReactiveRepository[S
 
   def deleteSub(transactionId: String, regime: String, subscriber: String): Future[WriteResult] = {
     val selector = BSONDocument("transactionId" -> transactionId, "regime" -> regime, "subscriber" -> subscriber)
-     collection.remove(selector)
+     collection.delete().one(selector)
   }
 
   def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] = {
     val query = BSONDocument("transactionId" -> transactionId, "regime" -> regime, "subscriber" -> subscriber)
-    collection.find(query).one[Subscription]
+    collection.find(query, Option.empty)(BSONDocumentWrites, BSONDocumentWrites).one[Subscription]
   }
 
   def getSubscriptions(transactionId: String): Future[Seq[Subscription]] = {
     val query = BSONDocument("transactionId" -> transactionId)
-    collection.find(query).cursor[Subscription]().collect[Seq](-1,Cursor.DoneOnError())
+    collection
+      .find(query, Option.empty)(BSONDocumentWrites, BSONDocumentWrites)
+      .cursor[Subscription]()
+      .collect[Seq](-1, Cursor.DoneOnError())
   }
 
   def getSubscriptionsByRegime(regime: String, max: Int): Future[Seq[Subscription]] = {
     val query = BSONDocument("regime" -> regime)
     collection
-      .find(query)
+      .find(query, Option.empty)(BSONDocumentWrites, BSONDocumentWrites)
       .cursor[Subscription]().collect[Seq](maxDocs = max,Cursor.DoneOnError())
   }
   def getSubscriptionStats(): Future[Map[String, Int]] = {
@@ -136,6 +138,6 @@ class SubscriptionsMongoRepository(mongo: () => DB) extends ReactiveRepository[S
   }
 
   def wipeTestData(): Future[WriteResult] = {
-    removeAll(WriteConcern.Acknowledged)
+    removeAll(reactivemongo.api.WriteConcern.Acknowledged)
   }
 }
