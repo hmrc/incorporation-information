@@ -1,5 +1,5 @@
 /*
-* Copyright 2017 HM Revenue & Customs
+* Copyright 2020 HM Revenue & Customs
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -24,9 +24,6 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 
-/**
-  * Created by jackie on 05/04/17.
-  */
 class FiringSubscriptionsConnectorISpec extends IntegrationSpecBase {
 
   val mockHost = wiremockHost
