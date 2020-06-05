@@ -25,6 +25,7 @@ import play.api.test.Helpers._
 import utils.SCRSFeatureSwitches.{KEY_INCORP_UPDATE, KEY_TX_API}
 import org.mockito.Matchers.any
 import org.mockito.Mockito._
+import play.api.mvc.ControllerComponents
 
 class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
 
@@ -41,6 +42,7 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
       override val metricsJob: ScheduledJob = mockSched
       override val fireSubsJob: ScheduledJob = mockSched
       override val proJob: ScheduledJob = mockSched
+      val controllerComponents: ControllerComponents = stubControllerComponents()
     }
   }
 

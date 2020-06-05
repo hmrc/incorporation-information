@@ -24,7 +24,7 @@ import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsObject, Json}
 import repositories.IncorpUpdateMongo
-import utils.TimestampFormats
+import utils.TimestampFormats._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
@@ -50,7 +50,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
     def insert(update: IncorpUpdate) = await(incRepo.insert(update))
   }
 
-  val incorpDate = DateTime.parse("2018-05-01", DateTimeFormat.forPattern(TimestampFormats.datePattern))
+  val incorpDate = DateTime.parse("2018-05-01", DateTimeFormat.forPattern(datePattern))
 
   "fetchTransactionalData" should {
 

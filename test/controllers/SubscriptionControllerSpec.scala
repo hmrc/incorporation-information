@@ -22,7 +22,8 @@ import org.joda.time.DateTime
 import org.mockito.Matchers
 import org.mockito.Matchers.{any, eq => eqTo}
 import org.mockito.Mockito._
-import play.api.libs.json.{JsObject, Json}
+import play.api.libs.json.{JsObject, JsValue, Json}
+import play.api.mvc.{AnyContentAsEmpty, ControllerComponents, Result}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import repositories._
@@ -33,11 +34,12 @@ import scala.concurrent.Future
 
 class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
 
-  val mockService = mock[SubscriptionService]
+  val mockService: SubscriptionService = mock[SubscriptionService]
 
   class Setup {
-    val controller = new SubscriptionController {
-      override val service = mockService
+    val controller: SubscriptionController = new SubscriptionController {
+      override val service: SubscriptionService = mockService
+      val controllerComponents: ControllerComponents = stubControllerComponents()
     }
   }
 
@@ -47,9 +49,9 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
   val callbackUrl = "www.url.com"
   val crn = "crn12345"
   val status = "accepted"
-  val incDate = DateTime.parse("2000-12-12")
-  val sub = Subscription(transactionId, regime, subscriber, "www.test.com")
-  val testIncorpUpdate = IncorpUpdate(transactionId, status, Some(crn), Some(incDate), "20170327093004787", None)
+  val incDate: DateTime = DateTime.parse("2000-12-12")
+  val sub: Subscription = Subscription(transactionId, regime, subscriber, "www.test.com")
+  val testIncorpUpdate: IncorpUpdate = IncorpUpdate(transactionId, status, Some(crn), Some(incDate), "20170327093004787", None)
 
   "check Subscription" should {
 
@@ -87,12 +89,12 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
       when(mockService.checkForSubscription(eqTo(transactionId), any(),any(),any(), any())(any()))
         .thenReturn(Future(IncorpExists(testIncorpUpdate)))
 
-      val response = FakeRequest().withBody(requestBody)
+      val request: FakeRequest[JsValue] = FakeRequest().withBody(requestBody)
 
-      val fResult = call(controller.checkSubscription(transactionId,regime,subscriber), response)
-      val result = await(fResult)
+      val fResult: Future[Result] = controller.checkSubscription(transactionId,regime,subscriber)(request)
+      val result: Result = await(fResult)
 
-      val (generatedTS, jsonNoTS) = extractTimestamp(jsonBodyOf(result).as[JsObject])
+      val (generatedTS, jsonNoTS) = extractTimestamp(contentAsJson(result).as[JsObject])
 
       status(result) shouldBe 200
       jsonNoTS shouldBe json
@@ -102,10 +104,10 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
       when(mockService.checkForSubscription(eqTo(transactionId), any(), any(), any(), any())(any()))
         .thenReturn(Future.successful(SuccessfulSub()))
 
-      val response = FakeRequest().withBody(requestBody)
+      val request: FakeRequest[JsValue] = FakeRequest().withBody(requestBody)
 
-      val fResult = call(controller.checkSubscription(transactionId, regime, subscriber), response)
-      val result = await(fResult)
+      val fResult: Future[Result] = controller.checkSubscription(transactionId, regime, subscriber)(request)
+      val result: Result = await(fResult)
 
       status(result) shouldBe 202
     }
@@ -117,9 +119,9 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
       when(mockService.deleteSubscription(Matchers.eq(transactionId),Matchers.eq(regime),Matchers.eq(subscriber)))
         .thenReturn(Future.successful(DeletedSub))
 
-      val response = FakeRequest()
+      val request: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
 
-      val result = call(controller.removeSubscription(transactionId,regime,subscriber), response)
+      val result: Future[Result] = controller.removeSubscription(transactionId,regime,subscriber)(request)
       status(result) shouldBe 200
     }
 
@@ -127,9 +129,9 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
       when(mockService.deleteSubscription(Matchers.eq(transactionId),Matchers.eq(regime),Matchers.eq(subscriber)))
         .thenReturn(Future.successful(NotDeletedSub))
 
-      val response = FakeRequest()
+      val request: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
 
-      val result = call(controller.removeSubscription(transactionId,regime,subscriber), response)
+      val result: Future[Result] = controller.removeSubscription(transactionId,regime,subscriber)(request)
       status(result) shouldBe 404
     }
   }
@@ -139,9 +141,9 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
       when(mockService.getSubscription(Matchers.eq(transactionId),Matchers.eq(regime),Matchers.eq(subscriber)))
         .thenReturn(Future.successful(Some(sub)))
 
-      val response = FakeRequest()
+      val request: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
 
-      val result = call(controller.getSubscription(transactionId,regime,subscriber), response)
+      val result: Future[Result] = controller.getSubscription(transactionId,regime,subscriber)(request)
       status(result) shouldBe 200
       result.map(res => jsonBodyOf(res) shouldBe Json.toJson(sub))
     }
@@ -150,9 +152,9 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
       when(mockService.getSubscription(Matchers.eq(transactionId),Matchers.eq(regime),Matchers.eq(subscriber)))
         .thenReturn(Future.successful(None))
 
-      val response = FakeRequest()
+      val request: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
 
-      val result = call(controller.getSubscription(transactionId,regime,subscriber), response)
+      val result: Future[Result] = controller.getSubscription(transactionId,regime,subscriber)(request)
       status(result) shouldBe 404
     }
   }

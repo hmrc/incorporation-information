@@ -126,6 +126,7 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
       val job = lookupJob("fire-subs-job")
 
       val res = await(job.scheduledMessage.service.invoke.map(_.asInstanceOf[Either[Seq[Boolean], LockResponse]]))
+
       res.left.get shouldBe Seq(true)
       await(subRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
       await(queueRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0

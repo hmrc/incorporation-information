@@ -17,33 +17,25 @@
 package repositories
 
 import Helpers.SCRSSpec
-import controllers.SubscriptionController
 import models.Subscription
 import org.mockito.Mockito._
 import reactivemongo.api.commands.{DefaultWriteResult, WriteError}
-import services.SubscriptionService
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-/**
-  * Created by jackie on 20/03/17.
-  */
 class SubscriptionsRepositorySpec extends SCRSSpec {
 
   class Setup {
-    val controller = new SubscriptionController {
-      val service = mock[SubscriptionService]
-    }
-    val mockService = mock[SubscriptionService]
     val mockRepo = mock[SubscriptionsRepository]
   }
+
   val transId = "transID"
   val regime = "CT"
   val subscriber = "test"
   val sub = Subscription("transID", "CT", "test", "url")
-  val success = UpsertResult(1,0,Seq())
-  val failed = UpsertResult(0,0,Seq(WriteError(0, 11000, "Error the subscription has not been saved")))
+  val success = UpsertResult(1, 0, Seq())
+  val failed = UpsertResult(0, 0, Seq(WriteError(0, 11000, "Error the subscription has not been saved")))
 
   "insertSub" should {
     "return an upsert result with a 1 value for upserted, when a subscription has been successfully inserted" in new Setup {

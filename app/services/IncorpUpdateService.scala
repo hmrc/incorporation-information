@@ -18,12 +18,12 @@ package services
 
 import config.MicroserviceConfig
 import connectors.IncorporationAPIConnector
-import javax.inject.{Inject, Provider, Singleton}
+import javax.inject.{Inject, Provider}
 import jobs._
 import models.{IncorpUpdate, QueuedIncorpUpdate}
 import org.joda.time.{DateTime, Duration}
 import play.api.Logger
-import reactivemongo.api.commands.{LastError, UpdateWriteResult}
+import reactivemongo.api.commands.UpdateWriteResult
 import repositories.{IncorpUpdateRepository, InsertResult, TimepointRepository, _}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.lock.LockKeeper
@@ -51,7 +51,7 @@ class IncorpUpdateServiceImpl @Inject()(injConnector: IncorporationAPIConnector,
   lazy val loggingDays = msConfig.noRegisterAnInterestLoggingDay
   lazy val loggingTimes = msConfig.noRegisterAnInterestLoggingTime
 
-  lazy val lockoutTimeout = msConfig.getInt("schedules.incorp-update-job.lockTimeout")
+  lazy val lockoutTimeout = msConfig.getConfigInt("schedules.incorp-update-job.lockTimeout")
 
   lazy val lockKeeper: LockKeeper = new LockKeeper() {
     override val lockId = "incorp-update-job-lock"

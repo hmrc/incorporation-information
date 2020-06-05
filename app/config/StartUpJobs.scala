@@ -27,14 +27,13 @@ import uk.gov.hmrc.http.HeaderCarrier
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class StartUpJobsImpl @Inject()(
-                                 val configuration: Configuration,
-                                 val incorpUpdateService: IncorpUpdateService,
-                                 val subscriptionService: SubscriptionService,
-                                 val timepointMongo: TimepointMongo,
-                                 val subsRepo: SubscriptionsMongo,
-                                 val incorpUpdateRepo: IncorpUpdateMongo,
-                                 val queueRepo: QueueMongo
+class StartUpJobsImpl @Inject()(val configuration: Configuration,
+                                val incorpUpdateService: IncorpUpdateService,
+                                val subscriptionService: SubscriptionService,
+                                val timepointMongo: TimepointMongo,
+                                val subsRepo: SubscriptionsMongo,
+                                val incorpUpdateRepo: IncorpUpdateMongo,
+                                val queueRepo: QueueMongo
                                ) extends StartUpJobs
 
 trait StartUpJobs {
@@ -46,7 +45,7 @@ trait StartUpJobs {
   val incorpUpdateRepo: IncorpUpdateMongo
   val queueRepo: QueueMongo
 
-  lazy val tpConfig =  configuration.getString("timepointList")
+  lazy val tpConfig = configuration.getString("timepointList")
 
   private def reFetchIncorpInfo(): Future[Unit] = {
     tpConfig match {
@@ -62,12 +61,12 @@ trait StartUpJobs {
 
   private def recreateSubscription(): Future[Unit] = {
     configuration.getString("resubscribe") match {
-      case None         => Future.successful(Logger.info(s"[Config] No re-subscriptions"))
+      case None => Future.successful(Logger.info(s"[Config] No re-subscriptions"))
       case Some(resubs) =>
         val configString = new String(Base64.getDecoder.decode(resubs), "UTF-8")
         configString.split(",").toList match {
           case txId :: callbackUrl :: Nil =>
-            subscriptionService.checkForSubscription(txId, "ctax","scrs",callbackUrl,true)(HeaderCarrier()) map {
+            subscriptionService.checkForSubscription(txId, "ctax", "scrs", callbackUrl, true)(HeaderCarrier()) map {
               result => Logger.info(s"[Config] result of subscription service call for $txId = $result")
             }
           case _ => Future.successful(Logger.info(s"[Config] No info in re-subscription variable"))
@@ -90,7 +89,7 @@ trait StartUpJobs {
 
   def logIncorpInfo(): Unit = {
     val transIdsFromConfig = configuration.getString("transactionIdList")
-    transIdsFromConfig.fold(()){ transIds =>
+    transIdsFromConfig.fold(()) { transIds =>
       val transIdList = utils.Base64.decode(transIds).split(",")
       transIdList.foreach { transId =>
         for {
@@ -127,15 +126,16 @@ trait StartUpJobs {
   }
 
   private def resetTimepoint(): Future[Boolean] = {
-    configuration.getString("microservice.services.reset-timepoint-to").fold{
+    configuration.getString("microservice.services.reset-timepoint-to").fold {
       Logger.info("[ResetTimepoint] Could not find a timepoint to reset to (config key microservice.services.reset-timepoint-to)")
       Future(false)
-    }{
+    } {
       timepoint =>
         Logger.info(s"[ResetTimepoint] Found timepoint from config - $timepoint")
         timepointMongo.repo.resetTimepointTo(timepoint)
     }
   }
+
   reFetchIncorpInfo()
 
   reFetchIncorpInfoWhenNoQueue()

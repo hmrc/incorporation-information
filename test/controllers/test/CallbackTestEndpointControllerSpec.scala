@@ -19,16 +19,18 @@ package controllers.test
 import Helpers.SCRSSpec
 import play.api.libs.json.{JsObject, Json}
 import play.api.test.FakeRequest
-import play.api.test.Helpers.call
+import play.api.test.Helpers.{call, stubControllerComponents}
 
 class CallbackTestEndpointControllerSpec extends SCRSSpec {
 
   "post" should {
 
     "return a 200" in {
-      val controller = new CallbackTestEndpointController {}
+      val controller = new CallbackTestEndpointController {
+        val controllerComponents = stubControllerComponents()
+      }
       val request = FakeRequest().withBody[JsObject](Json.parse("""{"test":"tesste"}""").as[JsObject])
-      val res = call(controller.post,request)
+      val res = controller.post(request)
       status(res) shouldBe 200
     }
   }

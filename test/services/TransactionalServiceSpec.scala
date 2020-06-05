@@ -24,8 +24,8 @@ import org.joda.time.format.DateTimeFormat
 import org.mockito.Matchers
 import org.mockito.Matchers.{any, eq => eqTo}
 import org.mockito.Mockito._
-import org.slf4j.event.Level
 import play.api.Logger
+import play.api.libs.json.JodaWrites.JodaDateTimeNumberWrites
 import play.api.libs.json._
 import repositories.IncorpUpdateRepository
 import uk.gov.hmrc.play.test.LogCapturing
@@ -236,7 +236,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
   val transactionId = "tx-12345"
   val crn = "XX010101"
 
-  val dateTime = Json.toJson(DateTime.parse("2017-05-15T17:45:45Z"))
+  val dateTime = Json.toJson(DateTime.parse("2017-05-15T17:45:45Z"))(JodaDateTimeNumberWrites)
 
   "extractJson" should {
 

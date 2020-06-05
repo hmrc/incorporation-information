@@ -46,7 +46,7 @@ class MetricsServiceImpl @Inject()(val injSubRepo: SubscriptionsMongo,
   override val publicAPITimer: Timer = metrics.defaultRegistry.timer("public-api-timer")
   override val internalAPITimer: Timer = metrics.defaultRegistry.timer("internal-api-timer")
 
-  lazy val lockoutTimeout = msConfig.getInt("schedules.metrics-job.lockTimeout")
+  lazy val lockoutTimeout = msConfig.getConfigInt("schedules.metrics-job.lockTimeout")
 
   lazy val lockKeeper: LockKeeper = new LockKeeper() {
     override val lockId = "metrics-job-lock"

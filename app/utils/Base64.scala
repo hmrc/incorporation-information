@@ -16,20 +16,18 @@
 
 package utils
 
-
-
-import org.asynchttpclient.util.{Base64 => libBase64}
-
 import scala.util.{Failure, Success, Try}
 
 object Base64 {
+  import java.util.Base64._
+
 
   def decode(str: String): String = {
-    Try(libBase64.decode(str)) match {
+    Try(getDecoder.decode(str)) match {
       case Success(decoded) => new String(decoded)
       case Failure(_) => throw new RuntimeException(s"$str was not base64 encoded correctly or at all")
     }
   }
 
-  def encode(str: String): String = libBase64.encode(str.toCharArray.map(_.toByte))
+  def encode(str: String): String = new String(getEncoder.encode(str.toCharArray.map(_.toByte)))
 }

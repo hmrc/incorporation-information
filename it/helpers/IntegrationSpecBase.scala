@@ -19,7 +19,7 @@ package helpers
 import com.github.tomakehurst.wiremock.stubbing.StubMapping
 import org.scalatest._
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatestplus.play.OneServerPerSuite
+import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.Application
 import play.api.libs.ws.WSClient
 import uk.gov.hmrc.play.test.UnitSpec
@@ -27,10 +27,10 @@ import utils.{FeatureSwitch, SCRSFeatureSwitches}
 
 trait IntegrationSpecBase extends UnitSpec
   with GivenWhenThen
-  with OneServerPerSuite with ScalaFutures with IntegrationPatience with Matchers
+  with GuiceOneServerPerSuite with ScalaFutures with IntegrationPatience with Matchers
   with WiremockHelper with BeforeAndAfterEach with BeforeAndAfterAll with FakeAppConfig {
 
-  def ws(implicit app: Application): WSClient = app.injector.instanceOf[WSClient]
+  implicit def ws(implicit app: Application): WSClient = app.injector.instanceOf[WSClient]
 
   def setupFeatures(submissionCheck: Boolean = false,
                     transactionalAPI: Boolean = false,

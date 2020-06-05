@@ -22,10 +22,10 @@ import javax.inject.Inject
 import models.IncorpUpdate
 import play.api.Logger
 import play.api.libs.json.Json
-import play.api.mvc.Action
+import play.api.mvc.{Action, ControllerComponents}
 import repositories.{IncorpUpdateMongo, IncorpUpdateRepository}
 import services.{TransactionalService, TransactionalServiceException}
-import uk.gov.hmrc.play.bootstrap.controller.BaseController
+import uk.gov.hmrc.play.bootstrap.controller.{BackendBaseController, BackendController, BaseController}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -33,12 +33,14 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class TransactionalControllerImpl @Inject()(config: MicroserviceConfig,
                                             val publicApiConnector: PublicCohoApiConnector,
                                             val incorpMongo: IncorpUpdateMongo,
-                                            val service: TransactionalService) extends TransactionalController {
+                                            val service: TransactionalService,
+                                            override val controllerComponents: ControllerComponents)
+  extends BackendController(controllerComponents) with TransactionalController {
   lazy val incorpRepo = incorpMongo.repo
   override val whitelistedServices = config.knownSCRSServices.split(",").toSet
 }
 
-trait TransactionalController extends BaseController {
+trait TransactionalController extends BackendBaseController {
 
   protected val service: TransactionalService
   val publicApiConnector: PublicCohoApiConnector
@@ -75,12 +77,16 @@ trait TransactionalController extends BaseController {
 
   def fetchOfficerList(transactionId: String) = Action.async {
     implicit request =>
-      service.fetchOfficerList(transactionId).map (Ok(_)) recover {
+      service.fetchOfficerList(transactionId).map(Ok(_)) recover {
         case ex: TransactionalServiceException =>
-          Logger.error(s"[TransactionalController] [fetchOfficerList] - TransactionalServiceException caught - reason: ${ex.message}", ex)
+          Logger.error(s"[TransactionalController] [fetchOfficerList] - TransactionalServiceException caught - reason: ${
+            ex.message
+          }", ex)
           NotFound
         case ex: Throwable =>
-          Logger.error(s"[TransactionalController] [fetchOfficerList] - Exception caught - reason: ${ex.getMessage}", ex)
+          Logger.error(s"[TransactionalController] [fetchOfficerList] - Exception caught - reason: ${
+            ex.getMessage
+          }", ex)
           InternalServerError
       }
   }
