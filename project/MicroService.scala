@@ -16,7 +16,6 @@
 
 import sbt.Keys._
 import sbt._
-import play.routes.compiler.StaticRoutesGenerator
 import uk.gov.hmrc.sbtdistributables.SbtDistributablesPlugin._
 
 
@@ -57,12 +56,12 @@ trait MicroService {
       libraryDependencies ++= appDependencies,
       retrieveManaged := true,
       evictionWarningOptions in update := EvictionWarningOptions.default.withWarnScalaVersionEviction(false),
-      routesGenerator := StaticRoutesGenerator,
       scalaVersion := "2.11.11",
       resolvers += Resolver.jcenterRepo
     )
     .configs(IntegrationTest)
     .settings(inConfig(IntegrationTest)(Defaults.itSettings): _*)
+    .settings(javaOptions in IntegrationTest += "-Dlogger.resource=logback-test.xml")
     .settings(integrationTestSettings())
     .settings(majorVersion := 1)
 

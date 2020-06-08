@@ -18,6 +18,8 @@ package utils
 
 import org.joda.time.DateTime
 import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat}
+import play.api.libs.json.JodaReads.DefaultJodaDateTimeReads
+import play.api.libs.json.JodaWrites.JodaDateTimeNumberWrites
 import play.api.libs.json.{Format, JsString, Reads, Writes}
 
 object TimestampFormats {
@@ -34,6 +36,8 @@ object TimestampFormats {
       JsString(ISODateTimeFormat.date().print(d))
     )
   )
+
+  implicit val jodaDateTimeFormat: Format[DateTime] = Format(DefaultJodaDateTimeReads, JodaDateTimeNumberWrites)
 
 }
 

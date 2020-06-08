@@ -19,7 +19,6 @@ package connectors
 import com.codahale.metrics.Counter
 import config.{MicroserviceConfig, WSHttpProxy}
 import javax.inject.Inject
-import org.asynchttpclient.util.Base64
 import play.api.Logger
 import play.api.libs.json.JsValue
 import services.MetricsService
@@ -27,7 +26,7 @@ import uk.gov.hmrc.http._
 import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.http.ws.WSProxy
-import utils.{AlertLogging, DateCalculators, PagerDutyKeys, SCRSFeatureSwitches}
+import utils.{AlertLogging, Base64, DateCalculators, PagerDutyKeys, SCRSFeatureSwitches}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -195,9 +194,9 @@ trait PublicCohoApiConnector extends AlertLogging {
 
   private[connectors] def createAPIAuthHeader(isScrs: Boolean = true): HeaderCarrier = {
     val encodedToken = if (isScrs) {
-      Base64.encode(cohoPublicApiAuthToken.getBytes)
+      Base64.encode(cohoPublicApiAuthToken)
     } else {
-      Base64.encode(nonSCRSPublicApiAuthToken.getBytes)
+      Base64.encode(nonSCRSPublicApiAuthToken)
     }
     HeaderCarrier(authorization = Some(Authorization(s"Basic $encodedToken")))
   }

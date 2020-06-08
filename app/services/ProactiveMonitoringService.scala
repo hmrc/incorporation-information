@@ -38,7 +38,7 @@ class ProactiveMonitoringServiceImpl @Inject()(val transactionalConnector: Incor
   protected val transactionIdToPoll: String = msConfig.transactionIdToPoll
   protected val crnToPoll: String = msConfig.crnToPoll
 
-  lazy val lockoutTimeout = msConfig.getInt("schedules.proactive-monitoring-job.lockTimeout")
+  lazy val lockoutTimeout = msConfig.getConfigInt("schedules.proactive-monitoring-job.lockTimeout")
 
   lazy val lockKeeper: LockKeeper = new LockKeeper() {
     override val lockId = "proactive-monitoring-job-lock"

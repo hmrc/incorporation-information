@@ -20,21 +20,23 @@ import constants.JobNames._
 import javax.inject.{Inject, Named}
 import jobs.ScheduledJob
 import play.api.Logger
-import play.api.mvc.Action
-import uk.gov.hmrc.play.bootstrap.controller.BaseController
+import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
+import uk.gov.hmrc.play.bootstrap.controller.{BackendBaseController, BackendController}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class ManualTriggerControllerImpl @Inject()(@Named("incorp-update-job") val incUpdatesJob: ScheduledJob,
-                                            @Named("fire-subs-job") val fireSubJob: ScheduledJob) extends ManualTriggerController
+                                            @Named("fire-subs-job") val fireSubJob: ScheduledJob,
+                                            override val controllerComponents: ControllerComponents)
+  extends BackendController(controllerComponents) with ManualTriggerController
 
-trait ManualTriggerController extends BaseController {
+trait ManualTriggerController extends BackendBaseController {
 
   protected val incUpdatesJob: ScheduledJob
   protected val fireSubJob: ScheduledJob
 
-  def triggerJob(jobName: String) = Action.async {
+  def triggerJob(jobName: String): Action[AnyContent] = Action.async {
     implicit request =>
       jobName match {
         case INCORP_UPDATE => triggerIncorpUpdateJob
@@ -46,11 +48,12 @@ trait ManualTriggerController extends BaseController {
       }
   }
 
-  private def triggerIncorpUpdateJob = incUpdatesJob
+  private def triggerIncorpUpdateJob: Future[Result] = incUpdatesJob
     .scheduledMessage
     .service
     .invoke map (res => Ok(res.toString))
-  private def triggerFireSubsJob = fireSubJob
+
+  private def triggerFireSubsJob: Future[Result] = fireSubJob
     .scheduledMessage
     .service
     .invoke map (res => Ok(res.toString))

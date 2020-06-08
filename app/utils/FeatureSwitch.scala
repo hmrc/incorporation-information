@@ -97,7 +97,6 @@ object FeatureSwitch {
   def apply(name: String, enabled: Boolean = false): FeatureSwitch = getProperty(name)
   def unapply(fs: FeatureSwitch): Option[(String, Boolean)] = Some(fs.name -> fs.enabled)
 
-  implicit val formats = Json.format[FeatureSwitch]
 }
 
 object SCRSFeatureSwitches extends SCRSFeatureSwitches {

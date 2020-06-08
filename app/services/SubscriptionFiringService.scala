@@ -46,7 +46,7 @@ class SubscriptionFiringServiceImpl @Inject()(fsConnector: FiringSubscriptionsCo
   override lazy val queueRetryDelay = msConfig.queueRetryDelay
   override lazy val fetchSize = msConfig.queueFetchSize
   override lazy val useHttpsFireSubs = msConfig.useHttpsFireSubs
-  lazy val lockoutTimeout = msConfig.getInt("schedules.fire-subs-job.lockTimeout")
+  lazy val lockoutTimeout = msConfig.getConfigInt("schedules.fire-subs-job.lockTimeout")
 
   lazy val lockKeeper: LockKeeper = new LockKeeper() {
     override val lockId = "fire-subs-job-lock"

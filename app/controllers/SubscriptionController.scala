@@ -20,17 +20,19 @@ package controllers
 import javax.inject.Inject
 import models.{IncorpUpdate, IncorpUpdateResponse}
 import play.api.libs.json.{JsObject, Json}
-import play.api.mvc.Action
+import play.api.mvc.ControllerComponents
 import repositories._
 import services.SubscriptionService
-import uk.gov.hmrc.play.bootstrap.controller.BaseController
+import uk.gov.hmrc.play.bootstrap.controller.{BackendBaseController, BackendController}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
 
-class SubscriptionControllerImpl @Inject()(val service: SubscriptionService) extends SubscriptionController
+class SubscriptionControllerImpl @Inject()(val service: SubscriptionService,
+                                           override val controllerComponents: ControllerComponents)
+  extends BackendController(controllerComponents) with SubscriptionController
 
-trait SubscriptionController extends BaseController {
+trait SubscriptionController extends BackendBaseController {
 
   protected val service: SubscriptionService
 
@@ -54,14 +56,14 @@ trait SubscriptionController extends BaseController {
         case DeletedSub => Ok
         case NotDeletedSub => NotFound
         case _ => InternalServerError
-        }
+      }
   }
 
   def getSubscription(transactionId: String, regime: String, subscriber: String) = Action.async {
     implicit request =>
       service.getSubscription(transactionId, regime, subscriber).map {
-          case Some(sub) => Ok(Json.toJson(sub))
-          case _ => NotFound("The subscription does not exist")
+        case Some(sub) => Ok(Json.toJson(sub))
+        case _ => NotFound("The subscription does not exist")
       }
   }
 

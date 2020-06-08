@@ -19,6 +19,7 @@ package models
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
+import utils.TimestampFormats._
 
 import scala.language.implicitConversions
 
@@ -30,12 +31,9 @@ case class IncorpUpdate(transactionId : String,
                         statusDescription : Option[String] = None)
 
 object IncorpUpdate {
+  implicit val format: OFormat[IncorpUpdate] = Json.format[IncorpUpdate]
 
-  import utils.TimestampFormats._
-
-  implicit val format = Json.format[IncorpUpdate]
-
-  val mongoFormat = (
+  val mongoFormat: OFormat[IncorpUpdate] = (
     (__ \ "_id").format[String] and
       (__ \ "transaction_status").format[String] and
       (__ \ "company_number").formatNullable[String] and
@@ -44,7 +42,7 @@ object IncorpUpdate {
       (__ \ "transaction_status_description").formatNullable[String]
     ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
 
-  val cohoFormat = (
+  val cohoFormat: OFormat[IncorpUpdate] = (
     (__ \ "transaction_id").format[String] and
       (__ \ "transaction_status").format[String] and
       (__ \ "company_number").formatNullable[String] and
@@ -53,7 +51,7 @@ object IncorpUpdate {
       (__ \ "transaction_status_description").formatNullable[String]
     ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
 
-  val responseFormat = (
+  val responseFormat: OFormat[IncorpUpdate] = (
     (__ \ "transaction_id").format[String] and
       (__ \ "status").format[String] and
       (__ \ "crn").formatNullable[String] and
@@ -66,7 +64,7 @@ object IncorpUpdate {
 case class IncorpStatusEvent(status: String, crn: Option[String], incorporationDate: Option[DateTime], description: Option[String], timestamp: DateTime)
 
 object IncorpStatusEvent {
-  val writes = (
+  val writes: OFormat[IncorpStatusEvent] = (
     (__ \ "status").format[String] and
       (__ \ "crn").formatNullable[String] and
       (__ \ "incorporationDate").formatNullable[DateTime] and
@@ -74,7 +72,7 @@ object IncorpStatusEvent {
       (__ \ "timestamp").format[DateTime]
     ) (IncorpStatusEvent.apply, unlift(IncorpStatusEvent.unapply))
 
-    implicit val format = Json.format[IncorpStatusEvent]
+    implicit val format: OFormat[IncorpStatusEvent] = Json.format[IncorpStatusEvent]
 }
 
 case class IncorpUpdateResponse(regime: String, subscriber: String, callbackUrl: String, incorpUpdate: IncorpUpdate)
@@ -83,7 +81,7 @@ object IncorpUpdateResponse {
 
   def writes: Writes[IncorpUpdateResponse] = new Writes[IncorpUpdateResponse] {
 
-    def writes(u: IncorpUpdateResponse) = {
+    def writes(u: IncorpUpdateResponse): JsValue = {
       Json.obj(
         "SCRSIncorpStatus" -> Json.obj(
           "IncorpSubscriptionKey" -> Json.obj(
@@ -106,13 +104,13 @@ object IncorpUpdateResponse {
     def now: DateTime = DateTime.now(DateTimeZone.UTC)
   }
 
-  implicit val format = Json.format[IncorpUpdateResponse]
+  implicit val format: OFormat[IncorpUpdateResponse] = Json.format[IncorpUpdateResponse]
 }
 
 case class QueuedIncorpUpdate(timestamp: DateTime, incorpUpdate: IncorpUpdate)
 
 object QueuedIncorpUpdate {
-  val format = (
+  val format: OFormat[QueuedIncorpUpdate] = (
       (__ \ "timestamp").format[DateTime] and
       (__ \ "incorp_update").format[IncorpUpdate](IncorpUpdate.cohoFormat)
   ) (QueuedIncorpUpdate.apply, unlift(QueuedIncorpUpdate.unapply))

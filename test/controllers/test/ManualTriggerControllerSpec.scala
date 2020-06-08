@@ -24,7 +24,9 @@ import jobs.{LockResponse, ScheduledJob, SchedulingActor}
 import org.mockito.Matchers.any
 import org.mockito.Mockito._
 import play.api.Configuration
+import play.api.mvc.ControllerComponents
 import play.api.test.FakeRequest
+import play.api.test.Helpers.stubControllerComponents
 import repositories.InsertResult
 import services.{IncorpUpdateService, SubscriptionFiringService}
 
@@ -65,6 +67,7 @@ class ManualTriggerControllerSpec extends SCRSSpec {
     val controller = new ManualTriggerController {
       override protected val incUpdatesJob = mockIncUpdatesJob
       override protected val fireSubJob = mockFireSubJob
+      val controllerComponents: ControllerComponents = stubControllerComponents()
     }
   }
 

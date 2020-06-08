@@ -20,29 +20,33 @@ import javax.inject.Inject
 import models.{IncorpUpdate, QueuedIncorpUpdate}
 import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
-import play.api.mvc.Action
+import play.api.mvc.ControllerComponents
 import repositories.{IncorpUpdateMongo, IncorpUpdateRepository, QueueMongo, QueueRepository}
-import uk.gov.hmrc.play.bootstrap.controller.BaseController
+import uk.gov.hmrc.play.bootstrap.controller.{BackendBaseController, BackendController}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 
 class IncorpUpdateControllerImpl @Inject()(val injIncorpMongo: IncorpUpdateMongo,
-                                           val injQueueMongo: QueueMongo) extends IncorpUpdateController {
+                                           val injQueueMongo: QueueMongo,
+                                           override val controllerComponents: ControllerComponents)
+  extends BackendController(controllerComponents) with IncorpUpdateController {
   override lazy val repo = injIncorpMongo.repo
   override lazy val queueRepository = injQueueMongo.repo
 }
 
-trait IncorpUpdateController extends BaseController {
+trait IncorpUpdateController extends BackendBaseController {
 
   val repo: IncorpUpdateRepository
   val queueRepository: QueueRepository
 
-  def add(txId:String, date:Option[String], crn:Option[String] = None, success:Boolean = false) = Action.async {
+  def add(txId: String, date: Option[String], crn: Option[String] = None, success: Boolean = false) = Action.async {
     implicit request => {
-      val status = if(success) "accepted" else "rejected"
-      val incorpDate = date map { ISODateTimeFormat.dateParser().withOffsetParsed().parseDateTime(_) }
+      val status = if (success) "accepted" else "rejected"
+      val incorpDate = date map {
+        ISODateTimeFormat.dateParser().withOffsetParsed().parseDateTime(_)
+      }
 
       val incorpUpdate = IncorpUpdate(txId, status, crn, incorpDate, "-1")
 

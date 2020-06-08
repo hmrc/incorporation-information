@@ -17,7 +17,7 @@
 package services
 
 import config.MicroserviceConfig
-import javax.inject.{Inject, Provider}
+import javax.inject.Inject
 import models.{IncorpUpdate, Subscription}
 import play.api.Logger
 import reactivemongo.api.commands.DefaultWriteResult

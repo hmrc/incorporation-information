@@ -20,9 +20,7 @@ import akka.actor.ActorSystem
 import com.typesafe.config.Config
 import javax.inject.Inject
 import play.api.Configuration
-import play.api.libs.ws
 import play.api.libs.ws.{WSClient, WSProxyServer}
-import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.hooks.HttpHook
 import uk.gov.hmrc.play.audit.http.HttpAuditing
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
@@ -31,13 +29,11 @@ import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.http.ws._
 
 
-
-
 class WSHttpProxyImpl @Inject()(val microserviceConfig: MicroserviceConfig,
                                 val config: Configuration,
                                 val actorSystem: ActorSystem,
                                 override val wsClient: WSClient,
-                                val auditConnector: AuditConnector) extends  WSHttpProxy
+                                val auditConnector: AuditConnector) extends WSHttpProxy
 
 trait WSHttpProxy extends HttpClient with WSHttp with HttpAuditing with WSProxy {
   val config: Configuration
@@ -46,9 +42,7 @@ trait WSHttpProxy extends HttpClient with WSHttp with HttpAuditing with WSProxy 
 
   override lazy val configuration: Option[Config] = Option(config.underlying)
 
-  override val appName: String = new AppName {
-    override def configuration: Configuration = config
-  }.appName
+  override val appName: String = AppName.fromConfiguration(config)
 
   override val hooks: Seq[HttpHook] = Seq(AuditingHook)
 }

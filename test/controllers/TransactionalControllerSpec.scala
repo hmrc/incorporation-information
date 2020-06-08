@@ -24,7 +24,9 @@ import org.joda.time.format.DateTimeFormat
 import org.mockito.Matchers.{any, eq => eqTo}
 import org.mockito.Mockito._
 import play.api.libs.json.{JsObject, Json}
+import play.api.mvc.ControllerComponents
 import play.api.test.FakeRequest
+import play.api.test.Helpers.stubControllerComponents
 import repositories.IncorpUpdateRepository
 import services.{FailedToFetchOfficerListFromTxAPI, TransactionalService}
 import uk.gov.hmrc.http.HeaderCarrier
@@ -44,6 +46,7 @@ class TransactionalControllerSpec extends SCRSSpec {
       override val publicApiConnector = mockApiConnector
       override val whitelistedServices = Set("test", "services")
       override val incorpRepo: IncorpUpdateRepository = mockIncorpUpdateRepository
+      val controllerComponents: ControllerComponents = stubControllerComponents()
     }
   }
 
