@@ -16,7 +16,7 @@
 
 package services
 
-import Helpers.SCRSSpec
+import Helpers.{LogCapturing, SCRSSpec}
 import connectors.{FailedTransactionalAPIResponse, IncorporationAPIConnector, PublicCohoApiConnectorImpl, SuccessfulTransactionalAPIResponse}
 import models.IncorpUpdate
 import org.joda.time.DateTime
@@ -28,8 +28,8 @@ import play.api.Logger
 import play.api.libs.json.JodaWrites.JodaDateTimeNumberWrites
 import play.api.libs.json._
 import repositories.IncorpUpdateRepository
-import uk.gov.hmrc.play.test.LogCapturing
 import utils.TimestampFormats
+import play.api.test.Helpers._
 
 import scala.concurrent.Future
 
@@ -55,7 +55,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
       override val publicCohoConnector = mockCohoConnector
       val jsonObj = Json.obj("foo" -> Json.toJson("fooValue"))
 
-      override def transformDataFromCoho(js: JsObject): Option[JsValue] = Future.successful(Some(jsonObj))
+      override def transformDataFromCoho(js: JsObject): Option[JsValue] = Some(jsonObj)
     }
   }
 
@@ -246,7 +246,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
 
       val response = SuccessfulTransactionalAPIResponse(json)
 
-      await(service.extractJson(response, transformer)) shouldBe Some(companyProfileJson)
+      await(service.extractJson(Future.successful(response), transformer)) shouldBe Some(companyProfileJson)
     }
 
     "return a None when attempting to fetch a sub-document from a successful TransactionalAPIResponse with an un-matched transformer key" in new Setup {
@@ -255,14 +255,14 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
 
       val response = SuccessfulTransactionalAPIResponse(json)
 
-      await(service.extractJson(response, transformer)) shouldBe None
+      await(service.extractJson(Future.successful(response), transformer)) shouldBe None
     }
 
     "return a None when a FailedTransactionalAPIResponse is returned" in new Setup {
       val response = FailedTransactionalAPIResponse
       val transformer = (JsPath \ "officers").json.prune
 
-      await(service.extractJson(response, transformer)) shouldBe None
+      await(service.extractJson(Future.successful(response), transformer)) shouldBe None
     }
   }
 
@@ -536,7 +536,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
            |             }
     """.stripMargin).as[JsObject]
 
-      await(service.transformDataFromCoho(input)) shouldBe Some(expected)
+      service.transformDataFromCoho(input) shouldBe Some(expected)
     }
 
     "return JSValue containing formatted data successfully without sic codes & company status as these are optional" in new Setup {
@@ -619,7 +619,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
            |             }
     """.stripMargin).as[JsObject]
 
-      await(service.transformDataFromCoho(input)) shouldBe Some(expected)
+      service.transformDataFromCoho(input) shouldBe Some(expected)
     }
 
   }
@@ -639,7 +639,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
       val output1 = Json.obj("sic_code" -> Json.toJson("84240"), "sic_description" -> Json.toJson(""))
       val output2 = Json.obj("sic_code" -> Json.toJson("01410"), "sic_description" -> Json.toJson(""))
       val listOfJsObjects = List(output1, output2)
-      await(service.sicCodesConverter(sicCodes)) shouldBe Some(listOfJsObjects)
+      service.sicCodesConverter(sicCodes) shouldBe Some(listOfJsObjects)
 
 
     }
@@ -647,7 +647,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
 
   "sicCodesConverter" should {
     "return None when None is passed in" in new Setup {
-      await(service.sicCodesConverter(None)) shouldBe None
+      service.sicCodesConverter(None) shouldBe None
     }
   }
 
@@ -666,16 +666,16 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
       """.stripMargin)
 
     "transform and return the supplied json correctly" in new Setup {
-      val result = await(service.transformOfficerAppointment(officerAppointmentJson))
+      val result = service.transformOfficerAppointment(officerAppointmentJson)
       result shouldBe Some(expected)
     }
 
     "return a None if the key 'name_elements' cannot be found in the supplied Json" in new Setup {
       val incorrectJson = Json.parse("""{"test":"json"}""")
-      intercept[NoItemsFoundException](await(service.transformOfficerAppointment(incorrectJson)))
+      intercept[NoItemsFoundException](service.transformOfficerAppointment(incorrectJson))
     }
     "correctly return None if items can be found but Name elements cannot be found" in new Setup {
-      val res = await(service.transformOfficerAppointment(Json.parse("""{"items":[{"foo":"bar"}]}""")))
+      val res = service.transformOfficerAppointment(Json.parse("""{"items":[{"foo":"bar"}]}"""))
       res shouldBe None
     }
   }

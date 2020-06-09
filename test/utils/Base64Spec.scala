@@ -16,9 +16,9 @@
 
 package utils
 
-import uk.gov.hmrc.play.test.UnitSpec
+import Helpers.SCRSSpec
 
-class Base64Spec extends UnitSpec {
+class Base64Spec extends SCRSSpec {
 
   val decodedString = "testString"
   val bas64String = "dGVzdFN0cmluZw=="

@@ -61,6 +61,7 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
         )
       )
     }
+
     "return a 200 response with JSON" when {
       "when called by a whitelisted service" in {
         client("test-only/feature-switch/transactionalAPI/on").get().futureValue
@@ -244,7 +245,8 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
 
       val result = client(s"shareholders/$txid").get().futureValue
       result.status shouldBe 200
-      result.json.as[JsArray] shouldBe Json.parse("""
+      result.json.as[JsArray] shouldBe Json.parse(
+        """
           |[
           |  {
           |  "subscriber_type": "corporate",

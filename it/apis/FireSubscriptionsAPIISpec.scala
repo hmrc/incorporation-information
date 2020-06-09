@@ -21,6 +21,7 @@ import models.{IncorpUpdate, IncorpUpdateResponse, QueuedIncorpUpdate, Subscript
 import org.joda.time.DateTime
 import play.api._
 import play.api.inject.guice.GuiceApplicationBuilder
+import play.api.test.Helpers._
 import play.modules.reactivemongo.ReactiveMongoComponent
 import repositories.{QueueMongo, SubscriptionsMongo}
 import services.SubscriptionFiringService

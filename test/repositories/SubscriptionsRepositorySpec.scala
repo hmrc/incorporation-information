@@ -19,6 +19,7 @@ package repositories
 import Helpers.SCRSSpec
 import models.Subscription
 import org.mockito.Mockito._
+import play.api.test.Helpers._
 import reactivemongo.api.commands.{DefaultWriteResult, WriteError}
 
 import scala.concurrent.ExecutionContext.Implicits.global

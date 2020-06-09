@@ -18,7 +18,7 @@ package connectors
 
 
 
-import Helpers.SCRSSpec
+import Helpers.{LogCapturing, SCRSSpec}
 import com.codahale.metrics.{Counter, Timer}
 import mocks.MockMetrics
 import org.mockito.Mockito._
@@ -26,11 +26,11 @@ import org.mockito.{ArgumentCaptor, Matchers}
 import org.scalatest.concurrent.Eventually
 import play.api.Logger
 import play.api.libs.json.Json
+import play.api.test.Helpers._
 import services.MetricsService
 import uk.gov.hmrc.http._
 import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.http.ws.{WSHttp, WSProxy}
-import uk.gov.hmrc.play.test.LogCapturing
 import utils.{DateCalculators, FeatureSwitch, SCRSFeatureSwitches}
 
 import scala.concurrent.Future
@@ -390,13 +390,13 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
   "getStubbedFirstAndLastName" should {
     "return testFirstName and testSurname if string is less than 15 characters" in new Setup{
-      val (firstname, lastname) =  await(connector.getStubbedFirstAndLastName(testOfficerId))
+      val (firstname, lastname) =  connector.getStubbedFirstAndLastName(testOfficerId)
       firstname shouldBe "testFirstName"
       lastname shouldBe "testSurname"
     }
 
     "return a dynamic name if string is less than 15 characters" in new Setup{
-      val (firstname, lastname) =  await(connector.getStubbedFirstAndLastName(testOfficerUrl))
+      val (firstname, lastname) =  connector.getStubbedFirstAndLastName(testOfficerUrl)
       firstname shouldBe "tMand-greattsfh"
       lastname shouldBe "officersSdjhshd"
     }

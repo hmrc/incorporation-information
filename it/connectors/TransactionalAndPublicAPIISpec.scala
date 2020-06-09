@@ -23,6 +23,7 @@ import org.joda.time.format.DateTimeFormat
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsObject, Json}
+import play.api.test.Helpers._
 import repositories.IncorpUpdateMongo
 import utils.TimestampFormats._
 

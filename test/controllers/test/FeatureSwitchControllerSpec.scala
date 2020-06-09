@@ -19,13 +19,14 @@ package controllers.test
 import Helpers.SCRSSpec
 import com.typesafe.akka.extension.quartz.QuartzSchedulerExtension
 import jobs.ScheduledJob
+import org.mockito.Matchers.any
+import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
+import play.api.mvc.ControllerComponents
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import utils.SCRSFeatureSwitches.{KEY_INCORP_UPDATE, KEY_TX_API}
-import org.mockito.Matchers.any
-import org.mockito.Mockito._
-import play.api.mvc.ControllerComponents
+
 
 class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
 
@@ -58,7 +59,7 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
 
       val result = controller.switch(featureName, featureState)(FakeRequest())
       status(result) shouldBe OK
-      bodyOf(await(result)) shouldBe message(featureName, "false")
+      contentAsString(result) shouldBe message(featureName, "false")
     }
 
     "return an incorp update feature state set to true when we specify coho" in new Setup {
@@ -69,7 +70,7 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
 
       val result = controller.switch(featureName, featureState)(FakeRequest())
       status(result) shouldBe OK
-      bodyOf(await(result)) shouldBe message(featureName, "true")
+      contentAsString(result) shouldBe message(featureName, "true")
     }
 
     "return a transactional API feature state set to false when we specify stub" in new Setup {
@@ -78,7 +79,7 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
 
       val result = controller.switch(featureName, featureState)(FakeRequest())
       status(result) shouldBe OK
-      bodyOf(await(result)) shouldBe message(featureName, "false")
+      contentAsString(result) shouldBe message(featureName, "false")
     }
 
     "return a transactional API feature state set to true when we specify coho" in new Setup {
@@ -87,16 +88,16 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
 
       val result = controller.switch(featureName, featureState)(FakeRequest())
       status(result) shouldBe OK
-      bodyOf(await(result)) shouldBe message(featureName, "true")
+      contentAsString(result) shouldBe message(featureName, "true")
     }
 
     "return a transactional API feature state set to false as a default when we specify xxxx" in new Setup {
       val featureName = KEY_TX_API
       val featureState = "xxxx"
 
-      val result = await(controller.switch(featureName, featureState)(FakeRequest()))
+      val result = controller.switch(featureName, featureState)(FakeRequest())
       status(result) shouldBe OK
-      bodyOf(await(result)) shouldBe message(featureName, "false")
+      contentAsString(result) shouldBe message(featureName, "false")
 
     }
 
@@ -106,9 +107,9 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
       when(mockSched.scheduler).thenReturn(mockQuartz)
       when(mockQuartz.resumeJob(any())).thenReturn(false)
 
-      val result = await(controller.switch(featureName, featureState)(FakeRequest()))
+      val result = controller.switch(featureName, featureState)(FakeRequest())
       status(result) shouldBe OK
-      bodyOf(await(result)) shouldBe message(featureName, "false")
+      contentAsString(result) shouldBe message(featureName, "false")
     }
   }
 }

@@ -20,6 +20,7 @@ import java.util.UUID
 
 import helpers.SCRSMongoSpec
 import play.api.libs.json.Json
+import play.api.test.Helpers._
 import reactivemongo.api.commands.WriteResult
 import reactivemongo.play.json.ImplicitBSONHandlers._
 
@@ -33,10 +34,10 @@ class TimepointMongoRepositoryISpec extends SCRSMongoSpec {
     await(repository.ensureIndexes)
 
     def insertTimepoint(tp: String): WriteResult = {
-      repository.collection.insert(false).one(TimePoint("CH-INCORPSTATUS-TIMEPOINT", tp))
+      await(repository.collection.insert(false).one(TimePoint("CH-INCORPSTATUS-TIMEPOINT", tp)))
     }
 
-    def fetchTimepoint: Option[TimePoint] = await(repository.collection.find(Json.obj(), Option.empty)(JsObjectDocumentWriter,JsObjectDocumentWriter).one[TimePoint])
+    def fetchTimepoint: Option[TimePoint] = await(repository.collection.find(Json.obj(), Option.empty)(JsObjectDocumentWriter, JsObjectDocumentWriter).one[TimePoint])
   }
 
   override def afterAll() = new Setup {
@@ -74,13 +75,13 @@ class TimepointMongoRepositoryISpec extends SCRSMongoSpec {
 
   "Retrieving the Time point" should {
 
-    "return nothing when there is no stored timepoint" in new Setup{
+    "return nothing when there is no stored timepoint" in new Setup {
       val result = await(repository.retrieveTimePoint)
 
       result shouldBe None
     }
 
-    "return an optional Time point when there is one stored" in new Setup{
+    "return an optional Time point when there is one stored" in new Setup {
       val timepoint = generateTimepoint
 
       await(repository.updateTimepoint(timepoint))
@@ -100,7 +101,7 @@ class TimepointMongoRepositoryISpec extends SCRSMongoSpec {
 
       insertTimepoint(currentTimepoint)
 
-      val result: Boolean = repository.resetTimepointTo(newTimepoint)
+      val result: Boolean = await(repository.resetTimepointTo(newTimepoint))
       result shouldBe true
 
       fetchTimepoint.get.timepoint shouldBe newTimepoint
@@ -111,7 +112,7 @@ class TimepointMongoRepositoryISpec extends SCRSMongoSpec {
 
       await(repository.count) shouldBe 0
 
-      val result: Boolean = repository.resetTimepointTo(newTimepoint)
+      val result: Boolean = await(repository.resetTimepointTo(newTimepoint))
       result shouldBe true
 
       fetchTimepoint.get.timepoint shouldBe newTimepoint

@@ -48,10 +48,10 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
   val subscriber = "subscriber1"
   val callbackUrl = "www.url.com"
   val crn = "crn12345"
-  val status = "accepted"
+  val acceptedStatus = "accepted"
   val incDate: DateTime = DateTime.parse("2000-12-12")
   val sub: Subscription = Subscription(transactionId, regime, subscriber, "www.test.com")
-  val testIncorpUpdate: IncorpUpdate = IncorpUpdate(transactionId, status, Some(crn), Some(incDate), "20170327093004787", None)
+  val testIncorpUpdate: IncorpUpdate = IncorpUpdate(transactionId, acceptedStatus, Some(crn), Some(incDate), "20170327093004787", None)
 
   "check Subscription" should {
 
@@ -77,7 +77,7 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
         |      "callbackUrl":"$callbackUrl"
         |    },
         |    "IncorpStatusEvent":{
-        |      "status":"$status",
+        |      "status":"$acceptedStatus",
         |      "crn":"$crn",
         |      "incorporationDate":${incDate.getMillis}
         |    }
@@ -91,8 +91,7 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
 
       val request: FakeRequest[JsValue] = FakeRequest().withBody(requestBody)
 
-      val fResult: Future[Result] = controller.checkSubscription(transactionId,regime,subscriber)(request)
-      val result: Result = await(fResult)
+      val result: Future[Result] = controller.checkSubscription(transactionId,regime,subscriber)(request)
 
       val (generatedTS, jsonNoTS) = extractTimestamp(contentAsJson(result).as[JsObject])
 
@@ -106,8 +105,7 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
 
       val request: FakeRequest[JsValue] = FakeRequest().withBody(requestBody)
 
-      val fResult: Future[Result] = controller.checkSubscription(transactionId, regime, subscriber)(request)
-      val result: Result = await(fResult)
+      val result: Future[Result] = controller.checkSubscription(transactionId, regime, subscriber)(request)
 
       status(result) shouldBe 202
     }
@@ -145,7 +143,7 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
 
       val result: Future[Result] = controller.getSubscription(transactionId,regime,subscriber)(request)
       status(result) shouldBe 200
-      result.map(res => jsonBodyOf(res) shouldBe Json.toJson(sub))
+      contentAsJson(result) shouldBe Json.toJson(sub)
     }
 
     "return a 404 when a subscription is found" in new Setup {

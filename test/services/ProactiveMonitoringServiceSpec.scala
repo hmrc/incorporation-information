@@ -16,21 +16,20 @@
 
 package services
 
+import Helpers.SCRSSpec
 import connectors.{FailedTransactionalAPIResponse, IncorporationAPIConnector, PublicCohoApiConnectorImpl, SuccessfulTransactionalAPIResponse}
 import org.mockito.Matchers.{any, eq => eqTo}
 import org.mockito.Mockito._
-import org.scalatest.mock.MockitoSugar
 import play.api.libs.json.{JsValue, Json}
-import uk.gov.hmrc.play.test.UnitSpec
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.lock.LockKeeper
 import utils.Base64
+import play.api.test.Helpers._
 
 import scala.concurrent.Future
 
-import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.lock.LockKeeper
 
-
-class ProactiveMonitoringServiceSpec extends UnitSpec with MockitoSugar {
+class ProactiveMonitoringServiceSpec extends SCRSSpec {
 
   val mockTransactionalConnector: IncorporationAPIConnector = mock[IncorporationAPIConnector]
   val mockPublicCohoConnector: PublicCohoApiConnectorImpl = mock[PublicCohoApiConnectorImpl]
@@ -62,7 +61,7 @@ class ProactiveMonitoringServiceSpec extends UnitSpec with MockitoSugar {
       when(mockTransactionalConnector.fetchTransactionalData(eqTo(transactionId))(any()))
         .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(testJson)))
 
-      val result: String = service.pollTransactionalAPI
+      val result: String = await(service.pollTransactionalAPI)
       result shouldBe "success"
     }
 
@@ -70,7 +69,7 @@ class ProactiveMonitoringServiceSpec extends UnitSpec with MockitoSugar {
       when(mockTransactionalConnector.fetchTransactionalData(eqTo(transactionId))(any()))
         .thenReturn(Future.successful(FailedTransactionalAPIResponse))
 
-      val result: String = service.pollTransactionalAPI
+      val result: String = await(service.pollTransactionalAPI)
       result shouldBe "failed"
     }
   }
@@ -81,7 +80,7 @@ class ProactiveMonitoringServiceSpec extends UnitSpec with MockitoSugar {
       when(mockPublicCohoConnector.getCompanyProfile(eqTo(crn), any())(any()))
         .thenReturn(Future.successful(Some(testJson)))
 
-      val result: String = service.pollPublicAPI
+      val result: String = await(service.pollPublicAPI)
       result shouldBe "success"
     }
 
@@ -89,7 +88,7 @@ class ProactiveMonitoringServiceSpec extends UnitSpec with MockitoSugar {
       when(mockPublicCohoConnector.getCompanyProfile(eqTo(crn), any())(any()))
         .thenReturn(Future.successful(None))
 
-      val result: String = service.pollPublicAPI
+      val result: String = await(service.pollPublicAPI)
       result shouldBe "failed"
     }
   }
@@ -102,7 +101,7 @@ class ProactiveMonitoringServiceSpec extends UnitSpec with MockitoSugar {
       when(mockPublicCohoConnector.getCompanyProfile(eqTo(crn), any())(any()))
         .thenReturn(Future.successful(Some(testJson)))
 
-      val result: (String, String) = service.pollAPIs
+      val result: (String, String) = await(service.pollAPIs)
       result shouldBe ("polling transactional API - success", "polling public API - success")
     }
 
@@ -112,7 +111,7 @@ class ProactiveMonitoringServiceSpec extends UnitSpec with MockitoSugar {
       when(mockPublicCohoConnector.getCompanyProfile(eqTo(crn), any())(any()))
         .thenReturn(Future.successful(None))
 
-      val result: (String, String) = service.pollAPIs
+      val result: (String, String) = await(service.pollAPIs)
       result shouldBe ("polling transactional API - failed", "polling public API - failed")
     }
 
@@ -122,7 +121,7 @@ class ProactiveMonitoringServiceSpec extends UnitSpec with MockitoSugar {
       when(mockPublicCohoConnector.getCompanyProfile(eqTo(crn), any())(any()))
         .thenReturn(Future.successful(None))
 
-      val result: (String, String) = service.pollAPIs
+      val result: (String, String) = await(service.pollAPIs)
       result shouldBe ("polling transactional API - success", "polling public API - failed")
     }
   }

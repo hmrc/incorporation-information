@@ -16,16 +16,20 @@
 
 package helpers
 
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.classic.{Level, Logger => LogbackLogger}
+import ch.qos.logback.core.read.ListAppender
 import com.github.tomakehurst.wiremock.stubbing.StubMapping
 import org.scalatest._
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
-import play.api.Application
+import play.api.{Application, LoggerLike}
 import play.api.libs.ws.WSClient
-import uk.gov.hmrc.play.test.UnitSpec
 import utils.{FeatureSwitch, SCRSFeatureSwitches}
 
-trait IntegrationSpecBase extends UnitSpec
+import scala.collection.JavaConverters._
+
+trait IntegrationSpecBase extends WordSpec
   with GivenWhenThen
   with GuiceOneServerPerSuite with ScalaFutures with IntegrationPatience with Matchers
   with WiremockHelper with BeforeAndAfterEach with BeforeAndAfterAll with FakeAppConfig {
@@ -37,9 +41,10 @@ trait IntegrationSpecBase extends UnitSpec
                     fireSubscriptions: Boolean = false,
                     scheduledMetrics: Boolean = false): Unit = {
     def enableFeature(fs: FeatureSwitch, enabled: Boolean) = {
-      enabled match {
-        case true => FeatureSwitch.enable(fs)
-        case _ => FeatureSwitch.disable(fs)
+      if (enabled) {
+        FeatureSwitch.enable(fs)
+      } else {
+        FeatureSwitch.disable(fs)
       }
     }
 
@@ -63,5 +68,19 @@ trait IntegrationSpecBase extends UnitSpec
   override def afterAll() = {
     stopWiremock()
     super.afterAll()
+  }
+
+  def withCaptureOfLoggingFrom(logger: LogbackLogger)(body: (=> List[ILoggingEvent]) => Unit) {
+    val appender = new ListAppender[ILoggingEvent]()
+    appender.setContext(logger.getLoggerContext)
+    appender.start()
+    logger.addAppender(appender)
+    logger.setLevel(Level.ALL)
+    logger.setAdditive(true)
+    body(appender.list.asScala.toList)
+  }
+
+  def withCaptureOfLoggingFrom(logger: LoggerLike)(body: (=> List[ILoggingEvent]) => Unit) {
+    withCaptureOfLoggingFrom(logger.logger.asInstanceOf[LogbackLogger])(body)
   }
 }

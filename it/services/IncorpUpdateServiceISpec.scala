@@ -20,10 +20,11 @@ import helpers.IntegrationSpecBase
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json._
+import play.api.test.Helpers._
+import reactivemongo.play.json.ImplicitBSONHandlers._
 import repositories.{IncorpUpdateMongo, IncorpUpdateMongoRepository, QueueMongo, QueueMongoRepository}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.MongoSpecSupport
-import reactivemongo.play.json.ImplicitBSONHandlers._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -59,36 +60,36 @@ class IncorpUpdateServiceISpec extends IntegrationSpecBase with MongoSpecSupport
 
     val existingIncorpInfoNoIncorpDate = Json.parse(
       s"""
-        |{
-        |   "_id" : "$transactionId",
-        |   "transaction_status" : "accepted",
-        |   "company_number" : "9999999999",
-        |   "timepoint" : "$timepoint"
-        |}
+         |{
+         |   "_id" : "$transactionId",
+         |   "transaction_status" : "accepted",
+         |   "company_number" : "9999999999",
+         |   "timepoint" : "$timepoint"
+         |}
       """.stripMargin)
 
     val newIncorpInfo = Json.parse(
       s"""
-        |{
-        |   "_id" : "$transactionId",
-        |   "transaction_status" : "accepted",
-        |   "company_number" : "9999999999",
-        |   "incorporated_on":"$incorpDate",
-        |   "timepoint" : "$timepoint"
-        |}
+         |{
+         |   "_id" : "$transactionId",
+         |   "transaction_status" : "accepted",
+         |   "company_number" : "9999999999",
+         |   "incorporated_on":"$incorpDate",
+         |   "timepoint" : "$timepoint"
+         |}
       """.stripMargin)
 
     val existingQueueItemNoIncorpDate = Json.parse(
       s"""
-        |{
-        |   "timestamp" : 1510148919784,
-        |   "incorp_update" : {
-        |       "transaction_id" : "$transactionId",
-        |       "transaction_status" : "accepted",
-        |       "company_number" : "9999999999",
-        |       "timepoint" : "$timepoint"
-        |   }
-        |}
+         |{
+         |   "timestamp" : 1510148919784,
+         |   "incorp_update" : {
+         |       "transaction_id" : "$transactionId",
+         |       "transaction_status" : "accepted",
+         |       "company_number" : "9999999999",
+         |       "timepoint" : "$timepoint"
+         |   }
+         |}
       """.stripMargin)
 
     val newQueueItem = Json.parse(
@@ -107,21 +108,21 @@ class IncorpUpdateServiceISpec extends IntegrationSpecBase with MongoSpecSupport
 
     val incorpInfoResponse = Json.parse(
       s"""{
-        |"items":[
-        | {
-        |   "company_number":"9999999999",
-        |   "transaction_status":"accepted",
-        |   "transaction_type":"incorporation",
-        |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
-        |   "transaction_id":"$transactionId",
-        |   "incorporated_on":"2016-08-10",
-        |   "timepoint":"$timepoint"
-        | }
-        |],
-        |"links":{
-        | "next":"https://ewf.companieshouse.gov.uk/internal/check-submission?timepoint=123456789"
-        |}
-        |}""".stripMargin)
+         |"items":[
+         | {
+         |   "company_number":"9999999999",
+         |   "transaction_status":"accepted",
+         |   "transaction_type":"incorporation",
+         |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
+         |   "transaction_id":"$transactionId",
+         |   "incorporated_on":"2016-08-10",
+         |   "timepoint":"$timepoint"
+         | }
+         |],
+         |"links":{
+         | "next":"https://ewf.companieshouse.gov.uk/internal/check-submission?timepoint=123456789"
+         |}
+         |}""".stripMargin)
 
     "update an IncorpInfo and Queue entry that doesn't have an incorp update with one that does" in new Setup {
 
@@ -131,6 +132,7 @@ class IncorpUpdateServiceISpec extends IntegrationSpecBase with MongoSpecSupport
 
       implicit class richJsObject(o: JsObject) {
         def withoutTimestamp: JsObject = o - "timestamp"
+
         def withoutOID: JsObject = o - "_id"
       }
 
@@ -142,14 +144,14 @@ class IncorpUpdateServiceISpec extends IntegrationSpecBase with MongoSpecSupport
       await(incorpQueueRepo.collection.insert(false).one(existingQueueItemNoIncorpDate))
       await(incorpQueueRepo.count) shouldBe 1
 
-      val result: Seq[Boolean] = service.updateSpecificIncorpUpdateByTP(timepointList)
+      val result: Seq[Boolean] = await(service.updateSpecificIncorpUpdateByTP(timepointList))
 
       result shouldBe List(true)
 
       await(incorpInfoRepo.count) shouldBe 1
       await(incorpQueueRepo.count) shouldBe 1
 
-      await(incorpInfoRepo.collection.find(Json.obj(),Option.empty)(JsObjectDocumentWriter, JsObjectDocumentWriter).one[JsObject]) shouldBe Some(newIncorpInfo)
+      await(incorpInfoRepo.collection.find(Json.obj(), Option.empty)(JsObjectDocumentWriter, JsObjectDocumentWriter).one[JsObject]) shouldBe Some(newIncorpInfo)
 
       val Some(queueItem) = await(incorpQueueRepo.collection.find(Json.obj(), Option.empty)(JsObjectDocumentWriter, JsObjectDocumentWriter).one[JsObject])
 

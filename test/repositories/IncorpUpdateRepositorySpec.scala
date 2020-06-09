@@ -16,14 +16,14 @@
 
 package repositories
 
+import Helpers.{LogCapturing, SCRSSpec}
 import ch.qos.logback.classic.Level
 import models.IncorpUpdate
 import play.api.Logger
 import reactivemongo.api.commands.WriteError
 import uk.gov.hmrc.mongo.MongoSpecSupport
-import uk.gov.hmrc.play.test.{LogCapturing, UnitSpec}
 
-class IncorpUpdateRepositorySpec extends UnitSpec with MongoSpecSupport with LogCapturing {
+class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSpecSupport with LogCapturing {
 
   class Setup extends MongoErrorCodes {
     val repo = new IncorpUpdateMongoRepository(mongo, IncorpUpdate.mongoFormat)

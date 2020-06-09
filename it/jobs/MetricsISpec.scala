@@ -22,6 +22,7 @@ import models.Subscription
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.inject.{BindingKey, QualifierInstance}
+import play.api.test.Helpers._
 import reactivemongo.api.ReadConcern
 import repositories.SubscriptionsMongo
 
@@ -92,7 +93,7 @@ class MetricsISpec extends IntegrationSpecBase {
       setupAuditMocks()
       setupFeatures(scheduledMetrics = false)
 
-      await(subRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
+      await(subRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 0
 
       val job = lookupJob("metrics-job")
 
@@ -107,8 +108,8 @@ class MetricsISpec extends IntegrationSpecBase {
       setupAuditMocks()
       setupFeatures(scheduledMetrics = false)
 
-      await(insert(Subscription("tx1", "regime", "sub1", "url1")))
-      await(subRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 1
+      insert(Subscription("tx1", "regime", "sub1", "url1"))
+      await(subRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 1
 
       val job = lookupJob("metrics-job")
 
@@ -120,11 +121,11 @@ class MetricsISpec extends IntegrationSpecBase {
       setupAuditMocks()
       setupFeatures(scheduledMetrics = false)
 
-      await(insert(Subscription("tx1", "regime", "sub1", "url1")))
-      await(insert(Subscription("tx2", "regime", "sub2", "url2")))
-      await(insert(Subscription("tx3", "regime1", "sub2", "url2")))
-      await(insert(Subscription("tx4", "regime1", "sub2", "url2")))
-      await(subRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 4
+      insert(Subscription("tx1", "regime", "sub1", "url1"))
+      insert(Subscription("tx2", "regime", "sub2", "url2"))
+      insert(Subscription("tx3", "regime1", "sub2", "url2"))
+      insert(Subscription("tx4", "regime1", "sub2", "url2"))
+      await(subRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 4
 
       val job = lookupJob("metrics-job")
 
