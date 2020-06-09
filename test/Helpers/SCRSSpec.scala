@@ -18,13 +18,13 @@ package Helpers
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
+import org.scalatest.{Matchers, WordSpec}
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.play.test.UnitSpec
 
-trait SCRSSpec extends UnitSpec with MockitoSugar {
+trait SCRSSpec extends WordSpec with Matchers with MockitoSugar {
 
-  implicit val defaultHc = HeaderCarrier()
-  implicit val system = ActorSystem("II")
-  implicit val materializer = ActorMaterializer()
+  implicit val defaultHc: HeaderCarrier = HeaderCarrier()
+  implicit val system: ActorSystem = ActorSystem("II")
+  implicit val materializer: ActorMaterializer = ActorMaterializer()
 }

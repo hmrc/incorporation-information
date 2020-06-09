@@ -16,12 +16,12 @@
 
 package utils
 
+import Helpers.SCRSSpec
 import org.joda.time.DateTime
 import org.scalatest.BeforeAndAfterEach
-import uk.gov.hmrc.play.test.UnitSpec
 import utils.SCRSFeatureSwitches._
 
-class FeatureSwitchSpec extends UnitSpec with BeforeAndAfterEach {
+class FeatureSwitchSpec extends SCRSSpec with BeforeAndAfterEach {
 
   override def beforeEach() {
     System.clearProperty("feature.transactionalAPI")

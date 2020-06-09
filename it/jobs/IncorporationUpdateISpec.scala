@@ -16,22 +16,23 @@
 
 package jobs
 
-  import com.github.tomakehurst.wiremock.client.WireMock._
-  import com.google.inject.name.Names
-  import helpers.IntegrationSpecBase
-  import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
-  import org.joda.time.DateTime
-  import play.api.Application
-  import play.api.inject.guice.GuiceApplicationBuilder
-  import play.api.inject.{BindingKey, QualifierInstance}
-  import play.api.libs.json.{JsObject, Json}
-  import reactivemongo.api.ReadConcern
-  import reactivemongo.api.commands.WriteError
-  import reactivemongo.play.json.ImplicitBSONHandlers._
-  import repositories._
+import com.github.tomakehurst.wiremock.client.WireMock._
+import com.google.inject.name.Names
+import helpers.IntegrationSpecBase
+import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
+import org.joda.time.DateTime
+import play.api.Application
+import play.api.inject.guice.GuiceApplicationBuilder
+import play.api.inject.{BindingKey, QualifierInstance}
+import play.api.libs.json.{JsObject, Json}
+import play.api.test.Helpers._
+import reactivemongo.api.ReadConcern
+import reactivemongo.api.commands.WriteError
+import reactivemongo.play.json.ImplicitBSONHandlers._
+import repositories._
 
-  import scala.concurrent.ExecutionContext
-  import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class IncorporationUpdateISpec extends IntegrationSpecBase {
 
@@ -52,7 +53,7 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
     val queueRepo = app.injector.instanceOf[QueueMongo].repo
     val subRepo = app.injector.instanceOf[SubscriptionsMongo].repo
 
-    def insert(u: QueuedIncorpUpdate) = await(queueRepo.collection.insert(false).one(u)(implicitly[ExecutionContext],QueuedIncorpUpdate.format))
+    def insert(u: QueuedIncorpUpdate) = await(queueRepo.collection.insert(false).one(u)(implicitly[ExecutionContext], QueuedIncorpUpdate.format))
 
     await(incorpRepo.drop)
     await(timepointRepo.drop)
@@ -86,7 +87,7 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
        |"timepoint":"${timepoint}"
        |}""".stripMargin
 
-  def iu(json:String): IncorpUpdate = Json.parse(json).as[IncorpUpdate](IncorpUpdate.cohoFormat)
+  def iu(json: String): IncorpUpdate = Json.parse(json).as[IncorpUpdate](IncorpUpdate.cohoFormat)
 
   def chResponse(items: String) = s"""{"items":[${items}], "links":{"next":"xxx"}}"""
 
@@ -109,15 +110,15 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       val emptyChResponse = chResponse("")
       stubGet("/incorporation-frontend-stubs/submissions.*", 200, emptyChResponse)
 
-      await(incorpRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
+      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 0
 
       val job = lookupJob("incorp-update-job")
 
-      val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult,LockResponse]])
+      val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult, LockResponse]])
       val r = await(f)
-      r shouldBe Left(InsertResult(0,0))
+      r shouldBe Left(InsertResult(0, 0))
 
-      await(incorpRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
+      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 0
     }
   }
 
@@ -131,18 +132,18 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       val response = chResponse(json)
       stubGet("/incorporation-frontend-stubs/submissions.*", 200, response)
 
-      await(incorpRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
+      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 0
       await(timepointRepo.retrieveTimePoint) shouldBe None
 
       val job = lookupJob("incorp-update-job")
 
-      val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult,LockResponse]])
+      val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult, LockResponse]])
       val r = await(f)
 
       val inserted = Seq(iu(json))
-      r shouldBe Left(InsertResult(1,0,alerts = 1, insertedItems = inserted))
+      r shouldBe Left(InsertResult(1, 0, alerts = 1, insertedItems = inserted))
 
-      await(incorpRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 1
+      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 1
       await(timepointRepo.retrieveTimePoint) shouldBe Some(timepoint)
       verify(getRequestedFor(urlMatching("/incorporation-frontend-stubs/submissions.*")).
         withQueryParam("timepoint", absent).
@@ -165,14 +166,14 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
 
       val job = lookupJob("incorp-update-job")
 
-      val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult,LockResponse]])
+      val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult, LockResponse]])
       val r = await(f)
       val inserted = Seq(iu(json1), iu(json2))
-      val errors = Seq(WriteError(1,121,"Document failed validation"))
+      val errors = Seq(WriteError(1, 121, "Document failed validation"))
 
-      r shouldBe Left(InsertResult(1,0, errors, 2, inserted))
+      r shouldBe Left(InsertResult(1, 0, errors, 2, inserted))
 
-      await(incorpRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 1
+      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 1
 
       await(timepointRepo.retrieveTimePoint) shouldBe Some(tp1)
       verify(getRequestedFor(urlMatching("/incorporation-frontend-stubs/submissions.*")).
@@ -188,8 +189,8 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       val item = Json.parse(jsonItem(tx1, txFieldName = "_id")).as[JsObject]
       await(incorpRepo.collection.insert(false).one(item))
       await(timepointRepo.updateTimepoint(tp1))
-      await(incorpRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 1
-      await(queueRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
+      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 1
+      await(queueRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 0
 
       private val json1 = jsonItem(tx1, tp1)
       private val json2 = jsonItem(tx2, tp2, "bar8")
@@ -200,14 +201,14 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       val job = lookupJob("incorp-update-job")
 
 
-      val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult,LockResponse]])
+      val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult, LockResponse]])
       val r = await(f)
 
       val inserted = Seq(iu(json2))
-      r shouldBe Left(InsertResult(1,1,alerts = 1, insertedItems = inserted))
+      r shouldBe Left(InsertResult(1, 1, alerts = 1, insertedItems = inserted))
 
-      await(incorpRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 2
-      await(queueRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 1
+      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 2
+      await(queueRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 1
 
       await(timepointRepo.retrieveTimePoint) shouldBe Some(tp2)
       verify(getRequestedFor(urlMatching("/incorporation-frontend-stubs/submissions.*")).
@@ -230,8 +231,8 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       }
 
       await(timepointRepo.updateTimepoint(tp1))
-      await(incorpRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 3
-      await(queueRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
+      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 3
+      await(queueRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 0
 
       val items = jsonItem(tx1, tp1) + "," + jsonItem(tx2, tp2) + "," + jsonItem(tx3, tp3)
       val response = chResponse(items)
@@ -239,12 +240,12 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
 
       val job = lookupJob("incorp-update-job")
 
-      val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult,LockResponse]])
+      val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult, LockResponse]])
       val r = await(f)
-      r shouldBe Left(InsertResult(0,3,alerts = 0))
+      r shouldBe Left(InsertResult(0, 3, alerts = 0))
 
-      await(incorpRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 3
-      await(queueRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
+      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 3
+      await(queueRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 0
 
       await(timepointRepo.retrieveTimePoint) shouldBe Some(tp3)
       verify(getRequestedFor(urlMatching("/incorporation-frontend-stubs/submissions.*")).
@@ -266,9 +267,9 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
 
       await(subRepo.collection.insert(false).one(Subscription("23456", "ct", "scrs", "foo")))
       await(timepointRepo.updateTimepoint(tp1))
-      await(incorpRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 1
-      await(queueRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
-      await(subRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 1
+      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 1
+      await(queueRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 0
+      await(subRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 1
 
       private val json1 = jsonItem(tx1, tp1)
       private val json2 = jsonItem(tx2, tp2)
@@ -278,13 +279,13 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
 
       val job = lookupJob("incorp-update-job")
 
-      val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult,LockResponse]])
+      val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult, LockResponse]])
       val r = await(f)
       val inserted = Seq(iu(json1), iu(json2))
-      r shouldBe Left(InsertResult(2,1,alerts = 1, insertedItems = inserted))
+      r shouldBe Left(InsertResult(2, 1, alerts = 1, insertedItems = inserted))
 
-      await(incorpRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 3
-      await(queueRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 2
+      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 3
+      await(queueRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 2
 
       await(timepointRepo.retrieveTimePoint) shouldBe Some(tp3)
       verify(getRequestedFor(urlMatching("/incorporation-frontend-stubs/submissions.*")).
@@ -300,11 +301,11 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       val qiu1 = QueuedIncorpUpdate(DateTime.now, iu)
 
       insert(qiu1)
-      await(queueRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 1
+      await(queueRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 1
 
       val result = await(queueRepo.bulkInsert(Seq(qiu1)))
       result.writeErrors.head.code shouldBe 11000
-      await(queueRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 1
+      await(queueRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 1
     }
   }
 }

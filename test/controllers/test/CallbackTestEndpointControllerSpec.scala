@@ -19,7 +19,7 @@ package controllers.test
 import Helpers.SCRSSpec
 import play.api.libs.json.{JsObject, Json}
 import play.api.test.FakeRequest
-import play.api.test.Helpers.{call, stubControllerComponents}
+import play.api.test.Helpers._
 
 class CallbackTestEndpointControllerSpec extends SCRSSpec {
 

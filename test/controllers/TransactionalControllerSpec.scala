@@ -23,10 +23,10 @@ import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import org.mockito.Matchers.{any, eq => eqTo}
 import org.mockito.Mockito._
-import play.api.libs.json.{JsObject, Json}
-import play.api.mvc.ControllerComponents
+import play.api.libs.json.{JsObject, JsValue, Json}
+import play.api.mvc.{ControllerComponents, Result}
 import play.api.test.FakeRequest
-import play.api.test.Helpers.stubControllerComponents
+import play.api.test.Helpers._
 import repositories.IncorpUpdateRepository
 import services.{FailedToFetchOfficerListFromTxAPI, TransactionalService}
 import uk.gov.hmrc.http.HeaderCarrier
@@ -36,14 +36,14 @@ import scala.concurrent.Future
 
 class TransactionalControllerSpec extends SCRSSpec {
 
-  val mockService = mock[TransactionalService]
-  val mockIncorpUpdateRepository = mock[IncorpUpdateRepository]
-  val mockApiConnector = mock[PublicCohoApiConnector]
+  val mockService: TransactionalService = mock[TransactionalService]
+  val mockIncorpUpdateRepository: IncorpUpdateRepository = mock[IncorpUpdateRepository]
+  val mockApiConnector: PublicCohoApiConnector = mock[PublicCohoApiConnector]
 
   class Setup {
-    val controller = new TransactionalController {
-      override val service = mockService
-      override val publicApiConnector = mockApiConnector
+    val controller: TransactionalController = new TransactionalController {
+      override val service: TransactionalService = mockService
+      override val publicApiConnector: PublicCohoApiConnector = mockApiConnector
       override val whitelistedServices = Set("test", "services")
       override val incorpRepo: IncorpUpdateRepository = mockIncorpUpdateRepository
       val controllerComponents: ControllerComponents = stubControllerComponents()
@@ -62,9 +62,9 @@ class TransactionalControllerSpec extends SCRSSpec {
       when(mockService.fetchCompanyProfile(eqTo(transactionId))(any()))
         .thenReturn(Future.successful(Some(json)))
 
-      val result = controller.fetchCompanyProfile(transactionId)(FakeRequest())
+      val result: Future[Result] = controller.fetchCompanyProfile(transactionId)(FakeRequest())
       status(result) shouldBe 200
-      jsonBodyOf(await(result)) shouldBe json
+      contentAsJson(result) shouldBe json
     }
 
     "return a 404 when a company profile could not be found by the supplied transaction Id (from transactional api) when company not incorporated" in new Setup {
@@ -72,13 +72,13 @@ class TransactionalControllerSpec extends SCRSSpec {
       when(mockService.fetchCompanyProfile(eqTo(transactionId))(any()))
         .thenReturn(Future.successful(None))
 
-      val result = controller.fetchCompanyProfile(transactionId)(FakeRequest())
+      val result: Future[Result] = controller.fetchCompanyProfile(transactionId)(FakeRequest())
       status(result) shouldBe 404
     }
 
     "return a 200 and json when a company profile is successfully fetched from Public API (because it is incorporated)" in new Setup {
 
-      val expected = Json.parse(
+      val expected: JsObject = Json.parse(
         s"""
            |{
            |  "company_name": "MOOO LIMITED",
@@ -94,7 +94,7 @@ class TransactionalControllerSpec extends SCRSSpec {
            |    "locality": "locality1"
            |  },
            |
-             |   "sic_codes": [
+           |   "sic_codes": [
            |    {
            |      "sic_description": "",
            |      "sic_code": "84240"
@@ -110,16 +110,16 @@ class TransactionalControllerSpec extends SCRSSpec {
       when(mockService.fetchCompanyProfile(eqTo(transactionId))(any()))
         .thenReturn(Future.successful(Some(json)))
 
-      val result = controller.fetchCompanyProfile(transactionId)(FakeRequest())
+      val result: Future[Result] = controller.fetchCompanyProfile(transactionId)(FakeRequest())
       status(result) shouldBe 200
-      jsonBodyOf(await(result)) shouldBe json
+      contentAsJson(result) shouldBe json
     }
 
     "return a 200 when a company profile is fetched" in new Setup {
       when(mockService.fetchCompanyProfile(eqTo(transactionId))(any()))
         .thenReturn(Future.successful(Some(json)))
 
-      val result = controller.fetchCompanyProfile(transactionId)(FakeRequest())
+      val result: Future[Result] = controller.fetchCompanyProfile(transactionId)(FakeRequest())
       status(result) shouldBe 200
     }
 
@@ -127,7 +127,7 @@ class TransactionalControllerSpec extends SCRSSpec {
       when(mockService.fetchCompanyProfile(eqTo(transactionId))(any()))
         .thenReturn(Future.successful(None))
 
-      val result = controller.fetchCompanyProfile(transactionId)(FakeRequest())
+      val result: Future[Result] = controller.fetchCompanyProfile(transactionId)(FakeRequest())
       status(result) shouldBe 404
     }
 
@@ -141,25 +141,25 @@ class TransactionalControllerSpec extends SCRSSpec {
         when(mockApiConnector.getCompanyProfile(eqTo(crn), eqTo(true))(any()))
           .thenReturn(Future.successful(Some(json)))
 
-        val result = controller.fetchIncorporatedCompanyProfile(crn)(FakeRequest().withHeaders("User-Agent" -> "test"))
+        val result: Future[Result] = controller.fetchIncorporatedCompanyProfile(crn)(FakeRequest().withHeaders("User-Agent" -> "test"))
         status(result) shouldBe 200
-        jsonBodyOf(await(result)) shouldBe json
+        contentAsJson(result) shouldBe json
       }
       "called by a non-whitelisted service" in new Setup {
         when(mockApiConnector.getCompanyProfile(eqTo(crn), eqTo(false))(any()))
           .thenReturn(Future.successful(Some(json)))
 
-        val result = controller.fetchIncorporatedCompanyProfile(crn)(FakeRequest().withHeaders("User-Agent" -> "not whitelisted"))
+        val result: Future[Result] = controller.fetchIncorporatedCompanyProfile(crn)(FakeRequest().withHeaders("User-Agent" -> "not whitelisted"))
         status(result) shouldBe 200
-        jsonBodyOf(await(result)) shouldBe json
+        contentAsJson(result) shouldBe json
       }
       "called by an unidentifiable service" in new Setup {
         when(mockApiConnector.getCompanyProfile(eqTo(crn), eqTo(false))(any()))
           .thenReturn(Future.successful(Some(json)))
 
-        val result = controller.fetchIncorporatedCompanyProfile(crn)(FakeRequest())
+        val result: Future[Result] = controller.fetchIncorporatedCompanyProfile(crn)(FakeRequest())
         status(result) shouldBe 200
-        jsonBodyOf(await(result)) shouldBe json
+        contentAsJson(result) shouldBe json
       }
     }
     "return a 404" when {
@@ -167,7 +167,7 @@ class TransactionalControllerSpec extends SCRSSpec {
         when(mockApiConnector.getCompanyProfile(eqTo(crn), eqTo(true))(any()))
           .thenReturn(Future.successful(None))
 
-        val result = controller.fetchIncorporatedCompanyProfile(crn)(FakeRequest().withHeaders("User-Agent" -> "test"))
+        val result: Future[Result] = controller.fetchIncorporatedCompanyProfile(crn)(FakeRequest().withHeaders("User-Agent" -> "test"))
         status(result) shouldBe 404
       }
     }
@@ -181,16 +181,16 @@ class TransactionalControllerSpec extends SCRSSpec {
       when(mockService.fetchOfficerList(eqTo(transactionId))(any()))
         .thenReturn(Future.successful(json))
 
-      val result = controller.fetchOfficerList(transactionId)(FakeRequest())
+      val result: Future[Result] = controller.fetchOfficerList(transactionId)(FakeRequest())
       status(result) shouldBe 200
-      jsonBodyOf(await(result)) shouldBe json
+      contentAsJson(result) shouldBe json
     }
 
     "return a 404 when an officer list could not be found by the supplied transaction Id" in new Setup {
       when(mockService.fetchOfficerList(eqTo(transactionId))(any()))
         .thenReturn(Future.failed(new FailedToFetchOfficerListFromTxAPI()))
 
-      val result = controller.fetchOfficerList(transactionId)(FakeRequest())
+      val result: Future[Result] = controller.fetchOfficerList(transactionId)(FakeRequest())
       status(result) shouldBe 404
     }
 
@@ -198,15 +198,15 @@ class TransactionalControllerSpec extends SCRSSpec {
       when(mockService.fetchOfficerList(eqTo(transactionId))(any()))
         .thenReturn(Future.failed(new Exception()))
 
-      val result = controller.fetchOfficerList(transactionId)(FakeRequest())
+      val result: Future[Result] = controller.fetchOfficerList(transactionId)(FakeRequest())
       status(result) shouldBe 500
     }
   }
 
   "fetchIncorpUpdate" should {
     "return a 200 and the CRN as JSON" in new Setup {
-      val incorpUpdate = IncorpUpdate(transactionId, "accepted", Some("example CRN"), Some(DateTime.parse("2018-05-01", DateTimeFormat.forPattern(TimestampFormats.datePattern))), "", None)
-      val expectedJson = Json.parse(
+      val incorpUpdate: IncorpUpdate = IncorpUpdate(transactionId, "accepted", Some("example CRN"), Some(DateTime.parse("2018-05-01", DateTimeFormat.forPattern(TimestampFormats.datePattern))), "", None)
+      val expectedJson: JsValue = Json.parse(
         s"""
            |{
            |  "transaction_id": "$transactionId",
@@ -220,16 +220,16 @@ class TransactionalControllerSpec extends SCRSSpec {
       when(mockIncorpUpdateRepository.getIncorpUpdate(eqTo(transactionId)))
         .thenReturn(Future.successful(Some(incorpUpdate)))
 
-      val result = await(controller.fetchIncorpUpdate(transactionId)(FakeRequest()))
+      val result: Future[Result] = controller.fetchIncorpUpdate(transactionId)(FakeRequest())
 
       status(result) shouldBe 200
-      jsonBodyOf(result) shouldBe expectedJson
+      contentAsJson(result) shouldBe expectedJson
     }
     "return a 204" in new Setup {
       when(mockIncorpUpdateRepository.getIncorpUpdate(eqTo(transactionId)))
         .thenReturn(Future.successful(None))
 
-      val result = await(controller.fetchIncorpUpdate(transactionId)(FakeRequest()))
+      val result: Future[Result] = controller.fetchIncorpUpdate(transactionId)(FakeRequest())
       status(result) shouldBe 204
     }
   }
@@ -241,16 +241,16 @@ class TransactionalControllerSpec extends SCRSSpec {
       when(mockService.fetchSicByTransId(eqTo(transactionId))(any[HeaderCarrier]))
         .thenReturn(Future.successful(Some(sicJson)))
 
-      val result = await(controller.fetchSicCodesByTransactionID(transactionId)(FakeRequest()))
+      val result: Future[Result] = controller.fetchSicCodesByTransactionID(transactionId)(FakeRequest())
       status(result) shouldBe 200
-      jsonBodyOf(result) shouldBe sicJson
+      contentAsJson(result) shouldBe sicJson
     }
 
     "return no content when no data returned from the CH API using TxId" in new Setup {
       when(mockService.fetchSicByTransId(eqTo(transactionId))(any[HeaderCarrier]))
         .thenReturn(Future.successful(None))
 
-      val result = await(controller.fetchSicCodesByTransactionID(transactionId)(FakeRequest()))
+      val result: Future[Result] = controller.fetchSicCodesByTransactionID(transactionId)(FakeRequest())
       status(result) shouldBe 204
     }
   }
@@ -262,16 +262,16 @@ class TransactionalControllerSpec extends SCRSSpec {
       when(mockService.fetchSicByCRN(eqTo(crn))(any[HeaderCarrier]))
         .thenReturn(Future.successful(Some(sicJson)))
 
-      val result = await(controller.fetchSicCodesByCRN(crn)(FakeRequest()))
+      val result: Future[Result] = controller.fetchSicCodesByCRN(crn)(FakeRequest())
       status(result) shouldBe 200
-      jsonBodyOf(result) shouldBe sicJson
+      contentAsJson(result) shouldBe sicJson
     }
 
     "return no content when no data returned from the CH API" in new Setup {
       when(mockService.fetchSicByCRN(eqTo(crn))(any[HeaderCarrier]))
         .thenReturn(Future.successful(None))
 
-      val result = await(controller.fetchSicCodesByCRN(crn)(FakeRequest()))
+      val result: Future[Result] = controller.fetchSicCodesByCRN(crn)(FakeRequest())
       status(result) shouldBe 204
     }
   }
@@ -279,16 +279,16 @@ class TransactionalControllerSpec extends SCRSSpec {
     "return 204 if array is empty" in new Setup {
       when(mockService.fetchShareholders(eqTo(transactionId))(any[HeaderCarrier]))
         .thenReturn(Future.successful(Some(Json.arr())))
-      val res = await(controller.fetchShareholders(transactionId)(FakeRequest()))
+      val res: Future[Result] = controller.fetchShareholders(transactionId)(FakeRequest())
       status(res) shouldBe 204
     }
 
     "return 200 if array is returned and size > 0" in new Setup {
       when(mockService.fetchShareholders(eqTo(transactionId))(any[HeaderCarrier]))
         .thenReturn(Future.successful(Some(Json.arr(Json.obj("foo" -> "bar")))))
-      val res = await(controller.fetchShareholders(transactionId)(FakeRequest()))
-      status(res) shouldBe 200
-      jsonBodyOf(res) shouldBe Json.parse(
+      val result: Future[Result] = controller.fetchShareholders(transactionId)(FakeRequest())
+      status(result) shouldBe 200
+      contentAsJson(result) shouldBe Json.parse(
         """[
           | {
           |   "foo": "bar"
@@ -300,7 +300,7 @@ class TransactionalControllerSpec extends SCRSSpec {
     "return 404 if key does not exist in the json and service returned None" in new Setup {
       when(mockService.fetchShareholders(eqTo(transactionId))(any[HeaderCarrier]))
         .thenReturn(Future.successful(None))
-      val res = await(controller.fetchShareholders(transactionId)(FakeRequest()))
+      val res: Future[Result] = controller.fetchShareholders(transactionId)(FakeRequest())
       status(res) shouldBe 404
     }
   }

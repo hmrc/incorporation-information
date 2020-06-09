@@ -25,8 +25,9 @@ import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
 import repositories._
 import uk.gov.hmrc.lock.LockKeeper
+import play.api.test.Helpers._
 
-
+import scala.concurrent.Future
 
 class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
 
@@ -72,7 +73,7 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
   "Metrics" should {
 
     "update no metrics if no subscriptions" in new Setup {
-      when(mockSubRepo.getSubscriptionStats()).thenReturn(Map[String, Int]())
+      when(mockSubRepo.getSubscriptionStats()).thenReturn(Future.successful(Map[String, Int]()))
 
       val result = await(service.updateSubscriptionMetrics())
 
@@ -84,7 +85,7 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
 
     "update a single metric when one is supplied" in new Setup {
       when(mockMetrics.defaultRegistry).thenReturn(mockRegistry)
-      when(mockSubRepo.getSubscriptionStats()).thenReturn(Map("wibble" -> 1))
+      when(mockSubRepo.getSubscriptionStats()).thenReturn(Future.successful(Map("wibble" -> 1)))
 
       val result = await(service.updateSubscriptionMetrics())
 
@@ -97,7 +98,7 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
 
     "update a multiple metrics when required" in new Setup {
       when(mockMetrics.defaultRegistry).thenReturn(mockRegistry)
-      when(mockSubRepo.getSubscriptionStats()).thenReturn(Map("foo1" -> 1, "foo2" -> 2, "foo3" -> 3))
+      when(mockSubRepo.getSubscriptionStats()).thenReturn(Future.successful(Map("foo1" -> 1, "foo2" -> 2, "foo3" -> 3)))
 
       val result = await(service.updateSubscriptionMetrics())
 
@@ -117,23 +118,23 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
 
     "should return the resut of the input function if a timer and counters are passed through" in new Setup {
       val result = await(service.processDataResponseWithMetrics[Int](Some(mockCounter),
-        Some(mockCounter),Some(mockTimer))(1 + 1))
+        Some(mockCounter),Some(mockTimer))(Future.successful(1 + 1)))
 
       result shouldBe 2
     }
     "should return the result of the input function when called with a success and failure counter" in new Setup {
       val result = await(service.processDataResponseWithMetrics[Int](Some(mockCounter),
-        Some(mockCounter))(1 + 1))
+        Some(mockCounter))(Future.successful(1 + 1)))
 
       result shouldBe 2
     }
     "should return the result of the input function when called with a success counter" in new Setup {
-      val result = await(service.processDataResponseWithMetrics[Int](Some(mockCounter))(1 + 1))
+      val result = await(service.processDataResponseWithMetrics[Int](Some(mockCounter))(Future.successful(1 + 1)))
 
       result shouldBe 2
     }
     "should return the result of the input function when called with no parameters" in new Setup {
-      val result = await(service.processDataResponseWithMetrics[Int]()(1 + 1))
+      val result = await(service.processDataResponseWithMetrics[Int]()(Future.successful(1 + 1)))
 
       result shouldBe 2
     }

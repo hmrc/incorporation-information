@@ -16,11 +16,11 @@
 
 package models
 
+import Helpers.{LogCapturing, SCRSSpec}
 import play.api.Logger
 import play.api.libs.json.{JsArray, Json}
-import uk.gov.hmrc.play.test.{LogCapturing, UnitSpec}
 
-class ShareholdersSpec extends UnitSpec with LogCapturing{
+class ShareholdersSpec extends SCRSSpec with LogCapturing{
 
   "return None if no key exists" in {
     val json =

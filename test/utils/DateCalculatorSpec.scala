@@ -19,11 +19,11 @@ package utils
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
+import Helpers.SCRSSpec
 import org.joda.time.DateTime
 import org.scalatest.BeforeAndAfterEach
-import uk.gov.hmrc.play.test.UnitSpec
 
-class DateCalculatorsSpec extends UnitSpec with BeforeAndAfterEach {
+class DateCalculatorSpec extends SCRSSpec with BeforeAndAfterEach {
 
   class StandardSetup {
     val dCalc = new DateCalculators {}

@@ -26,7 +26,7 @@ import org.mockito.Mockito._
 import play.api.Configuration
 import play.api.mvc.ControllerComponents
 import play.api.test.FakeRequest
-import play.api.test.Helpers.stubControllerComponents
+import play.api.test.Helpers._
 import repositories.InsertResult
 import services.{IncorpUpdateService, SubscriptionFiringService}
 
@@ -78,10 +78,10 @@ class ManualTriggerControllerSpec extends SCRSSpec {
       "execute the job and return a message" in new Setup {
         when(mockSM.service).thenReturn(mockIncorpUpdateService)
         when(mockIncorpUpdateService.invoke(any[ExecutionContext]())).thenReturn(Future.successful(Left(InsertResult(1,1))))
-        val result = await(controller.triggerJob(INCORP_UPDATE)(FakeRequest()))
+        val result = controller.triggerJob(INCORP_UPDATE)(FakeRequest())
 
         status(result) shouldBe 200
-        bodyOf(result) shouldBe Left(InsertResult(1,1)).toString
+        contentAsString(result) shouldBe Left(InsertResult(1,1)).toString
       }
     }
 
@@ -90,17 +90,17 @@ class ManualTriggerControllerSpec extends SCRSSpec {
       "execute the job and return a message" in new Setup {
         when(mockSMSeq.service).thenReturn(mockSubFiringService)
         when(mockSubFiringService.invoke(any[ExecutionContext]())).thenReturn(Future.successful(Left(Seq(true))))
-        val result = await(controller.triggerJob(FIRE_SUBS)(FakeRequest()))
+        val result = controller.triggerJob(FIRE_SUBS)(FakeRequest())
 
         status(result) shouldBe 200
-        bodyOf(result) shouldBe "Left(List(true))"
+        contentAsString(result) shouldBe "Left(List(true))"
       }
     }
 
     "supplying the job name xxxx" should {
 
       "return a 404" in new Setup {
-        val result = await(controller.triggerJob("xxxx")(FakeRequest()))
+        val result = controller.triggerJob("xxxx")(FakeRequest())
 
         status(result) shouldBe 404
       }

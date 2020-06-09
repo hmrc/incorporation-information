@@ -22,6 +22,7 @@ import models.IncorpUpdate
 import org.joda.time.DateTime
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
+import play.api.test.Helpers._
 import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.http.{BadRequestException, HeaderCarrier}
 
@@ -43,22 +44,23 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
     val transactionId = "12345"
     val destinationUrl = s"/incorporation-frontend-stubs/fetch-data/$transactionId"
 
-    val responseOne = s"""{
-                  |"items":[
-                  | {
-                  |   "company_number":"9999999999",
-                  |   "transaction_status":"accepted",
-                  |   "transaction_type":"incorporation",
-                  |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
-                  |   "transaction_id":"$transactionId",
-                  |   "incorporated_on":"2016-08-10",
-                  |   "timepoint":"123456789"
-                  | }
-                  |],
-                  |"links":{
-                  | "next":"https://ewf.companieshouse.gov.uk/submissions?timepoint=123456789"
-                  |}
-                  |}""".stripMargin
+    val responseOne =
+      s"""{
+         |"items":[
+         | {
+         |   "company_number":"9999999999",
+         |   "transaction_status":"accepted",
+         |   "transaction_type":"incorporation",
+         |   "company_profile_link":"http://api.companieshouse.gov.uk/company/9999999999",
+         |   "transaction_id":"$transactionId",
+         |   "incorporated_on":"2016-08-10",
+         |   "timepoint":"123456789"
+         | }
+         |],
+         |"links":{
+         | "next":"https://ewf.companieshouse.gov.uk/submissions?timepoint=123456789"
+         |}
+         |}""".stripMargin
 
 
     val date = new DateTime(2016, 8, 10, 0, 0)
@@ -82,7 +84,7 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
 
       val connector = app.injector.instanceOf[IncorporationAPIConnector]
 
-      val result = await(connector.checkForIncorpUpdate(None)(HeaderCarrier(authorization = Some(Authorization("foo")),extraHeaders = Seq("bar" -> "wizz"))))
+      val result = await(connector.checkForIncorpUpdate(None)(HeaderCarrier(authorization = Some(Authorization("foo")), extraHeaders = Seq("bar" -> "wizz"))))
       result shouldBe Seq(item1)
       verify(getRequestedFor(urlMatching("/coho/submissions.*"))
         .withHeader("Authorization", matching("Bearer N/A"))
@@ -105,7 +107,7 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
       stubGet("/incorporation-frontend-stubs/submissions.*", 400, "")
       val connector = app.injector.instanceOf[IncorporationAPIConnector]
       val f = connector.checkForIncorpUpdate(None)(HeaderCarrier())
-      val failure = intercept[IncorpUpdateAPIFailure]( await(f) )
+      val failure = intercept[IncorpUpdateAPIFailure](await(f))
       failure.ex shouldBe a[BadRequestException]
     }
 

@@ -18,13 +18,13 @@ package utils
 
 import java.time.LocalTime
 
+import Helpers.{LogCapturing, SCRSSpec}
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.spi.ILoggingEvent
 import org.scalatest.concurrent.Eventually
 import play.api.Logger
-import uk.gov.hmrc.play.test.{LogCapturing, UnitSpec}
 
-class AlertLoggingSpec extends UnitSpec with LogCapturing with Eventually {
+class AlertLoggingSpec extends SCRSSpec with LogCapturing with Eventually {
 
   val defaultLoggingDays = "MON,TUE,WED,THU,FRI"
   val defaultLoggingTime = "08:00:00_17:00:00"

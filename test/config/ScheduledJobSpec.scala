@@ -16,6 +16,7 @@
 
 package config
 
+import Helpers.SCRSSpec
 import akka.actor.{ActorRef, ActorSystem}
 import com.typesafe.akka.extension.quartz.QuartzSchedulerExtension
 import jobs.SchedulingActor.FireSubscriptions
@@ -25,9 +26,8 @@ import org.quartz.CronExpression
 import org.scalatest.mockito.MockitoSugar
 import play.api.Configuration
 import services.SubscriptionFiringService
-import uk.gov.hmrc.play.test.UnitSpec
 
-class ScheduledJobSpec extends UnitSpec with MockitoSugar {
+class ScheduledJobSpec extends SCRSSpec with MockitoSugar {
 val jobNameTest = "fooBarAndWizzWithABang"
   val mockService = mock[SubscriptionFiringService]
   val mockActorSystem = mock[ActorSystem]

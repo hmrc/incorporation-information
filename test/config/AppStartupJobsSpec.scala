@@ -16,20 +16,19 @@
 
 package config
 
+import Helpers.{LogCapturing, SCRSSpec}
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
 import org.joda.time.DateTime
 import org.mockito.Matchers.{any, eq => eqTo}
 import org.mockito.Mockito._
 import org.scalatest.concurrent.Eventually
-import org.scalatest.mock.MockitoSugar
 import play.api.{Configuration, Logger}
 import repositories._
 import services.{IncorpUpdateService, SubscriptionService}
-import uk.gov.hmrc.play.test.{LogCapturing, UnitSpec}
 
 import scala.concurrent.Future
 
-class AppStartupJobsSpec extends UnitSpec with MockitoSugar with LogCapturing with Eventually {
+class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually {
 
   val mockConfig: Configuration = mock[Configuration]
 

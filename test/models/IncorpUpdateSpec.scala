@@ -16,13 +16,12 @@
 
 package models
 
-import Helpers.JSONhelpers
+import Helpers.{JSONhelpers, SCRSSpec}
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.json._
-import uk.gov.hmrc.play.test.UnitSpec
 
 
-class IncorpUpdateSpec extends UnitSpec with JSONhelpers {
+class IncorpUpdateSpec extends SCRSSpec with JSONhelpers {
 
   "writes" should {
 

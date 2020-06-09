@@ -27,6 +27,7 @@ import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.play.json.collection.JSONCollection
 import repositories._
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
+import play.api.test.Helpers._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 

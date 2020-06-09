@@ -25,6 +25,7 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.inject.{BindingKey, QualifierInstance}
 import reactivemongo.api.ReadConcern
 import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo, TimepointMongo}
+import play.api.test.Helpers._
 
 import scala.concurrent.ExecutionContext.Implicits._
 

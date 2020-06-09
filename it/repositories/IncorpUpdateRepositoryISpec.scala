@@ -19,9 +19,10 @@ package repositories
 import helpers.SCRSMongoSpec
 import models.IncorpUpdate
 import play.api.libs.json.{JsNumber, Json}
+import play.api.test.Helpers._
 import play.modules.reactivemongo.ReactiveMongoComponent
-import reactivemongo.api.{BSONSerializationPack, FailoverStrategy, ReadPreference}
 import reactivemongo.api.commands._
+import reactivemongo.api.{BSONSerializationPack, FailoverStrategy, ReadPreference}
 import reactivemongo.bson.{BSONDocument, BSONRegex}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -37,7 +38,7 @@ trait DocValidator {
       "collMod" -> incorpRepo.collection.name,
       "validator" -> BSONDocument("company_number" -> BSONDocument("$regex" -> BSONRegex(regex, "")))
     )
-    val runner = Command.run(BSONSerializationPack,FailoverStrategy.default)
+    val runner = Command.run(BSONSerializationPack, FailoverStrategy.default)
     incorpRepo.collection.create() flatMap {
       _ => runner.apply(incorpRepo.collection.db, runner.rawCommand(commandDoc)).cursor(ReadPreference.primaryPreferred).head
     }
@@ -70,7 +71,8 @@ class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
     incorpDate = None,
     timepoint = s"tp$num",
     statusDescription = None)
-def individualUpdatedDoc(num: Int = 1) = IncorpUpdate(
+
+  def individualUpdatedDoc(num: Int = 1) = IncorpUpdate(
     transactionId = s"foo$num",
     status = "accepted",
     crn = Some(s"updatedbar$num"),
@@ -134,7 +136,7 @@ def individualUpdatedDoc(num: Int = 1) = IncorpUpdate(
 
       val expectedNumErrors = 1
       val response = await(fResponse)
-      
+
       response.errors.size shouldBe expectedNumErrors
 
       response.inserted shouldBe num - numPart - expectedNumErrors
@@ -151,35 +153,35 @@ def individualUpdatedDoc(num: Int = 1) = IncorpUpdate(
     "insert a single document if it doesn't exist" in new Setup {
       count shouldBe 0
 
-      val fResponse1 = incorpRepo.storeSingleIncorpUpdate(individualDoc(1))
-      val response1 = await(fResponse1)
+      val response1 = await(incorpRepo.storeSingleIncorpUpdate(individualDoc(1)))
 
       response1.ok shouldBe true
       response1.writeErrors shouldBe Seq()
       response1.nModified shouldBe 0
       count shouldBe 1
+    }
+    "insert another single document if it doesn't exist" in new Setup {
 
-      "insert another single document if it doesn't exist"
-
-      val fResponse2 = incorpRepo.storeSingleIncorpUpdate(individualDoc(2))
-      val response2 = await(fResponse2)
+      val response1 = await(incorpRepo.storeSingleIncorpUpdate(individualDoc(1)))
+      val response2 = await(incorpRepo.storeSingleIncorpUpdate(individualDoc(2)))
 
       response2.ok shouldBe true
       response2.writeErrors shouldBe Seq()
       response2.nModified shouldBe 0
       count shouldBe 2
+    }
 
-      "update a single document if it does exist"
+    "update a single document if it does exist" in new Setup {
 
-      val fResponse3 = incorpRepo.storeSingleIncorpUpdate(individualUpdatedDoc(1))
-      val response3 = await(fResponse3)
+      val response1 = await(incorpRepo.storeSingleIncorpUpdate(individualDoc(1)))
+      val response2 = await(incorpRepo.storeSingleIncorpUpdate(individualDoc(2)))
+      val response3 = await(incorpRepo.storeSingleIncorpUpdate(individualUpdatedDoc(1)))
 
       response3.ok shouldBe true
       response3.writeErrors shouldBe Seq()
       response3.nModified shouldBe 1
       count shouldBe 2
     }
-
   }
 
   "getIncorpUpdate" should {

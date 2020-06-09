@@ -19,10 +19,12 @@ package repositories
 import helpers.SCRSMongoSpec
 import models.{IncorpUpdate, QueuedIncorpUpdate}
 import org.joda.time.DateTime
+import play.api.test.Helpers._
 import play.modules.reactivemongo.ReactiveMongoComponent
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+
 
 class QueueRepositoryISpec extends SCRSMongoSpec {
 
@@ -36,6 +38,7 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
     def count = await(repo.count)
 
     def insert(u: QueuedIncorpUpdate) = await(fInsert(u))
+
     def fInsert(u: QueuedIncorpUpdate) = repo.insert(u)
   }
 
@@ -86,8 +89,8 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
       val q1 = QueuedIncorpUpdate(baseTs.minusSeconds(60), iu)
       val q2 = q1.copy(timestamp = baseTs.minusSeconds(50))
 
-      await(insert(q1))
-      await(insert(q2))
+      insert(q1)
+      insert(q2)
 
       val result = await(repo.getIncorpUpdates(10))
 
@@ -100,8 +103,8 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
       val q1 = QueuedIncorpUpdate(baseTs.minusSeconds(60), iu)
       val q2 = q1.copy(timestamp = baseTs.minusSeconds(70))
 
-      await(insert(q1))
-      await(insert(q2))
+      insert(q1)
+      insert(q2)
 
       val result = await(repo.getIncorpUpdates(10))
 
@@ -118,7 +121,7 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
       val q5 = q1.copy(timestamp = baseTs.minusMillis(1))
       val q6 = q1.copy(timestamp = baseTs.minusSeconds(1))
 
-      await(Future.sequence(Seq(q1,q2,q3,q4,q5,q6) map (fInsert(_))))
+      await(Future.sequence(Seq(q1, q2, q3, q4, q5, q6) map (fInsert(_))))
 
       val result = await(repo.getIncorpUpdates(10))
 
@@ -136,7 +139,7 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
     val q5 = q1.copy(timestamp = baseTs.minusMillis(1))
     val q6 = q1.copy(timestamp = baseTs.minusSeconds(1))
 
-    await(Future.sequence(Seq(q1,q2,q3,q4,q5,q6) map (fInsert(_))))
+    await(Future.sequence(Seq(q1, q2, q3, q4, q5, q6) map (fInsert(_))))
 
     val result = await(repo.getIncorpUpdates(2))
 
