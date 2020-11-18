@@ -37,7 +37,7 @@ class TransactionalControllerImpl @Inject()(config: MicroserviceConfig,
                                             override val controllerComponents: ControllerComponents)
   extends BackendController(controllerComponents) with TransactionalController {
   lazy val incorpRepo = incorpMongo.repo
-  override val whitelistedServices = config.knownSCRSServices.split(",").toSet
+  override val allowlistedServices = config.knownSCRSServices.split(",").toSet
 }
 
 trait TransactionalController extends BackendBaseController {
@@ -45,7 +45,7 @@ trait TransactionalController extends BackendBaseController {
   protected val service: TransactionalService
   val publicApiConnector: PublicCohoApiConnector
   val incorpRepo: IncorpUpdateRepository
-  val whitelistedServices: Set[String]
+  val allowlistedServices: Set[String]
 
   def fetchCompanyProfile(transactionId: String) = Action.async {
     implicit request =>
@@ -67,7 +67,7 @@ trait TransactionalController extends BackendBaseController {
   def fetchIncorporatedCompanyProfile(crn: String) = Action.async {
     implicit request =>
       val callingService = request.headers.get("User-Agent").getOrElse("unknown")
-      val isScrs = whitelistedServices(callingService)
+      val isScrs = allowlistedServices(callingService)
 
       publicApiConnector.getCompanyProfile(crn, isScrs)(hc) map {
         case Some(json) => Ok(json)

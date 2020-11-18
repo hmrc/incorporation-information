@@ -405,10 +405,10 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
   "createAPIAuthHeader" should {
 
     "return a HeaderCarrier with the correct Basic auth token" when {
-     "a request is made by a whitelisted service" in new Setup {
+     "a request is made by an allowListed service" in new Setup {
        connector.createAPIAuthHeader().authorization shouldBe Some(Authorization("Basic Q29ob1B1YmxpY1Rva2Vu"))
      }
-     "a request is made by an un-whitelisted service" in new Setup {
+     "a request is made by an un-allowlisted service" in new Setup {
        connector.createAPIAuthHeader(isScrs = false).authorization shouldBe Some(Authorization("Basic Tm9uU0NSU0NvaG9QdWJsaWNUb2tlbg=="))
      }
     }

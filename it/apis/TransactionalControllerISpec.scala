@@ -63,23 +63,23 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
     }
 
     "return a 200 response with JSON" when {
-      "when called by a whitelisted service" in {
+      "when called by an allowlisted service" in {
         client("test-only/feature-switch/transactionalAPI/on").get().futureValue
 
         stubbedWithToken(scrsToken)
-        val whitelistedResponse = client(s"$crn/incorporated-company-profile").withHeaders("User-Agent" -> "TestService").get().futureValue
+        val allowlistedResponse = client(s"$crn/incorporated-company-profile").withHeaders("User-Agent" -> "TestService").get().futureValue
 
-        whitelistedResponse.status shouldBe 200
-        whitelistedResponse.body shouldBe json
+        allowlistedResponse.status shouldBe 200
+        allowlistedResponse.body shouldBe json
       }
-      "when called by an un-whitelisted service" in {
+      "when called by an un-allowlisted service" in {
         client("test-only/feature-switch/transactionalAPI/on").get().futureValue
 
         stubbedWithToken(mdtpToken)
-        val whitelistedResponse = client(s"$crn/incorporated-company-profile").withHeaders("User-Agent" -> "Not whitelisted").get().futureValue
+        val allowlistedResponse = client(s"$crn/incorporated-company-profile").withHeaders("User-Agent" -> "Not allowlisted").get().futureValue
 
-        whitelistedResponse.status shouldBe 200
-        whitelistedResponse.body shouldBe json
+        allowlistedResponse.status shouldBe 200
+        allowlistedResponse.body shouldBe json
       }
     }
   }

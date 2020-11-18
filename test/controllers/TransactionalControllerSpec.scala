@@ -44,7 +44,7 @@ class TransactionalControllerSpec extends SCRSSpec {
     val controller: TransactionalController = new TransactionalController {
       override val service: TransactionalService = mockService
       override val publicApiConnector: PublicCohoApiConnector = mockApiConnector
-      override val whitelistedServices = Set("test", "services")
+      override val allowlistedServices = Set("test", "services")
       override val incorpRepo: IncorpUpdateRepository = mockIncorpUpdateRepository
       val controllerComponents: ControllerComponents = stubControllerComponents()
     }
@@ -137,7 +137,7 @@ class TransactionalControllerSpec extends SCRSSpec {
     val crn = "01234567"
     val json = Json.parse("""{"example":"response"}""")
     "return a 200 with JSON" when {
-      "called by a whitelisted service" in new Setup {
+      "called by an allowlisted service" in new Setup {
         when(mockApiConnector.getCompanyProfile(eqTo(crn), eqTo(true))(any()))
           .thenReturn(Future.successful(Some(json)))
 
@@ -145,11 +145,11 @@ class TransactionalControllerSpec extends SCRSSpec {
         status(result) shouldBe 200
         contentAsJson(result) shouldBe json
       }
-      "called by a non-whitelisted service" in new Setup {
+      "called by a non-allowlisted service" in new Setup {
         when(mockApiConnector.getCompanyProfile(eqTo(crn), eqTo(false))(any()))
           .thenReturn(Future.successful(Some(json)))
 
-        val result: Future[Result] = controller.fetchIncorporatedCompanyProfile(crn)(FakeRequest().withHeaders("User-Agent" -> "not whitelisted"))
+        val result: Future[Result] = controller.fetchIncorporatedCompanyProfile(crn)(FakeRequest().withHeaders("User-Agent" -> "not allowlisted"))
         status(result) shouldBe 200
         contentAsJson(result) shouldBe json
       }
