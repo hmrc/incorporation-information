@@ -18,7 +18,7 @@ package models
 
 import play.api.libs.json.Json
 
-case class Subscription(transactionId : String,
+case class Subscription(transactionId: String,
                         regime: String,
                         subscriber: String,
                         callbackUrl: String)

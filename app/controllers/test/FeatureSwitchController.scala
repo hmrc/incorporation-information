@@ -24,12 +24,11 @@ import utils.FeatureSwitch
 
 import scala.concurrent.Future
 
-class FeatureSwitchControllerImpl @Inject()(
-                                             @Named("incorp-update-job") val incUpdatesJob: ScheduledJob,
-                                             @Named("metrics-job") val metricsJob: ScheduledJob,
-                                             @Named("fire-subs-job") val fireSubsJob: ScheduledJob,
-                                             @Named("proactive-monitoring-job") val proJob: ScheduledJob,
-                                             override val controllerComponents: ControllerComponents
+class FeatureSwitchControllerImpl @Inject()(@Named("incorp-update-job") val incUpdatesJob: ScheduledJob,
+                                            @Named("metrics-job") val metricsJob: ScheduledJob,
+                                            @Named("fire-subs-job") val fireSubsJob: ScheduledJob,
+                                            @Named("proactive-monitoring-job") val proJob: ScheduledJob,
+                                            override val controllerComponents: ControllerComponents
                                            ) extends BackendController(controllerComponents) with FeatureSwitchController
 
 trait FeatureSwitchController extends BackendBaseController {
@@ -45,7 +44,7 @@ trait FeatureSwitchController extends BackendBaseController {
 
       val truthy: Boolean = Seq("coho", "on", "true", "enable").contains(state)
 
-      val feature = (featureName, truthy) match {
+      (featureName, truthy) match {
         case ("metrics-job", true) => metricsJob.scheduler.resumeJob("metrics-job")
         case ("metrics-job", false) => metricsJob.scheduler.suspendJob("metrics-job")
         case ("fire-subs-job", true) => fireSubsJob.scheduler.resumeJob("fire-subs-job")
@@ -55,7 +54,7 @@ trait FeatureSwitchController extends BackendBaseController {
         case ("proactive-monitoring-job", true) => fireSubsJob.scheduler.resumeJob("proactive-monitoring-job")
         case ("proactive-monitoring-job", false) => fireSubsJob.scheduler.suspendJob("proactive-monitoring-job")
         case (_, true) => fs.enable(FeatureSwitch(featureName, enabled = true))
-        case _ => fs.disable(FeatureSwitch(featureName, enabled = false))
+        case _ => fs.disable(FeatureSwitch(featureName))
 
       }
       Future.successful(Ok(s"[FeatureSwitch] Feature switch for $featureName is now $truthy"))

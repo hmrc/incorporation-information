@@ -25,6 +25,7 @@ import reactivemongo.api.commands._
 import reactivemongo.api.{BSONSerializationPack, FailoverStrategy, ReadPreference}
 import reactivemongo.bson.{BSONDocument, BSONRegex}
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
 
 trait DocValidator {
@@ -49,6 +50,7 @@ class IncorpUpdateRepositoryISpec extends SCRSMongoSpec {
 
   class Setup extends MongoErrorCodes {
     val incorpRepo = new IncorpUpdateMongo {
+      override implicit val ec: ExecutionContext = global
       override val mongo: ReactiveMongoComponent = reactiveMongoComponent
     }.repo
     await(incorpRepo.drop)

@@ -18,13 +18,14 @@ package jobs
 
 
 import akka.actor.ActorSystem
-import javax.inject.Inject
 import jobs.SchedulingActor.FireSubscriptions
 import play.api.Configuration
 import services.SubscriptionFiringService
 
-class FireSubscriptionsJob @Inject()( fireSubsService: SubscriptionFiringService,
-                                      val config: Configuration) extends ScheduledJob {
+import javax.inject.Inject
+
+class FireSubscriptionsJob @Inject()(fireSubsService: SubscriptionFiringService,
+                                     val config: Configuration) extends ScheduledJob {
   val jobName = "fire-subs-job"
   val actorSystem = ActorSystem(jobName)
   val scheduledMessage = FireSubscriptions(fireSubsService)

@@ -18,17 +18,14 @@ package services
 
 import config.MicroserviceConfig
 import connectors.{IncorporationAPIConnector, PublicCohoApiConnectorImpl, SuccessfulTransactionalAPIResponse}
-
-import javax.inject.Inject
 import jobs._
 import org.joda.time.Duration
 import play.api.Logger
-import reactivemongo.api.commands.LastError
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.lock.LockKeeper
 import utils.Base64
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
 class ProactiveMonitoringServiceImpl @Inject()(val transactionalConnector: IncorporationAPIConnector,
@@ -60,7 +57,7 @@ trait ProactiveMonitoringService extends ScheduledService[Either[(String, String
   lazy val decodedCrn: String = Base64.decode(crnToPoll)
 
   def invoke(implicit ec: ExecutionContext): Future[Either[(String, String), LockResponse]] = {
-    implicit val hc = HeaderCarrier()
+    implicit val hc: HeaderCarrier = HeaderCarrier()
     lockKeeper.tryLock(pollAPIs).map {
       case Some(res) =>
         Logger.info("ProactiveMonitoringService acquired lock and returned results")
@@ -75,22 +72,22 @@ trait ProactiveMonitoringService extends ScheduledService[Either[(String, String
     }
   }
 
-  def pollAPIs(implicit hc: HeaderCarrier): Future[(String, String)] = {
+  def pollAPIs(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[(String, String)] = {
     for {
       txRes <- pollTransactionalAPI
       pubRes <- pollPublicAPI
     } yield (s"polling transactional API - $txRes", s"polling public API - $pubRes")
   }
 
-  private[services] def pollTransactionalAPI(implicit hc: HeaderCarrier): Future[String] = {
+  private[services] def pollTransactionalAPI(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[String] = {
     transactionalConnector.fetchTransactionalData(decodedTxId) map {
       case SuccessfulTransactionalAPIResponse(_) => "success"
       case _ => "failed"
     }
   }
 
-  private[services] def pollPublicAPI(implicit hc: HeaderCarrier): Future[String] = {
-    publicCohoConnector.getCompanyProfile(decodedCrn).map{
+  private[services] def pollPublicAPI(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[String] = {
+    publicCohoConnector.getCompanyProfile(decodedCrn).map {
       _.fold("failed")(_ => "success")
     }
   }

@@ -30,7 +30,7 @@ object TimestampFormats {
     Reads[DateTime](js =>
       js.validate[String].map {
         date => DateTime.parse(date, DateTimeFormat.forPattern(datePattern))
-    }
+      }
     ),
     Writes[DateTime](d =>
       JsString(ISODateTimeFormat.date().print(d))

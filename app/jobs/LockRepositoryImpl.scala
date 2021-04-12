@@ -16,14 +16,16 @@
 
 package jobs
 
-import javax.inject.Inject
 import play.modules.reactivemongo.ReactiveMongoComponent
 import uk.gov.hmrc.lock.{LockMongoRepository, LockRepository}
+
+import javax.inject.Inject
 
 class LockRepositoryProviderImpl @Inject()(reactiveMongoComponent: ReactiveMongoComponent) extends LockRepositoryProvider {
 
   lazy val repo = LockMongoRepository(reactiveMongoComponent.mongoConnector.db)
 }
+
 trait LockRepositoryProvider {
   val repo: LockRepository
 }

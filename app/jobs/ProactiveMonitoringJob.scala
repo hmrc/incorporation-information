@@ -18,10 +18,11 @@ package jobs
 
 
 import akka.actor.ActorSystem
-import javax.inject.Inject
 import jobs.SchedulingActor.ProactiveMonitoring
 import play.api.Configuration
 import services.ProactiveMonitoringService
+
+import javax.inject.Inject
 
 
 class ProactiveMonitoringJob @Inject()(val config: Configuration,

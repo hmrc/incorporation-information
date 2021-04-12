@@ -26,6 +26,8 @@ import play.api.{Application, Logger}
 import services.ProactiveMonitoringService
 import uk.gov.hmrc.http.HeaderCarrier
 
+import scala.concurrent.ExecutionContext.Implicits.global
+
 
 class ProactiveMonitoringISpec extends IntegrationSpecBase with FakeAppConfig
   with Eventually {

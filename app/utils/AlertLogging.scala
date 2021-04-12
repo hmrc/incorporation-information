@@ -16,10 +16,10 @@
 
 package utils
 
+import play.api.Logger
+
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-
-import play.api.Logger
 
 object PagerDutyKeys extends Enumeration {
   val COHO_TX_API_NOT_FOUND = Value
@@ -43,7 +43,7 @@ trait AlertLogging {
 
   def pagerduty(key: PagerDutyKeys.Value, message: Option[String] = None) {
     val log = s"${key.toString}${message.fold("")(msg => s" - $msg")}"
-    if(inWorkingHours) Logger.error(log) else Logger.info(log)
+    if (inWorkingHours) Logger.error(log) else Logger.info(log)
   }
 
   def inWorkingHours: Boolean = isLoggingDay && isBetweenLoggingTimes

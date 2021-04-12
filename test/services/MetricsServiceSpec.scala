@@ -23,10 +23,11 @@ import models.{IncorpUpdate, Subscription}
 import org.mockito.Matchers
 import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
+import play.api.test.Helpers._
 import repositories._
 import uk.gov.hmrc.lock.LockKeeper
-import play.api.test.Helpers._
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {

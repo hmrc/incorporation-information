@@ -19,6 +19,7 @@ package utils
 import scala.util.{Failure, Success, Try}
 
 object Base64 {
+
   import java.util.Base64._
 
 

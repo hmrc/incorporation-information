@@ -31,6 +31,7 @@ import repositories.IncorpUpdateRepository
 import utils.TimestampFormats
 import play.api.test.Helpers._
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class TransactionalServiceSpec extends SCRSSpec with LogCapturing {

@@ -18,7 +18,6 @@ package connectors
 
 import com.codahale.metrics.Counter
 import config.{MicroserviceConfig, WSHttpProxy}
-import javax.inject.Inject
 import models.IncorpUpdate
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
@@ -29,32 +28,34 @@ import services.MetricsService
 import uk.gov.hmrc.http._
 import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
-import scala.concurrent.ExecutionContext.Implicits.global
 import uk.gov.hmrc.play.http.ws.WSProxy
 import utils.{AlertLogging, DateCalculators, PagerDutyKeys, SCRSFeatureSwitches}
 
-import scala.concurrent.Future
+import javax.inject.Inject
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NoStackTrace
 
 case class IncorpUpdatesResponse(items: Seq[IncorpUpdate], nextLink: String)
+
 object IncorpUpdatesResponse {
-  val dateReads = Reads[DateTime]( js =>
+  val dateReads = Reads[DateTime](js =>
     js.validate[String].map[DateTime](DateTime.parse(_, DateTimeFormat.forPattern("yyyy-MM-dd")))
   )
 
   implicit val updateFmt = IncorpUpdate.cohoFormat
 
-  implicit val reads : Reads[IncorpUpdatesResponse] = (
-    ( __ \ "items" ).read[Seq[IncorpUpdate]] and
+  implicit val reads: Reads[IncorpUpdatesResponse] = (
+    (__ \ "items").read[Seq[IncorpUpdate]] and
       (__ \ "links" \ "next").read[String]
-    )(IncorpUpdatesResponse.apply _)
+    ) (IncorpUpdatesResponse.apply _)
 }
 
 class IncorporationAPIConnectorImpl @Inject()(config: MicroserviceConfig,
                                               injMetricsService: MetricsService,
-                                              val dateCalculators:DateCalculators,
+                                              val dateCalculators: DateCalculators,
                                               val httpNoProxy: HttpClient,
-                                              val httpProxy: WSHttpProxy) extends IncorporationAPIConnector {
+                                              val httpProxy: WSHttpProxy
+                                             )(implicit val ec: ExecutionContext) extends IncorporationAPIConnector {
   lazy val stubBaseUrl = config.incorpFrontendStubUrl
   lazy val cohoBaseUrl = config.companiesHouseUrl
   lazy val cohoApiAuthToken = config.incorpUpdateCohoApiAuthToken
@@ -71,14 +72,18 @@ class IncorporationAPIConnectorImpl @Inject()(config: MicroserviceConfig,
 case class IncorpUpdateAPIFailure(ex: Exception) extends NoStackTrace
 
 sealed trait TransactionalAPIResponse
+
 case class SuccessfulTransactionalAPIResponse(js: JsValue) extends TransactionalAPIResponse
+
 case object FailedTransactionalAPIResponse extends TransactionalAPIResponse
 
 trait IncorporationAPIConnector extends AlertLogging {
 
   def httpProxy: CoreGet with WSProxy
+
   def httpNoProxy: CoreGet
 
+  implicit val ec: ExecutionContext
   val featureSwitch: SCRSFeatureSwitches
   val stubBaseUrl: String
   val cohoBaseUrl: String
@@ -91,9 +96,10 @@ trait IncorporationAPIConnector extends AlertLogging {
   def checkForIncorpUpdate(timepoint: Option[String] = None)(implicit hc: HeaderCarrier): Future[Seq[IncorpUpdate]] = {
     import play.api.http.Status.NO_CONTENT
 
-    val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, createAPIAuthHeader, s"$cohoBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
-      case false => (httpNoProxy, hc, s"$stubBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
+    val (http, realHc, url) = if (useProxy) {
+      (httpProxy, createAPIAuthHeader, s"$cohoBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
+    } else {
+      (httpNoProxy, hc, s"$stubBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
     }
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
@@ -103,16 +109,20 @@ trait IncorporationAPIConnector extends AlertLogging {
             case NO_CONTENT => Seq()
             case _ =>
               val items = res.json.as[IncorpUpdatesResponse].items
-              if(
+              if (
                 items exists {
                   case IncorpUpdate(_, "accepted", Some(crn), Some(incorpDate), _, _) => false
-                  case IncorpUpdate(_, "rejected", _, _, _, _)                        => false
+                  case IncorpUpdate(_, "rejected", _, _, _, _) => false
                   case failure =>
                     Logger.error("CH_UPDATE_INVALID")
                     Logger.info(s"CH Update failed for transaction ID: ${failure.transactionId}. Status: ${failure.status}, incorpdate provided: ${failure.incorpDate.isDefined}")
                     true
                 }
-              ){ Seq() } else { items }
+              ) {
+                Seq()
+              } else {
+                items
+              }
           }
       }
     } recover handleError(timepoint)
@@ -121,9 +131,10 @@ trait IncorporationAPIConnector extends AlertLogging {
   def checkForIndividualIncorpUpdate(timepoint: Option[String] = None)(implicit hc: HeaderCarrier): Future[Seq[IncorpUpdate]] = {
     import play.api.http.Status.NO_CONTENT
 
-    val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, createAPIAuthHeader, s"$cohoBaseUrl/submissions${buildQueryString(timepoint, "1")}")
-      case false => (httpNoProxy, hc, s"$stubBaseUrl/submissions${buildQueryString(timepoint, "1")}")
+    val (http, realHc, url) = if (useProxy) {
+      (httpProxy, createAPIAuthHeader, s"$cohoBaseUrl/submissions${buildQueryString(timepoint, "1")}")
+    } else {
+      (httpNoProxy, hc, s"$stubBaseUrl/submissions${buildQueryString(timepoint, "1")}")
     }
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
@@ -138,9 +149,10 @@ trait IncorporationAPIConnector extends AlertLogging {
   }
 
   def fetchTransactionalData(transactionID: String)(implicit hc: HeaderCarrier): Future[TransactionalAPIResponse] = {
-    val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, createAPIAuthHeader, s"$cohoBaseUrl/submissionData/$transactionID")
-      case false => (httpNoProxy, hc, s"$stubBaseUrl/fetch-data/$transactionID")
+    val (http, realHc, url) = if (useProxy) {
+      (httpProxy, createAPIAuthHeader, s"$cohoBaseUrl/submissionData/$transactionID")
+    } else {
+      (httpNoProxy, hc, s"$stubBaseUrl/fetch-data/$transactionID")
     }
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter), Some(metrics.internalAPITimer.time())) {
@@ -180,16 +192,16 @@ trait IncorporationAPIConnector extends AlertLogging {
       pagerduty(PagerDutyKeys.COHO_TX_API_NOT_FOUND, Some(s"Could not find incorporation data for transaction ID - $transactionID"))
       FailedTransactionalAPIResponse
     case ex: Upstream4xxResponse =>
-      pagerduty(PagerDutyKeys.COHO_TX_API_4XX,Some(s"${ex.upstreamResponseCode} returned for transaction id - $transactionID"))
+      pagerduty(PagerDutyKeys.COHO_TX_API_4XX, Some(s"${ex.upstreamResponseCode} returned for transaction id - $transactionID"))
       FailedTransactionalAPIResponse
     case _: GatewayTimeoutException =>
-      pagerduty(PagerDutyKeys.COHO_TX_API_GATEWAY_TIMEOUT,Some(s"Gateway timeout for transaction id - $transactionID"))
+      pagerduty(PagerDutyKeys.COHO_TX_API_GATEWAY_TIMEOUT, Some(s"Gateway timeout for transaction id - $transactionID"))
       FailedTransactionalAPIResponse
     case _: ServiceUnavailableException =>
       pagerduty(PagerDutyKeys.COHO_TX_API_SERVICE_UNAVAILABLE)
       FailedTransactionalAPIResponse
     case ex: Upstream5xxResponse =>
-      pagerduty(PagerDutyKeys.COHO_TX_API_5XX,Some(s"Returned status code: ${ex.upstreamResponseCode} for $transactionID - reason: ${ex.getMessage}"))
+      pagerduty(PagerDutyKeys.COHO_TX_API_5XX, Some(s"Returned status code: ${ex.upstreamResponseCode} for $transactionID - reason: ${ex.getMessage}"))
       FailedTransactionalAPIResponse
     case ex: Throwable =>
       Logger.info(s"[TransactionalConnector] [fetchTransactionalData] - Failed for $transactionID - reason: ${ex.getMessage}")
@@ -198,7 +210,7 @@ trait IncorporationAPIConnector extends AlertLogging {
 
   private[connectors] def useProxy: Boolean = featureSwitch.transactionalAPI.enabled
 
-  private[connectors] def createAPIAuthHeader : HeaderCarrier = {
+  private[connectors] def createAPIAuthHeader: HeaderCarrier = {
     HeaderCarrier(authorization = Some(Authorization(s"Bearer $cohoApiAuthToken")))
 
   }

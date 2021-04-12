@@ -16,12 +16,12 @@
 
 package utils
 
-import java.time.format.DateTimeFormatter
-import java.time.{LocalDateTime, LocalTime, ZoneId, ZonedDateTime}
-
-import javax.inject.Inject
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, DateTimeZone}
+
+import java.time.format.DateTimeFormatter
+import java.time.{LocalDateTime, LocalTime, ZoneId, ZonedDateTime}
+import javax.inject.Inject
 
 
 class DateCalculatorsImpl @Inject()() extends DateCalculators
@@ -43,8 +43,10 @@ trait DateCalculators {
       .plusSeconds(ZonedDateTime.of(LocalDateTime.now(), ZoneId.of("Europe/London"))
         .getOffset.getTotalSeconds)
   }
+
   def getCurrentTime: LocalTime = LocalTime.now
-  val cohoStringToDateTime:String => DateTime = (cohoString:String) => if(cohoString.size < 17) {
+
+  val cohoStringToDateTime: String => DateTime = (cohoString: String) => if (cohoString.size < 17) {
     throw new Exception(s"timepoint is not 17 characters it is ${cohoString.size}")
   } else {
     DateTimeFormat.forPattern("yyyyMMddHHmmssSSS").parseDateTime(cohoString)

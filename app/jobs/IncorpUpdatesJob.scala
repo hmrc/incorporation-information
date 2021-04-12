@@ -15,15 +15,17 @@
  */
 
 package jobs
+
 import akka.actor.ActorSystem
-import javax.inject.Inject
 import jobs.SchedulingActor.IncorpUpdates
 import play.api.Configuration
 import services.IncorpUpdateService
 
+import javax.inject.Inject
 
-class IncorpUpdatesJob @Inject()( incorpUpdateService: IncorpUpdateService,
-                                  val config: Configuration) extends ScheduledJob {
+
+class IncorpUpdatesJob @Inject()(incorpUpdateService: IncorpUpdateService,
+                                 val config: Configuration) extends ScheduledJob {
   val jobName = "incorp-update-job"
   val actorSystem = ActorSystem(jobName)
   val scheduledMessage = IncorpUpdates(incorpUpdateService)

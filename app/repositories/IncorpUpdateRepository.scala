@@ -16,7 +16,6 @@
 
 package repositories
 
-import javax.inject.Inject
 import models.IncorpUpdate
 import org.apache.commons.lang3.StringUtils
 import play.api.Logger
@@ -29,24 +28,29 @@ import reactivemongo.play.json.ImplicitBSONHandlers._
 import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import javax.inject.Inject
+import scala.concurrent.{ExecutionContext, Future}
 
 
-class IncorpUpdateMongoImpl @Inject()(val mongo: ReactiveMongoComponent) extends IncorpUpdateMongo
+class IncorpUpdateMongoImpl @Inject()(val mongo: ReactiveMongoComponent)(implicit val ec: ExecutionContext) extends IncorpUpdateMongo
+
 trait IncorpUpdateMongo extends ReactiveMongoFormats {
-  val mongo:ReactiveMongoComponent
-lazy val repo = new IncorpUpdateMongoRepository(mongo.mongoConnector.db, IncorpUpdate.mongoFormat)
+  implicit val ec: ExecutionContext
+  val mongo: ReactiveMongoComponent
+  lazy val repo = new IncorpUpdateMongoRepository(mongo.mongoConnector.db, IncorpUpdate.mongoFormat)
 }
 
 trait IncorpUpdateRepository {
+  implicit val ec: ExecutionContext
+
   def storeIncorpUpdates(updates: Seq[IncorpUpdate]): Future[InsertResult]
+
   def storeSingleIncorpUpdate(updates: IncorpUpdate): Future[UpdateWriteResult]
 
   def getIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]]
 }
 
-class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate]) extends ReactiveRepository[IncorpUpdate, BSONObjectID](
+class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])(implicit val ec: ExecutionContext) extends ReactiveRepository[IncorpUpdate, BSONObjectID](
   collectionName = "incorporation-information",
   mongo = mongo,
   domainFormat = format
@@ -80,7 +84,7 @@ class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])
     val uniques = (updates.map(_.transactionId) diff duplicates).toSet
     uniques foreach (u => Logger.info(s"[UniqueIncorp] transactionId : $u"))
 
-    updates.filter( i => uniques.contains(i.transactionId) )
+    updates.filter(i => uniques.contains(i.transactionId))
   }
 
   def getIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]] = {
@@ -89,8 +93,8 @@ class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])
 }
 
 case class InsertResult(inserted: Int,
-                         duplicate: Int,
-                         errors: Seq[WriteError] = Seq(),
-                         alerts: Int = 0,
-                         insertedItems: Seq[IncorpUpdate] = Seq()
+                        duplicate: Int,
+                        errors: Seq[WriteError] = Seq(),
+                        alerts: Int = 0,
+                        insertedItems: Seq[IncorpUpdate] = Seq()
                        )

@@ -31,18 +31,19 @@ import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
 
 import scala.collection.Seq
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 
-class QueueMongoImpl @Inject()(val mongo: ReactiveMongoComponent) extends QueueMongo
+class QueueMongoImpl @Inject()(val mongo: ReactiveMongoComponent)(implicit val ec: ExecutionContext) extends QueueMongo
 
-  trait QueueMongo extends ReactiveMongoFormats {
-    val mongo: ReactiveMongoComponent
-    lazy val repo = new QueueMongoRepository(mongo.mongoConnector.db, QueuedIncorpUpdate.format)
+trait QueueMongo extends ReactiveMongoFormats {
+  implicit val ec: ExecutionContext
+  val mongo: ReactiveMongoComponent
+  lazy val repo = new QueueMongoRepository(mongo.mongoConnector.db, QueuedIncorpUpdate.format)
 }
 
 trait QueueRepository {
+  implicit val ec: ExecutionContext
 
   def storeIncorpUpdates(updates: Seq[QueuedIncorpUpdate]): Future[InsertResult]
 
@@ -57,7 +58,7 @@ trait QueueRepository {
   def updateTimestamp(transactionId: String, newTS: DateTime): Future[Boolean]
 }
 
-class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate]) extends ReactiveRepository[QueuedIncorpUpdate, BSONObjectID](
+class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate])(implicit val ec: ExecutionContext) extends ReactiveRepository[QueuedIncorpUpdate, BSONObjectID](
   collectionName = "incorp-update-queue",
   mongo = mongo,
   domainFormat = format
@@ -98,7 +99,7 @@ class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate]) 
   }
 
   override def getIncorpUpdate(transactionId: String): Future[Option[QueuedIncorpUpdate]] = {
-    collection.find(txSelector(transactionId),Option.empty)(BSONDocumentWrites,BSONDocumentWrites).one[QueuedIncorpUpdate]
+    collection.find(txSelector(transactionId), Option.empty)(BSONDocumentWrites, BSONDocumentWrites).one[QueuedIncorpUpdate]
   }
 
   override def getIncorpUpdates(fetchSize: Int): Future[Seq[QueuedIncorpUpdate]] = {
@@ -117,22 +118,24 @@ class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate]) 
   }
 
   override def updateTimestamp(transactionId: String, newTS: DateTime): Future[Boolean] = {
-   val ts = newTS.getMillis
+    val ts = newTS.getMillis
     val modifier = BSONDocument("$set" -> BSONDocument("timestamp" -> ts))
     collection.findAndUpdate(txSelector(transactionId), modifier, true, false).map {
-      res => res.value.fold(false){
-        _.value("timestamp").validate[Long]
-          .fold(_ => {
-            Logger.error("updateTimestamp could not be converted to a long")
-            false
-          }, tsFromUpdate =>
-            if(tsFromUpdate == ts) {
-              true
-            } else {
-              Logger.info(s"updateTimestamp did not return the correct timestamp that was inserted on doc: $tsFromUpdate inserted: $ts")
+      res =>
+        res.value.fold(false) {
+          _.value("timestamp").validate[Long]
+            .fold(_ => {
+              Logger.error("updateTimestamp could not be converted to a long")
               false
-            }
-        )}
+            }, tsFromUpdate =>
+              if (tsFromUpdate == ts) {
+                true
+              } else {
+                Logger.info(s"updateTimestamp did not return the correct timestamp that was inserted on doc: $tsFromUpdate inserted: $ts")
+                false
+              }
+            )
+        }
     }
   }
 }

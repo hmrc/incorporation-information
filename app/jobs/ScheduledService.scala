@@ -19,9 +19,11 @@ package jobs
 import scala.concurrent.{ExecutionContext, Future}
 
 sealed trait LockResponse
+
 case object MongoLocked extends LockResponse
+
 case object UnlockingFailed extends LockResponse
 
 trait ScheduledService[R] {
-  def invoke(implicit ec : ExecutionContext) : Future[R]
+  def invoke(implicit ec: ExecutionContext): Future[R]
 }

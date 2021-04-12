@@ -18,7 +18,6 @@ package services
 
 import config.MicroserviceConfig
 import connectors.IncorporationAPIConnector
-import javax.inject.{Inject, Provider}
 import jobs._
 import models.{IncorpUpdate, QueuedIncorpUpdate}
 import org.joda.time.{DateTime, Duration}
@@ -29,7 +28,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.lock.LockKeeper
 import utils.{AlertLogging, DateCalculators, PagerDutyKeys}
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import javax.inject.{Inject, Provider}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
@@ -38,7 +37,7 @@ class IncorpUpdateServiceImpl @Inject()(injConnector: IncorporationAPIConnector,
                                         injIncorpRepo: IncorpUpdateMongo,
                                         injTimepointRepo: TimepointMongo,
                                         injQueueRepo: QueueMongo,
-                                        injSubscriptionService : Provider[SubscriptionService],
+                                        injSubscriptionService: Provider[SubscriptionService],
                                         msConfig: MicroserviceConfig,
                                         val dateCalculators: DateCalculators,
                                         lockRepositoryProvider: LockRepositoryProvider
@@ -72,79 +71,92 @@ trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResp
   val dateCalculators: DateCalculators
   val lockKeeper: LockKeeper
 
-  private[services] def fetchIncorpUpdates(implicit hc: HeaderCarrier): Future[Seq[IncorpUpdate]] = {
+  private[services] def fetchIncorpUpdates(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[Seq[IncorpUpdate]] = {
     for {
       timepoint <- timepointRepository.retrieveTimePoint
-      incorpUpdates <- incorporationCheckAPIConnector.checkForIncorpUpdate(timepoint)(hc)
+      incorpUpdates <- incorporationCheckAPIConnector.checkForIncorpUpdate(timepoint)
     } yield {
       incorpUpdates
     }
   }
 
-  private[services] def fetchSpecificIncorpUpdates(timepoint: Option[String])(implicit hc: HeaderCarrier): Future[IncorpUpdate] = {
+  private[services] def fetchSpecificIncorpUpdates(timepoint: Option[String]
+                                                  )(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[IncorpUpdate] = {
     for {
-      incorpUpdates <- incorporationCheckAPIConnector.checkForIndividualIncorpUpdate(timepoint)(hc)
+      incorpUpdates <- incorporationCheckAPIConnector.checkForIndividualIncorpUpdate(timepoint)
     } yield {
       incorpUpdates.head
     }
   }
 
-  private[services] def storeIncorpUpdates(updates: Seq[IncorpUpdate]): Future[InsertResult] = {
+  private[services] def storeIncorpUpdates(updates: Seq[IncorpUpdate])
+                                          (implicit ec: ExecutionContext): Future[InsertResult] = {
     for {
       result <- incorpUpdateRepository.storeIncorpUpdates(updates)
       alerts <- alertOnNoCTInterest(result.insertedItems)
     } yield {
-      result.copy(alerts=alerts)
+      result.copy(alerts = alerts)
     }
   }
 
-  private[services] def storeSpecificIncorpUpdate(iUpdate: IncorpUpdate): Future[UpdateWriteResult] = {
+  private[services] def storeSpecificIncorpUpdate(iUpdate: IncorpUpdate)
+                                                 (implicit ec: ExecutionContext): Future[UpdateWriteResult] = {
     for {
       result <- incorpUpdateRepository.storeSingleIncorpUpdate(iUpdate)
-      } yield {
+    } yield {
       result
     }
   }
 
-  private[services] def alertOnNoCTInterest(updates: Seq[IncorpUpdate]): Future[Int] = {
+  private[services] def alertOnNoCTInterest(updates: Seq[IncorpUpdate])(implicit ec: ExecutionContext): Future[Int] = {
 
     // TODO SCRS-11013 got pager duty outside of working hours - alert log scanner matching substring?
     def logNoSubscription(transactionId: String) {
       Logger.error(s"NO_CT_REG_OF_INTEREST for txid $transactionId")
-      if (inWorkingHours) { Logger.error("NO_CT_REG_OF_INTEREST") }
+      if (inWorkingHours) {
+        Logger.error("NO_CT_REG_OF_INTEREST")
+      }
     }
 
     Future.sequence {
       updates.map { iu =>
         for {
-          ctSub   <- subscriptionService.getSubscription(iu.transactionId, "ct", "scrs")
+          ctSub <- subscriptionService.getSubscription(iu.transactionId, "ct", "scrs")
           ctaxSub <- ctSub.fold(subscriptionService.getSubscription(iu.transactionId, "ctax", "scrs"))(_ => Future(ctSub))
-          count    = ctaxSub.fold{ logNoSubscription(iu.transactionId); 1 }(_ => 0)
+          count = ctaxSub.fold {
+            logNoSubscription(iu.transactionId); 1
+          }(_ => 0)
         } yield count
       }
-    } map { _.sum }
+    } map {
+      _.sum
+    }
   }
 
-  private[services] def timepointValidator(timePoint:String): Boolean = {
+  private[services] def timepointValidator(timePoint: String): Boolean = {
     Try(dateCalculators.dateGreaterThanNow(timePoint)).getOrElse {
       Logger.info(s"couldn't parse $timePoint")
-      true }
+      true
+    }
   }
 
 
   private[services] def latestTimepoint(items: Seq[IncorpUpdate]): String = {
 
-    val log = (badTimePoint: Boolean) => (timepoint:String) =>
-      if(badTimePoint) {
+    val log = (badTimePoint: Boolean) => (timepoint: String) =>
+      if (badTimePoint) {
         Logger.error(s"${PagerDutyKeys.TIMEPOINT_INVALID} - last timepoint received from coho invalid: $timepoint")
-      } else {()}
+      } else {
+        ()
+      }
     val tp = items.reverse.head.timepoint
     val shouldLog = timepointValidator(tp)
     log(shouldLog)(tp)
     tp
   }
-def invoke(implicit ec: ExecutionContext):Future[Either[InsertResult,LockResponse]] = {
-  implicit val hc = HeaderCarrier()
+
+  def invoke(implicit ec: ExecutionContext): Future[Either[InsertResult, LockResponse]] = {
+    implicit val hc = HeaderCarrier()
     lockKeeper.tryLock(updateNextIncorpUpdateJobLot).map {
       case Some(res) =>
         Logger.info("IncorpUpdateService acquired lock and returned results")
@@ -160,7 +172,7 @@ def invoke(implicit ec: ExecutionContext):Future[Either[InsertResult,LockRespons
   }
 
   // TODO - look to refactor this into a simpler for-comprehension
-  def updateNextIncorpUpdateJobLot(implicit hc: HeaderCarrier): Future[InsertResult] = {
+  def updateNextIncorpUpdateJobLot(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[InsertResult] = {
     fetchIncorpUpdates flatMap { items =>
       storeIncorpUpdates(items) flatMap {
         case ir@InsertResult(0, 0, Seq(), 0, _) => {
@@ -195,32 +207,35 @@ def invoke(implicit ec: ExecutionContext):Future[Either[InsertResult,LockRespons
     }
   }
 
-  def updateSpecificIncorpUpdateByTP(tps: Seq[String],forNoQueue: Boolean = false)(implicit hc: HeaderCarrier): Future[Seq[Boolean]] = {
+  def updateSpecificIncorpUpdateByTP(tps: Seq[String],
+                                     forNoQueue: Boolean = false
+                                    )(implicit hc: HeaderCarrier,
+                                      ec: ExecutionContext): Future[Seq[Boolean]] = {
 
-    def processAllTPs(tp:String) = {
+    def processAllTPs(tp: String) = {
       for {
         iu <- processByTP(tp)
         qe <- getQueueEntry(iu)
-        utq <- updateTheQueue(qe,iu)
+        utq <- updateTheQueue(qe, iu)
       }
         yield {
-        utq
+          utq
         }
     }
 
-    def processByTP(tp: String) : Future[IncorpUpdate] = {
+    def processByTP(tp: String): Future[IncorpUpdate] = {
       val logPrefix = "[IncorpUpdateService] [processByTP]"
       Logger.info(s"${logPrefix} Passed in timepoint is " + tp)
       for {
         item <- fetchSpecificIncorpUpdates(Some(tp))
         result <- storeSpecificIncorpUpdate(item)
       } yield {
-        Logger.info(s"${logPrefix} Result of updating Incorp Update: for "  + item + " is: Store result: "  + result.ok)
+        Logger.info(s"${logPrefix} Result of updating Incorp Update: for " + item + " is: Store result: " + result.ok)
         item
-        }
       }
+    }
 
-    def getQueueEntry(iu: IncorpUpdate ) : Future[Option[QueuedIncorpUpdate]]= {
+    def getQueueEntry(iu: IncorpUpdate): Future[Option[QueuedIncorpUpdate]] = {
       for {
         q <- queueRepository.getIncorpUpdate(iu.transactionId)
       } yield {
@@ -228,7 +243,7 @@ def invoke(implicit ec: ExecutionContext):Future[Either[InsertResult,LockRespons
       }
     }
 
-    def updateTheQueue(qEntry: Option[QueuedIncorpUpdate], iUpdate: IncorpUpdate) : Future[Boolean] = {
+    def updateTheQueue(qEntry: Option[QueuedIncorpUpdate], iUpdate: IncorpUpdate): Future[Boolean] = {
       val logPrefix = "[IncorpUpdateService] [updateTheQueue]"
       Logger.info(s"${logPrefix} About to update queue for txid ${iUpdate.transactionId}")
       qEntry match {
@@ -267,7 +282,8 @@ def invoke(implicit ec: ExecutionContext):Future[Either[InsertResult,LockRespons
     QueuedIncorpUpdate(dateTime, incorpUpdate)
   }
 
-  def copyToQueue(queuedIncorpUpdates: Seq[QueuedIncorpUpdate]): Future[Boolean] = {
+  def copyToQueue(queuedIncorpUpdates: Seq[QueuedIncorpUpdate])
+                 (implicit ec: ExecutionContext): Future[Boolean] = {
     queueRepository.storeIncorpUpdates(queuedIncorpUpdates).map { r =>
       // TODO - explain result
       Logger.info(s"Incorp updates to be copied to queue = $queuedIncorpUpdates")
@@ -276,7 +292,8 @@ def invoke(implicit ec: ExecutionContext):Future[Either[InsertResult,LockRespons
     }
   }
 
-  def upsertToQueue(queuedUpdate: QueuedIncorpUpdate): Future[Boolean] = {
+  def upsertToQueue(queuedUpdate: QueuedIncorpUpdate)
+                   (implicit ec: ExecutionContext): Future[Boolean] = {
     queueRepository.upsertIncorpUpdate(queuedUpdate) map { res =>
       Logger.info(s"[IncorpUpdateService] [upsertToQueue] upsert result for transaction id : ${queuedUpdate.incorpUpdate.transactionId} - ${res.toString}")
       res.errors.isEmpty

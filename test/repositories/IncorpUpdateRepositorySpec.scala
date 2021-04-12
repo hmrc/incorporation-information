@@ -23,6 +23,8 @@ import play.api.Logger
 import reactivemongo.api.commands.WriteError
 import uk.gov.hmrc.mongo.MongoSpecSupport
 
+import scala.concurrent.ExecutionContext.Implicits.global
+
 class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSpecSupport with LogCapturing {
 
   class Setup extends MongoErrorCodes {

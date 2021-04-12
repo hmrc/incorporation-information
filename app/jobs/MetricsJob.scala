@@ -17,10 +17,11 @@
 package jobs
 
 import akka.actor.ActorSystem
-import javax.inject.Inject
 import jobs.SchedulingActor.UpdateSubscriptionMetrics
 import play.api.Configuration
 import services.MetricsService
+
+import javax.inject.Inject
 
 class MetricsJob @Inject()(val config: Configuration,
                            val metricsService: MetricsService) extends ScheduledJob {

@@ -30,7 +30,7 @@ import repositories._
 import services.SubscriptionService
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
 
@@ -40,6 +40,7 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
     val controller: SubscriptionController = new SubscriptionController {
       override val service: SubscriptionService = mockService
       val controllerComponents: ControllerComponents = stubControllerComponents()
+      implicit val ec: ExecutionContext = global
     }
   }
 
@@ -86,7 +87,7 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
         |""".stripMargin)
 
     "return a 200(Ok) when an incorp update is returned for an existing subscription" in new Setup {
-      when(mockService.checkForSubscription(eqTo(transactionId), any(),any(),any(), any())(any()))
+      when(mockService.checkForSubscription(eqTo(transactionId), any(),any(),any(), any()))
         .thenReturn(Future(IncorpExists(testIncorpUpdate)))
 
       val request: FakeRequest[JsValue] = FakeRequest().withBody(requestBody)
@@ -100,7 +101,7 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
     }
 
     "return a 202(Accepted) when a new subscription is created" in new Setup {
-      when(mockService.checkForSubscription(eqTo(transactionId), any(), any(), any(), any())(any()))
+      when(mockService.checkForSubscription(eqTo(transactionId), any(), any(), any(), any()))
         .thenReturn(Future.successful(SuccessfulSub()))
 
       val request: FakeRequest[JsValue] = FakeRequest().withBody(requestBody)
@@ -130,29 +131,6 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
       val request: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
 
       val result: Future[Result] = controller.removeSubscription(transactionId,regime,subscriber)(request)
-      status(result) shouldBe 404
-    }
-  }
-
-  "getSubscription" should {
-    "return a 200 when a subscription is found" in new Setup {
-      when(mockService.getSubscription(Matchers.eq(transactionId),Matchers.eq(regime),Matchers.eq(subscriber)))
-        .thenReturn(Future.successful(Some(sub)))
-
-      val request: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
-
-      val result: Future[Result] = controller.getSubscription(transactionId,regime,subscriber)(request)
-      status(result) shouldBe 200
-      contentAsJson(result) shouldBe Json.toJson(sub)
-    }
-
-    "return a 404 when a subscription is found" in new Setup {
-      when(mockService.getSubscription(Matchers.eq(transactionId),Matchers.eq(regime),Matchers.eq(subscriber)))
-        .thenReturn(Future.successful(None))
-
-      val request: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
-
-      val result: Future[Result] = controller.getSubscription(transactionId,regime,subscriber)(request)
       status(result) shouldBe 404
     }
   }

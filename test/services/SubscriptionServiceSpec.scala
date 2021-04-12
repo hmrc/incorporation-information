@@ -26,7 +26,7 @@ import repositories._
 import play.api.test.Helpers._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 
 class SubscriptionServiceSpec extends SCRSSpec {
@@ -47,6 +47,7 @@ class SubscriptionServiceSpec extends SCRSSpec {
       override val incorpRepo = mockIncorpRepo
       override val incorpUpdateService = mockIncorpUpdateService
       override protected val forcedSubDelay = subDelay
+      override implicit val ec: ExecutionContext = global
     }
 
     def mockGetIncorpUpdate(transactionId: String, returnedIncorpUpdate: Option[IncorpUpdate]) = {
@@ -57,7 +58,7 @@ class SubscriptionServiceSpec extends SCRSSpec {
       when(mockSubRepo.insertSub(eqTo(sub))).thenReturn(Future.successful(upsertResult))
     }
 
-    def mockUpsertToQueue(success: Boolean) = when(mockIncorpUpdateService.upsertToQueue(any())).thenReturn(Future.successful(success))
+    def mockUpsertToQueue(success: Boolean) = when(mockIncorpUpdateService.upsertToQueue(any())(any[ExecutionContext])).thenReturn(Future.successful(success))
 
     implicit class incorpUpdateImplicits(iu: IncorpUpdate) {
       def toQueuedIncorpUpdate: QueuedIncorpUpdate = QueuedIncorpUpdate(now, iu)

@@ -19,15 +19,13 @@ package services
 import com.codahale.metrics.{Counter, Gauge, Timer}
 import com.kenshoo.play.metrics.{Metrics, MetricsDisabledException}
 import config.MicroserviceConfig
-import javax.inject.Inject
 import jobs._
 import org.joda.time.Duration
 import play.api.Logger
-import reactivemongo.api.commands.LastError
 import repositories._
 import uk.gov.hmrc.lock.LockKeeper
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
 
@@ -55,7 +53,7 @@ class MetricsServiceImpl @Inject()(val injSubRepo: SubscriptionsMongo,
   }
 }
 
-trait MetricsService extends ScheduledService[Either[Map[String, Int], LockResponse]]{
+trait MetricsService extends ScheduledService[Either[Map[String, Int], LockResponse]] {
 
   protected val metrics: Metrics
   protected val subRepo: SubscriptionsRepository
@@ -68,25 +66,25 @@ trait MetricsService extends ScheduledService[Either[Map[String, Int], LockRespo
   val publicAPITimer: Timer
   val internalAPITimer: Timer
 
-    def invoke(implicit ec:ExecutionContext):Future[Either[Map[String, Int],LockResponse]] = {
-      lockKeeper.tryLock(updateSubscriptionMetrics).map {
-        case Some(res) =>
-          Logger.info("MetricsService acquired lock and returned results")
-          Logger.info(s"Result: $res")
-          Left(res)
-        case None =>
-          Logger.info("MetricsService cant acquire lock")
-          Right(MongoLocked)
-      }.recover {
-        case e: Exception => Logger.error(s"Error running updateSubscriptionMetrics with message: ${e.getMessage}")
-          Right(UnlockingFailed)
-      }
+  def invoke(implicit ec: ExecutionContext): Future[Either[Map[String, Int], LockResponse]] = {
+    lockKeeper.tryLock(updateSubscriptionMetrics).map {
+      case Some(res) =>
+        Logger.info("MetricsService acquired lock and returned results")
+        Logger.info(s"Result: $res")
+        Left(res)
+      case None =>
+        Logger.info("MetricsService cant acquire lock")
+        Right(MongoLocked)
+    }.recover {
+      case e: Exception => Logger.error(s"Error running updateSubscriptionMetrics with message: ${e.getMessage}")
+        Right(UnlockingFailed)
     }
+  }
 
-  def updateSubscriptionMetrics(): Future[Map[String, Int]] = {
+  def updateSubscriptionMetrics()(implicit ec: ExecutionContext): Future[Map[String, Int]] = {
     subRepo.getSubscriptionStats() map {
       m => {
-        for( (regime, count) <- m ) {
+        for ((regime, count) <- m) {
           recordSubscriptionRegimeStat(regime, count)
         }
 
@@ -111,7 +109,10 @@ trait MetricsService extends ScheduledService[Either[Map[String, Int], LockRespo
     }
   }
 
-  def processDataResponseWithMetrics[T](success: Option[Counter] = None, failed: Option[Counter] = None, timer: Option[Timer.Context] = None)(f: => Future[T]): Future[T] = {
+  def processDataResponseWithMetrics[T](success: Option[Counter] = None,
+                                        failed: Option[Counter] = None,
+                                        timer: Option[Timer.Context] = None
+                                       )(f: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
     f map { data =>
       timer.map(_.stop())
       success.map(_.inc(1))

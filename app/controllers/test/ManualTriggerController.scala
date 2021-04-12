@@ -17,35 +17,35 @@
 package controllers.test
 
 import constants.JobNames._
+
 import javax.inject.{Inject, Named}
 import jobs.ScheduledJob
 import play.api.Logger
 import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
 import uk.gov.hmrc.play.bootstrap.controller.{BackendBaseController, BackendController}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 class ManualTriggerControllerImpl @Inject()(@Named("incorp-update-job") val incUpdatesJob: ScheduledJob,
                                             @Named("fire-subs-job") val fireSubJob: ScheduledJob,
-                                            override val controllerComponents: ControllerComponents)
-  extends BackendController(controllerComponents) with ManualTriggerController
+                                            override val controllerComponents: ControllerComponents
+                                           )(implicit val ec: ExecutionContext) extends BackendController(controllerComponents) with ManualTriggerController
 
 trait ManualTriggerController extends BackendBaseController {
 
+  implicit val ec: ExecutionContext
   protected val incUpdatesJob: ScheduledJob
   protected val fireSubJob: ScheduledJob
 
   def triggerJob(jobName: String): Action[AnyContent] = Action.async {
-    implicit request =>
-      jobName match {
-        case INCORP_UPDATE => triggerIncorpUpdateJob
-        case FIRE_SUBS => triggerFireSubsJob
-        case _ =>
-          val message = s"$jobName did not match any known jobs"
-          Logger.info(message)
-          Future.successful(NotFound(message))
-      }
+    jobName match {
+      case INCORP_UPDATE => triggerIncorpUpdateJob
+      case FIRE_SUBS => triggerFireSubsJob
+      case _ =>
+        val message = s"$jobName did not match any known jobs"
+        Logger.info(message)
+        Future.successful(NotFound(message))
+    }
   }
 
   private def triggerIncorpUpdateJob: Future[Result] = incUpdatesJob

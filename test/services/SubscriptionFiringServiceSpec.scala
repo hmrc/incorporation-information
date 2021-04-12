@@ -30,7 +30,8 @@ import repositories.{QueueRepository, SubscriptionsRepository}
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import uk.gov.hmrc.lock.LockKeeper
 
-import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future}
 
 
 class SubscriptionFiringServiceSpec extends SCRSSpec with BeforeAndAfterEach with JSONhelpers {
@@ -67,6 +68,7 @@ class SubscriptionFiringServiceSpec extends SCRSSpec with BeforeAndAfterEach wit
     val service: mockService = new mockService {
       override val lockKeeper: LockKeeper = mockLockKeeper
       override val useHttpsFireSubs: Boolean = use
+      override implicit val ec: ExecutionContext = global
     }
   }
 

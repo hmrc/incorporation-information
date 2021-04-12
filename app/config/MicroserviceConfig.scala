@@ -16,11 +16,11 @@
 
 package config
 
-import javax.inject.Inject
 import play.api.Logger
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import utils.Base64
 
+import javax.inject.Inject
 import scala.util.Try
 
 class MicroserviceConfigImpl @Inject()(val servicesConfig: ServicesConfig) extends MicroserviceConfig

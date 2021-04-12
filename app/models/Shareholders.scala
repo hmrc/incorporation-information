@@ -26,7 +26,7 @@ object Shareholders {
       JsSuccess(j.validateOpt[JsArray].fold[Option[JsArray]](_ => {
         Logger.error("[ShareholdersReads] 'shareholders' is not an array")
         Option.empty
-      },identity))
+      }, identity))
     }
   }
 }
