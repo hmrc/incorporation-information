@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,23 +24,28 @@ import repositories.InsertResult
 import services._
 
 class SchedulingActor extends Actor with ActorLogging {
+
   import context.dispatcher
 
   override def receive: Receive = {
-    case message : ScheduledMessage[_] =>
+    case message: ScheduledMessage[_] =>
       Logger.info(s"Received ${message.getClass.getSimpleName}")
       message.service.invoke
   }
 }
 
 object SchedulingActor {
+
   sealed trait ScheduledMessage[A] {
     val service: ScheduledService[A]
   }
 
   case class FireSubscriptions(service: SubscriptionFiringService) extends ScheduledMessage[Either[Seq[Boolean], LockResponse]]
+
   case class IncorpUpdates(service: IncorpUpdateService) extends ScheduledMessage[Either[InsertResult, LockResponse]]
+
   case class UpdateSubscriptionMetrics(service: MetricsService) extends ScheduledMessage[Either[Map[String, Int], LockResponse]]
+
   case class ProactiveMonitoring(service: ProactiveMonitoringService) extends ScheduledMessage[Either[(String, String), LockResponse]]
 
   def props: Props = Props[SchedulingActor]

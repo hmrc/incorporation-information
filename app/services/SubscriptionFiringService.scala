@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,16 @@ package services
 
 import config.MicroserviceConfig
 import connectors.FiringSubscriptionsConnector
-import javax.inject.Inject
 import jobs._
 import models.{IncorpUpdateResponse, QueuedIncorpUpdate}
 import org.joda.time.{DateTime, Duration}
 import play.api.{Environment, Logger}
-import reactivemongo.api.commands.{DefaultWriteResult, LastError}
+import reactivemongo.api.commands.DefaultWriteResult
 import repositories._
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.lock.LockKeeper
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
 
@@ -38,7 +37,7 @@ class SubscriptionFiringServiceImpl @Inject()(fsConnector: FiringSubscriptionsCo
                                               msConfig: MicroserviceConfig,
                                               val env: Environment,
                                               lockRepository: LockRepositoryProvider
-                                             ) extends SubscriptionFiringService {
+                                             )(implicit val ec: ExecutionContext) extends SubscriptionFiringService {
   override lazy val firingSubsConnector = fsConnector
   override lazy val queueRepository = injQueueRepo.repo
   override lazy val subscriptionsRepository = injSubRepo.repo
@@ -57,6 +56,7 @@ class SubscriptionFiringServiceImpl @Inject()(fsConnector: FiringSubscriptionsCo
 }
 
 trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], LockResponse]] {
+  implicit val ec: ExecutionContext
   val firingSubsConnector: FiringSubscriptionsConnector
   val lockKeeper: LockKeeper
   val queueRepository: QueueRepository
@@ -68,32 +68,34 @@ trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], Lo
 
   implicit val hc: HeaderCarrier
 
-def invoke(implicit ec: ExecutionContext): Future[Either[Seq[Boolean], LockResponse]] = {
-  lockKeeper.tryLock(fireIncorpUpdateBatch).map {
-    case Some(res) =>
-      Logger.info("SubscriptionFiringService acquired lock and returned results")
-      Logger.info(s"Result: $res")
-      Left(res)
-    case None =>
-      Logger.info("SubscriptionFiringService cant acquire lock")
-      Right(MongoLocked)
-  }.recover {
-    case e: Exception => Logger.error(s"Error running fireIncorpUpdateBatch with message: ${e.getMessage}")
-      Right(UnlockingFailed)
+  def invoke(implicit ec: ExecutionContext): Future[Either[Seq[Boolean], LockResponse]] = {
+    lockKeeper.tryLock(fireIncorpUpdateBatch).map {
+      case Some(res) =>
+        Logger.info("SubscriptionFiringService acquired lock and returned results")
+        Logger.info(s"Result: $res")
+        Left(res)
+      case None =>
+        Logger.info("SubscriptionFiringService cant acquire lock")
+        Right(MongoLocked)
+    }.recover {
+      case e: Exception => Logger.error(s"Error running fireIncorpUpdateBatch with message: ${e.getMessage}")
+        Right(UnlockingFailed)
+    }
   }
-}
+
   def fireIncorpUpdateBatch: Future[Seq[Boolean]] = {
     queueRepository.getIncorpUpdates(fetchSize) flatMap { updates =>
-      Future.sequence( updates map { update => for {
-        checkTSresult <- checkTimestamp(update.timestamp)
-        fireResult <- fire(checkTSresult, update)
-      } yield fireResult
+      Future.sequence(updates map { update =>
+        for {
+          checkTSresult <- checkTimestamp(update.timestamp)
+          fireResult <- fire(checkTSresult, update)
+        } yield fireResult
       })
     }
   }
 
   def fire(tsRes: Boolean, update: QueuedIncorpUpdate): Future[Boolean] = {
-    if (tsRes){
+    if (tsRes) {
       fireIncorpUpdate(update)
     } else {
       Logger.info(s"[SubscriptionFiringService][fire] QueuedIncorpUpdate with transactionId: ${update.incorpUpdate.transactionId} and timestamp: ${update.timestamp}" +
@@ -117,14 +119,14 @@ def invoke(implicit ec: ExecutionContext): Future[Either[Seq[Boolean], LockRespo
   }
 
   private def deleteQueuedIU(transId: String): Future[Boolean] = {
-    subscriptionsRepository.getSubscriptions(transId) flatMap{
+    subscriptionsRepository.getSubscriptions(transId) flatMap {
       case h :: t => {
         Logger.info(s"[SubscriptionFiringService][deleteQueuedIU] QueuedIncorpUdate with transactionId: ${transId} cannot be deleted as there are other " +
           s"subscriptions with this transactionId")
         Future.successful(false)
       }
       case Nil => {
-        queueRepository.removeQueuedIncorpUpdate(transId).map{
+        queueRepository.removeQueuedIncorpUpdate(transId).map {
           case true => Logger.info(s"[SubscriptionFiringService][deleteQueuedIU] QueuedIncorpUpdate with transactionId: ${transId} was deleted")
             true
           case false => Logger.info(s"[SubscriptionFiringService][deleteQueuedIU] QueuedIncorpUpdate with transactionId: ${transId} failed to delete")
@@ -134,29 +136,29 @@ def invoke(implicit ec: ExecutionContext): Future[Either[Seq[Boolean], LockRespo
     }
   }
 
-  private[services] val httpHttpsConverter = (url: String) => if(useHttpsFireSubs) url.replace("http://", "https://").replace(":80", ":443") else url
+  private[services] val httpHttpsConverter = (url: String) => if (useHttpsFireSubs) url.replace("http://", "https://").replace(":80", ":443") else url
 
   private[services] def fireIncorpUpdate(iu: QueuedIncorpUpdate): Future[Boolean] = {
     subscriptionsRepository.getSubscriptions(iu.incorpUpdate.transactionId) flatMap { subscriptions =>
-      Future.sequence( subscriptions map { sub =>
+      Future.sequence(subscriptions map { sub =>
         val iuResponse: IncorpUpdateResponse = IncorpUpdateResponse(sub.regime, sub.subscriber, sub.callbackUrl, iu.incorpUpdate)
 
-        firingSubsConnector.connectToAnyURL(iuResponse, httpHttpsConverter(sub.callbackUrl))(hc) flatMap { response =>
+        firingSubsConnector.connectToAnyURL(iuResponse, httpHttpsConverter(sub.callbackUrl)) flatMap { response =>
           Logger.info(s"[SubscriptionFiringService] [fireIncorpUpdate] - Posting response to callback for txid : ${iu.incorpUpdate.transactionId} was successful")
           response.status match {
             case 202 => {
               val newTS = DateTime.now.plusSeconds(queueRetryDelay)
               queueRepository.updateTimestamp(sub.transactionId, newTS).map(_ => false)
             }
-            case _   =>  deleteSub(sub.transactionId, sub.regime, sub.subscriber)
+            case _ => deleteSub(sub.transactionId, sub.regime, sub.subscriber)
           }
         } recoverWith {
-          case e : Exception =>
+          case e: Exception =>
             Logger.info(s"[SubscriptionFiringService][fireIncorpUpdate] Subscription with transactionId: ${sub.transactionId} failed to return a 200 response")
             val newTS = DateTime.now.plusSeconds(queueFailureDelay)
             queueRepository.updateTimestamp(sub.transactionId, newTS).map(_ => false)
         }
-      } ) flatMap { sb =>
+      }) flatMap { sb =>
         deleteQueuedIU(iu.incorpUpdate.transactionId)
       }
     }

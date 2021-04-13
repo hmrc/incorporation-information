@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package config
 
 import akka.actor.ActorSystem
 import com.typesafe.config.Config
-import javax.inject.Inject
 import play.api.Configuration
 import play.api.libs.ws.{WSClient, WSProxyServer}
 import uk.gov.hmrc.http.hooks.HttpHook
@@ -27,6 +26,8 @@ import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.bootstrap.config.AppName
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.http.ws._
+
+import javax.inject.Inject
 
 
 class WSHttpProxyImpl @Inject()(val microserviceConfig: MicroserviceConfig,

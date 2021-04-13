@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,36 +18,37 @@ package controllers
 
 import config.MicroserviceConfig
 import connectors.PublicCohoApiConnector
-import javax.inject.Inject
 import models.IncorpUpdate
 import play.api.Logger
 import play.api.libs.json.Json
-import play.api.mvc.{Action, ControllerComponents}
-import repositories.{IncorpUpdateMongo, IncorpUpdateRepository}
+import play.api.mvc.{Action, AnyContent, ControllerComponents}
+import repositories.{IncorpUpdateMongo, IncorpUpdateMongoRepository, IncorpUpdateRepository}
 import services.{TransactionalService, TransactionalServiceException}
-import uk.gov.hmrc.play.bootstrap.controller.{BackendBaseController, BackendController, BaseController}
+import uk.gov.hmrc.play.bootstrap.controller.{BackendBaseController, BackendController}
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import javax.inject.Inject
+import scala.concurrent.ExecutionContext
 
 
 class TransactionalControllerImpl @Inject()(config: MicroserviceConfig,
                                             val publicApiConnector: PublicCohoApiConnector,
                                             val incorpMongo: IncorpUpdateMongo,
                                             val service: TransactionalService,
-                                            override val controllerComponents: ControllerComponents)
-  extends BackendController(controllerComponents) with TransactionalController {
-  lazy val incorpRepo = incorpMongo.repo
-  override val allowlistedServices = config.knownSCRSServices.split(",").toSet
+                                            override val controllerComponents: ControllerComponents
+                                           )(implicit val ec: ExecutionContext) extends BackendController(controllerComponents) with TransactionalController {
+  lazy val incorpRepo: IncorpUpdateMongoRepository = incorpMongo.repo
+  override val allowlistedServices: Set[String] = config.knownSCRSServices.split(",").toSet
 }
 
 trait TransactionalController extends BackendBaseController {
 
+  implicit val ec: ExecutionContext
   protected val service: TransactionalService
   val publicApiConnector: PublicCohoApiConnector
   val incorpRepo: IncorpUpdateRepository
   val allowlistedServices: Set[String]
 
-  def fetchCompanyProfile(transactionId: String) = Action.async {
+  def fetchCompanyProfile(transactionId: String): Action[AnyContent] = Action.async {
     implicit request =>
       service.fetchCompanyProfile(transactionId).map {
         case Some(json) => Ok(json)
@@ -55,7 +56,7 @@ trait TransactionalController extends BackendBaseController {
       }
   }
 
-  def fetchShareholders(transactionId: String) = Action.async {
+  def fetchShareholders(transactionId: String): Action[AnyContent] = Action.async {
     implicit request =>
       service.fetchShareholders(transactionId).map {
         case Some(json) if json.value.nonEmpty => Ok(json)
@@ -64,7 +65,7 @@ trait TransactionalController extends BackendBaseController {
       }
   }
 
-  def fetchIncorporatedCompanyProfile(crn: String) = Action.async {
+  def fetchIncorporatedCompanyProfile(crn: String): Action[AnyContent] = Action.async {
     implicit request =>
       val callingService = request.headers.get("User-Agent").getOrElse("unknown")
       val isScrs = allowlistedServices(callingService)
@@ -75,7 +76,7 @@ trait TransactionalController extends BackendBaseController {
       }
   }
 
-  def fetchOfficerList(transactionId: String) = Action.async {
+  def fetchOfficerList(transactionId: String): Action[AnyContent] = Action.async {
     implicit request =>
       service.fetchOfficerList(transactionId).map(Ok(_)) recover {
         case ex: TransactionalServiceException =>
@@ -91,15 +92,14 @@ trait TransactionalController extends BackendBaseController {
       }
   }
 
-  def fetchIncorpUpdate(transactionId: String) = Action.async {
-    implicit request =>
+  def fetchIncorpUpdate(transactionId: String): Action[AnyContent] = Action.async {
       incorpRepo.getIncorpUpdate(transactionId) map {
         case Some(incorpUpdate) => Ok(Json.toJson(incorpUpdate)(IncorpUpdate.responseFormat))
         case _ => NoContent
       }
   }
 
-  def fetchSicCodesByTransactionID(txId: String) = Action.async {
+  def fetchSicCodesByTransactionID(txId: String): Action[AnyContent] = Action.async {
     implicit request =>
       service.fetchSicByTransId(txId) map {
         case Some(sicCodes) => Ok(sicCodes)
@@ -107,7 +107,7 @@ trait TransactionalController extends BackendBaseController {
       }
   }
 
-  def fetchSicCodesByCRN(crn: String) = Action.async {
+  def fetchSicCodesByCRN(crn: String): Action[AnyContent] = Action.async {
     implicit request =>
       service.fetchSicByCRN(crn) map {
         case Some(json) => Ok(json)

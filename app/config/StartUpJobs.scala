@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +16,14 @@
 
 package config
 
-import java.util.Base64
-
-import javax.inject.Inject
 import play.api.{Configuration, Logger}
 import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo, TimepointMongo}
 import services.{IncorpUpdateService, SubscriptionService}
 import uk.gov.hmrc.http.HeaderCarrier
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import java.util.Base64
+import javax.inject.Inject
+import scala.concurrent.{ExecutionContext, Future}
 
 class StartUpJobsImpl @Inject()(val configuration: Configuration,
                                 val incorpUpdateService: IncorpUpdateService,
@@ -34,9 +32,10 @@ class StartUpJobsImpl @Inject()(val configuration: Configuration,
                                 val subsRepo: SubscriptionsMongo,
                                 val incorpUpdateRepo: IncorpUpdateMongo,
                                 val queueRepo: QueueMongo
-                               ) extends StartUpJobs
+                               )(implicit val ec: ExecutionContext) extends StartUpJobs
 
 trait StartUpJobs {
+  implicit val ec: ExecutionContext
   val configuration: Configuration
   val incorpUpdateService: IncorpUpdateService
   val subscriptionService: SubscriptionService
@@ -53,7 +52,7 @@ trait StartUpJobs {
       case Some(timepointList) =>
         val tpList = new String(Base64.getDecoder.decode(timepointList), "UTF-8")
         Logger.info(s"[Config] List of timepoints are $tpList")
-        incorpUpdateService.updateSpecificIncorpUpdateByTP(tpList.split(","))(HeaderCarrier()) map { result =>
+        incorpUpdateService.updateSpecificIncorpUpdateByTP(tpList.split(","))(HeaderCarrier(), ec) map { result =>
           Logger.info(s"Updating incorp data is switched on - result = $result")
         }
     }
@@ -66,7 +65,7 @@ trait StartUpJobs {
         val configString = new String(Base64.getDecoder.decode(resubs), "UTF-8")
         configString.split(",").toList match {
           case txId :: callbackUrl :: Nil =>
-            subscriptionService.checkForSubscription(txId, "ctax", "scrs", callbackUrl, true)(HeaderCarrier()) map {
+            subscriptionService.checkForSubscription(txId, "ctax", "scrs", callbackUrl, true) map {
               result => Logger.info(s"[Config] result of subscription service call for $txId = $result")
             }
           case _ => Future.successful(Logger.info(s"[Config] No info in re-subscription variable"))
@@ -81,7 +80,7 @@ trait StartUpJobs {
       case Some(timepointListNQ) =>
         val tpList = new String(Base64.getDecoder.decode(timepointListNQ), "UTF-8")
         Logger.info(s"[Config] List of timepoints for no queue entries are $tpList")
-        incorpUpdateService.updateSpecificIncorpUpdateByTP(tpList.split(","), forNoQueue = true)(HeaderCarrier()) map { result =>
+        incorpUpdateService.updateSpecificIncorpUpdateByTP(tpList.split(","), forNoQueue = true)(HeaderCarrier(), ec) map { result =>
           Logger.info(s"Updating incorp data is switched on for no queue entries - result = $result")
         }
     }

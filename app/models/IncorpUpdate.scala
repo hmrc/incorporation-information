@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,14 +21,12 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import utils.TimestampFormats._
 
-import scala.language.implicitConversions
-
-case class IncorpUpdate(transactionId : String,
-                        status : String,
-                        crn : Option[String],
-                        incorpDate:  Option[DateTime],
-                        timepoint : String,
-                        statusDescription : Option[String] = None)
+case class IncorpUpdate(transactionId: String,
+                        status: String,
+                        crn: Option[String],
+                        incorpDate: Option[DateTime],
+                        timepoint: String,
+                        statusDescription: Option[String] = None)
 
 object IncorpUpdate {
   implicit val format: OFormat[IncorpUpdate] = Json.format[IncorpUpdate]
@@ -72,7 +70,7 @@ object IncorpStatusEvent {
       (__ \ "timestamp").format[DateTime]
     ) (IncorpStatusEvent.apply, unlift(IncorpStatusEvent.unapply))
 
-    implicit val format: OFormat[IncorpStatusEvent] = Json.format[IncorpStatusEvent]
+  implicit val format: OFormat[IncorpStatusEvent] = Json.format[IncorpStatusEvent]
 }
 
 case class IncorpUpdateResponse(regime: String, subscriber: String, callbackUrl: String, incorpUpdate: IncorpUpdate)
@@ -111,7 +109,7 @@ case class QueuedIncorpUpdate(timestamp: DateTime, incorpUpdate: IncorpUpdate)
 
 object QueuedIncorpUpdate {
   val format: OFormat[QueuedIncorpUpdate] = (
-      (__ \ "timestamp").format[DateTime] and
+    (__ \ "timestamp").format[DateTime] and
       (__ \ "incorp_update").format[IncorpUpdate](IncorpUpdate.cohoFormat)
-  ) (QueuedIncorpUpdate.apply, unlift(QueuedIncorpUpdate.unapply))
+    ) (QueuedIncorpUpdate.apply, unlift(QueuedIncorpUpdate.unapply))
 }

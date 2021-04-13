@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,14 +30,15 @@ import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
 
 import scala.collection.Seq
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
-class SubscriptionsMongo @Inject()(mongo: ReactiveMongoComponent) extends ReactiveMongoFormats {
+class SubscriptionsMongo @Inject()(mongo: ReactiveMongoComponent)(implicit val ec: ExecutionContext) extends ReactiveMongoFormats {
   lazy val repo = new SubscriptionsMongoRepository(mongo.mongoConnector.db)
 }
 
 trait SubscriptionsRepository {
+  implicit val ec: ExecutionContext
+
   def insertSub(sub: Subscription): Future[UpsertResult]
 
   def deleteSub(transactionId: String, regime: String, subscriber: String): Future[WriteResult]
@@ -65,7 +66,7 @@ case object NotDeletedSub extends UnsubscribeStatus
 
 case class UpsertResult(modified: Int, inserted: Int, errors: Seq[WriteError])
 
-class SubscriptionsMongoRepository(mongo: () => DB) extends ReactiveRepository[Subscription, BSONObjectID](
+class SubscriptionsMongoRepository(mongo: () => DB)(implicit val ec: ExecutionContext) extends ReactiveRepository[Subscription, BSONObjectID](
     collectionName = "subscriptions",
     mongo = mongo,
     domainFormat = Subscription.format)

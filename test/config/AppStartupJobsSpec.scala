@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,8 @@ import play.api.{Configuration, Logger}
 import repositories._
 import services.{IncorpUpdateService, SubscriptionService}
 
-import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future}
 
 class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually {
 
@@ -60,13 +61,14 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually {
       override lazy val subsRepo: SubscriptionsMongo = mockSubsMongo
       override lazy val incorpUpdateRepo: IncorpUpdateMongo = mockIncorpUpdateMongo
       override lazy val queueRepo: QueueMongo = mockQueueMongo
+      override implicit lazy val ec: ExecutionContext = global
     }
   }
 
   "logIncorpInfo" should {
 
     //"trans-1,trans-2"
-    val encodedTransIds = "dHJhbnMtMSx0cmFucy0y"
+    //val encodedTransIds = "dHJhbnMtMSx0cmFucy0y"
 
     val dateTime = DateTime.parse("2010-06-30T01:20+00:00")
 
@@ -83,7 +85,7 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually {
       when(mockSubsMongo.repo).thenReturn(mockSubsRepo)
       when(mockIncorpUpdateMongo.repo).thenReturn(mockIncorpUpdateRepo)
       when(mockQueueMongo.repo).thenReturn(mockQueueRepo)
-      when(mockIIService.updateSpecificIncorpUpdateByTP(any(),any())(any())).thenReturn(Future.successful(Seq()))
+      when(mockIIService.updateSpecificIncorpUpdateByTP(any(),any())(any(), any())).thenReturn(Future.successful(Seq()))
       when(mockSubsRepo.getSubscriptions(eqTo(transId1)))
         .thenReturn(Future.successful(Seq(subscription1)))
       when(mockSubsRepo.getSubscriptionsByRegime(any(),any())).thenReturn(Future.successful(Seq(subscription1)))
@@ -119,7 +121,7 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually {
       when(mockSubsMongo.repo).thenReturn(mockSubsRepo)
       when(mockIncorpUpdateMongo.repo).thenReturn(mockIncorpUpdateRepo)
       when(mockQueueMongo.repo).thenReturn(mockQueueRepo)
-      when(mockIIService.updateSpecificIncorpUpdateByTP(any(),any())(any())).thenReturn(Future.successful(Seq()))
+      when(mockIIService.updateSpecificIncorpUpdateByTP(any(),any())(any(), any())).thenReturn(Future.successful(Seq()))
       when(mockSubsRepo.getSubscriptionsByRegime(any(),any())).thenReturn(Future.successful(Seq()))
       withCaptureOfLoggingFrom(Logger) { logEvents =>
         appStartupJobs(Configuration.from(Map("timepointList" -> "MTIzNDU=")))
@@ -138,7 +140,7 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually {
       when(mockSubsMongo.repo).thenReturn(mockSubsRepo)
       when(mockIncorpUpdateMongo.repo).thenReturn(mockIncorpUpdateRepo)
       when(mockQueueMongo.repo).thenReturn(mockQueueRepo)
-      when(mockIIService.updateSpecificIncorpUpdateByTP(any(),any())(any())).thenReturn(Future.successful(Seq()))
+      when(mockIIService.updateSpecificIncorpUpdateByTP(any(),any())(any(), any())).thenReturn(Future.successful(Seq()))
       when(mockSubsRepo.getSubscriptions(any()))
         .thenReturn(Future.successful(Seq(subscription1)))
       when(mockSubsRepo.getSubscriptionsByRegime(any(),any())).thenReturn(Future.successful(Seq(subscription1)))
@@ -163,7 +165,7 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually {
       when(mockSubsMongo.repo).thenReturn(mockSubsRepo)
       when(mockIncorpUpdateMongo.repo).thenReturn(mockIncorpUpdateRepo)
       when(mockQueueMongo.repo).thenReturn(mockQueueRepo)
-      when(mockIIService.updateSpecificIncorpUpdateByTP(any(),any())(any())).thenReturn(Future.successful(Seq()))
+      when(mockIIService.updateSpecificIncorpUpdateByTP(any(),any())(any(), any())).thenReturn(Future.successful(Seq()))
       when(mockSubsRepo.getSubscriptions(any()))
         .thenReturn(Future.successful(Seq()))
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,12 +21,14 @@ import connectors.{FailedTransactionalAPIResponse, IncorporationAPIConnector, Pu
 import org.mockito.Matchers.{any, eq => eqTo}
 import org.mockito.Mockito._
 import play.api.libs.json.{JsValue, Json}
+import play.api.test.Helpers._
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.lock.LockKeeper
 import utils.Base64
-import play.api.test.Helpers._
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+
 
 
 class ProactiveMonitoringServiceSpec extends SCRSSpec {

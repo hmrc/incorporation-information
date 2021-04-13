@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,14 @@ package jobs
 
 
 import akka.actor.ActorSystem
-import javax.inject.Inject
 import jobs.SchedulingActor.FireSubscriptions
 import play.api.Configuration
 import services.SubscriptionFiringService
 
-class FireSubscriptionsJob @Inject()( fireSubsService: SubscriptionFiringService,
-                                      val config: Configuration) extends ScheduledJob {
+import javax.inject.Inject
+
+class FireSubscriptionsJob @Inject()(fireSubsService: SubscriptionFiringService,
+                                     val config: Configuration) extends ScheduledJob {
   val jobName = "fire-subs-job"
   val actorSystem = ActorSystem(jobName)
   val scheduledMessage = FireSubscriptions(fireSubsService)

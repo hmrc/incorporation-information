@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,18 +18,20 @@ package utils
 
 import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.{DateTime, DateTimeZone}
-import play.api.libs.json.Json
 
 
 sealed trait FeatureSwitch {
   def name: String
+
   def enabled: Boolean
 }
 
 trait TimedFeatureSwitch extends FeatureSwitch {
 
   def start: Option[DateTime]
+
   def end: Option[DateTime]
+
   def target: DateTime
 
   override def enabled: Boolean = (start, end) match {
@@ -43,6 +45,7 @@ trait TimedFeatureSwitch extends FeatureSwitch {
 case class BooleanFeatureSwitch(name: String, enabled: Boolean) extends FeatureSwitch
 
 case class EnabledTimedFeatureSwitch(name: String, start: Option[DateTime], end: Option[DateTime], target: DateTime) extends TimedFeatureSwitch
+
 case class DisabledTimedFeatureSwitch(name: String, start: Option[DateTime], end: Option[DateTime], target: DateTime) extends TimedFeatureSwitch {
   override def enabled = !super.enabled
 }
@@ -71,7 +74,7 @@ object FeatureSwitch {
     getProperty(name)
   }
 
-  private[utils] def toDate(text: String) : Option[DateTime] = {
+  private[utils] def toDate(text: String): Option[DateTime] = {
     text match {
       case UNSPECIFIED => None
       case _ => Some(dateFormat.parseDateTime(text))
@@ -92,9 +95,11 @@ object FeatureSwitch {
   }
 
   def enable(fs: FeatureSwitch): FeatureSwitch = setProperty(fs.name, "true")
+
   def disable(fs: FeatureSwitch): FeatureSwitch = setProperty(fs.name, "false")
 
   def apply(name: String, enabled: Boolean = false): FeatureSwitch = getProperty(name)
+
   def unapply(fs: FeatureSwitch): Option[(String, Boolean)] = Some(fs.name -> fs.enabled)
 
 }
@@ -116,9 +121,13 @@ trait SCRSFeatureSwitches {
   val KEY_PRO_MONITORING: String
 
   def transactionalAPI = FeatureSwitch.getProperty(KEY_TX_API)
+
   def scheduler = FeatureSwitch.getProperty(KEY_INCORP_UPDATE)
+
   def fireSubs = FeatureSwitch.getProperty(KEY_FIRE_SUBS)
+
   def scheduledMetrics = FeatureSwitch.getProperty(KEY_SCHED_METRICS)
+
   def proactiveMonitoring: FeatureSwitch = FeatureSwitch.getProperty(KEY_PRO_MONITORING)
 
   def apply(name: String): Option[FeatureSwitch] = name match {

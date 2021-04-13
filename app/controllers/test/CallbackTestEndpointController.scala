@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,19 +17,20 @@
 package controllers.test
 
 
-import javax.inject.Inject
 import play.api.Logger
-import play.api.libs.json.{JsObject, JsValue}
+import play.api.libs.json.JsValue
 import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.play.bootstrap.controller.{BackendBaseController, BackendController}
 
+import javax.inject.Inject
 import scala.concurrent.Future
 
 
-class CallbackTestEndpointControllerImpl @Inject()(override val controllerComponents: ControllerComponents)
-  extends BackendController(controllerComponents) with CallbackTestEndpointController
+class CallbackTestEndpointControllerImpl @Inject()(override val controllerComponents: ControllerComponents
+                                                  ) extends BackendController(controllerComponents) with CallbackTestEndpointController
 
 trait CallbackTestEndpointController extends BackendBaseController {
+
   def post: Action[JsValue] = Action.async(parse.json) {
     implicit request =>
       Logger.info("[Callback] - callback to test endpoint received")

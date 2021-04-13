@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,26 +17,31 @@
 package controllers
 
 
-import javax.inject.Inject
 import models.{IncorpUpdate, IncorpUpdateResponse}
-import play.api.libs.json.{JsObject, Json}
-import play.api.mvc.ControllerComponents
+import play.api.libs.json.{JsObject, JsValue, Json}
+import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import repositories._
 import services.SubscriptionService
 import uk.gov.hmrc.play.bootstrap.controller.{BackendBaseController, BackendController}
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import javax.inject.Inject
+import scala.concurrent.ExecutionContext
 
 
 class SubscriptionControllerImpl @Inject()(val service: SubscriptionService,
-                                           override val controllerComponents: ControllerComponents)
-  extends BackendController(controllerComponents) with SubscriptionController
+                                           override val controllerComponents: ControllerComponents
+                                          )(implicit val ec: ExecutionContext) extends BackendController(controllerComponents) with SubscriptionController
 
 trait SubscriptionController extends BackendBaseController {
 
+  implicit val ec: ExecutionContext
   protected val service: SubscriptionService
 
-  def checkSubscription(transactionId: String, regime: String, subscriber: String, force: Boolean = false) = Action.async(parse.json) {
+  def checkSubscription(transactionId: String,
+                        regime: String,
+                        subscriber: String,
+                        force: Boolean = false
+                       ): Action[JsValue] = Action.async(parse.json) {
     implicit request =>
       withJsonBody[JsObject] { js =>
         val callbackUrl = (js \ "SCRSIncorpSubscription" \ "callbackUrl").as[String]
@@ -50,8 +55,10 @@ trait SubscriptionController extends BackendBaseController {
       }
   }
 
-  def removeSubscription(transactionId: String, regime: String, subscriber: String) = Action.async {
-    implicit request =>
+  def removeSubscription(transactionId: String,
+                         regime: String,
+                         subscriber: String
+                        ): Action[AnyContent] = Action.async {
       service.deleteSubscription(transactionId, regime, subscriber).map {
         case DeletedSub => Ok
         case NotDeletedSub => NotFound
@@ -59,15 +66,7 @@ trait SubscriptionController extends BackendBaseController {
       }
   }
 
-  def getSubscription(transactionId: String, regime: String, subscriber: String) = Action.async {
-    implicit request =>
-      service.getSubscription(transactionId, regime, subscriber).map {
-        case Some(sub) => Ok(Json.toJson(sub))
-        case _ => NotFound("The subscription does not exist")
-      }
-  }
-
-  private[controllers] def toResponse(regime: String, sub: String, url: String, update: IncorpUpdate): IncorpUpdateResponse = {
+  private[controllers] def toResponse(regime: String, sub: String, url: String, update: IncorpUpdate): IncorpUpdateResponse =
     IncorpUpdateResponse(regime, sub, url, update)
-  }
+
 }

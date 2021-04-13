@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ import play.api.test.Helpers._
 import repositories.InsertResult
 import services.{IncorpUpdateService, SubscriptionFiringService}
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
 
@@ -63,11 +64,12 @@ class ManualTriggerControllerSpec extends SCRSSpec {
   }
 
   class Setup {
-    reset(mockSM,mockSMSeq, mockIncorpUpdateService, mockSubFiringService)
+    reset(mockSM, mockSMSeq, mockIncorpUpdateService, mockSubFiringService)
     val controller = new ManualTriggerController {
       override protected val incUpdatesJob = mockIncUpdatesJob
       override protected val fireSubJob = mockFireSubJob
       val controllerComponents: ControllerComponents = stubControllerComponents()
+      override implicit val ec: ExecutionContext = global
     }
   }
 
@@ -77,11 +79,11 @@ class ManualTriggerControllerSpec extends SCRSSpec {
 
       "execute the job and return a message" in new Setup {
         when(mockSM.service).thenReturn(mockIncorpUpdateService)
-        when(mockIncorpUpdateService.invoke(any[ExecutionContext]())).thenReturn(Future.successful(Left(InsertResult(1,1))))
+        when(mockIncorpUpdateService.invoke(any[ExecutionContext]())).thenReturn(Future.successful(Left(InsertResult(1, 1))))
         val result = controller.triggerJob(INCORP_UPDATE)(FakeRequest())
 
         status(result) shouldBe 200
-        contentAsString(result) shouldBe Left(InsertResult(1,1)).toString
+        contentAsString(result) shouldBe Left(InsertResult(1, 1)).toString
       }
     }
 

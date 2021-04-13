@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ object Shareholders {
       JsSuccess(j.validateOpt[JsArray].fold[Option[JsArray]](_ => {
         Logger.error("[ShareholdersReads] 'shareholders' is not an array")
         Option.empty
-      },identity))
+      }, identity))
     }
   }
 }

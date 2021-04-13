@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,6 @@
  */
 
 package connectors
-
-import java.util.UUID
 
 import Helpers.SCRSSpec
 import com.codahale.metrics.{Counter, Timer}
@@ -34,7 +32,9 @@ import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.http.ws.{WSHttp, WSProxy}
 import utils.{DateCalculators, FeatureSwitch, SCRSFeatureSwitches}
 
-import scala.concurrent.Future
+import java.util.UUID
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future}
 
 class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
@@ -79,14 +79,15 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       override val failureCounter: Counter = metrics.transactionApiFailureCounter
       override protected val loggingDays = "MON,TUE,WED,THU,FRI"
       override protected val loggingTimes = "08:00:00_17:00:00"
+      override implicit val ec: ExecutionContext = global
     }
 
-      val timepoint = "old-timepoint"
-      val timepointNew = "new-timepoint"
-      val timepointSeq = Seq(timepoint,timepointNew)
-      val incorpUpdate = Seq(IncorpUpdate("transId", "accepted", None, None, timepoint, None))
-      val incorpUpdate2 = IncorpUpdate("transId2", "accepted", None, None, timepoint, None)
-      val rejectedIncorpUpdate = IncorpUpdate("7894578956784", "rejected", None, None, "123456789", None)
+    val timepoint = "old-timepoint"
+    val timepointNew = "new-timepoint"
+    val timepointSeq = Seq(timepoint, timepointNew)
+    val incorpUpdate = Seq(IncorpUpdate("transId", "accepted", None, None, timepoint, None))
+    val incorpUpdate2 = IncorpUpdate("transId2", "accepted", None, None, timepoint, None)
+    val rejectedIncorpUpdate = IncorpUpdate("7894578956784", "rejected", None, None, "123456789", None)
 
   }
 
@@ -301,7 +302,6 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       |}""".stripMargin)
 
 
-
   val validSubmissionResponseItems = Seq(
     IncorpUpdate(
       "7894578956784",
@@ -511,14 +511,14 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
         failure.ex shouldBe a[IllegalArgumentException]
       }
-        "there is an empty date of incorporation" in new Setup {
-          when(mockHttp.GET[HttpResponse](any())(Matchers.any(), Matchers.any(), Matchers.any()))
-            .thenReturn(Future.successful(HttpResponse(200, Some(invalidEmptyDateSubmissionResponseJson))))
+      "there is an empty date of incorporation" in new Setup {
+        when(mockHttp.GET[HttpResponse](any())(Matchers.any(), Matchers.any(), Matchers.any()))
+          .thenReturn(Future.successful(HttpResponse(200, Some(invalidEmptyDateSubmissionResponseJson))))
 
-          val result = connector.checkForIncorpUpdate(Some(timepoint))
-          val failure = intercept[IncorpUpdateAPIFailure]( await(result) )
+        val result = connector.checkForIncorpUpdate(Some(timepoint))
+        val failure = intercept[IncorpUpdateAPIFailure](await(result))
 
-          failure.ex shouldBe a[IllegalArgumentException]
+        failure.ex shouldBe a[IllegalArgumentException]
       }
       "only one of many submissions is invalid" in new Setup {
         when(mockHttp.GET[HttpResponse](any())(Matchers.any(), Matchers.any(), Matchers.any()))

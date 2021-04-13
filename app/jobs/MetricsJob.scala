@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,11 @@
 package jobs
 
 import akka.actor.ActorSystem
-import javax.inject.Inject
 import jobs.SchedulingActor.UpdateSubscriptionMetrics
 import play.api.Configuration
 import services.MetricsService
+
+import javax.inject.Inject
 
 class MetricsJob @Inject()(val config: Configuration,
                            val metricsService: MetricsService) extends ScheduledJob {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,16 @@
 
 package jobs
 
-import javax.inject.Inject
 import play.modules.reactivemongo.ReactiveMongoComponent
 import uk.gov.hmrc.lock.{LockMongoRepository, LockRepository}
+
+import javax.inject.Inject
 
 class LockRepositoryProviderImpl @Inject()(reactiveMongoComponent: ReactiveMongoComponent) extends LockRepositoryProvider {
 
   lazy val repo = LockMongoRepository(reactiveMongoComponent.mongoConnector.db)
 }
+
 trait LockRepositoryProvider {
   val repo: LockRepository
 }

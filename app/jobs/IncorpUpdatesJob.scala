@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +15,17 @@
  */
 
 package jobs
+
 import akka.actor.ActorSystem
-import javax.inject.Inject
 import jobs.SchedulingActor.IncorpUpdates
 import play.api.Configuration
 import services.IncorpUpdateService
 
+import javax.inject.Inject
 
-class IncorpUpdatesJob @Inject()( incorpUpdateService: IncorpUpdateService,
-                                  val config: Configuration) extends ScheduledJob {
+
+class IncorpUpdatesJob @Inject()(incorpUpdateService: IncorpUpdateService,
+                                 val config: Configuration) extends ScheduledJob {
   val jobName = "incorp-update-job"
   val actorSystem = ActorSystem(jobName)
   val scheduledMessage = IncorpUpdates(incorpUpdateService)

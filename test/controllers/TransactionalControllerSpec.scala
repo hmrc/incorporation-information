@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,8 @@ import services.{FailedToFetchOfficerListFromTxAPI, TransactionalService}
 import uk.gov.hmrc.http.HeaderCarrier
 import utils.TimestampFormats
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class TransactionalControllerSpec extends SCRSSpec {
 
@@ -47,6 +48,7 @@ class TransactionalControllerSpec extends SCRSSpec {
       override val allowlistedServices = Set("test", "services")
       override val incorpRepo: IncorpUpdateRepository = mockIncorpUpdateRepository
       val controllerComponents: ControllerComponents = stubControllerComponents()
+      implicit val ec: ExecutionContext = global
     }
   }
 
@@ -59,7 +61,7 @@ class TransactionalControllerSpec extends SCRSSpec {
     val json = Json.parse("""{"test":"json"}""")
 
     "return a 200 and json when a company profile is successfully fetched from TX Api (because it is not incorporated yet)" in new Setup {
-      when(mockService.fetchCompanyProfile(eqTo(transactionId))(any()))
+      when(mockService.fetchCompanyProfile(eqTo(transactionId))(any(), any[ExecutionContext]))
         .thenReturn(Future.successful(Some(json)))
 
       val result: Future[Result] = controller.fetchCompanyProfile(transactionId)(FakeRequest())
@@ -69,7 +71,7 @@ class TransactionalControllerSpec extends SCRSSpec {
 
     "return a 404 when a company profile could not be found by the supplied transaction Id (from transactional api) when company not incorporated" in new Setup {
 
-      when(mockService.fetchCompanyProfile(eqTo(transactionId))(any()))
+      when(mockService.fetchCompanyProfile(eqTo(transactionId))(any(), any[ExecutionContext]))
         .thenReturn(Future.successful(None))
 
       val result: Future[Result] = controller.fetchCompanyProfile(transactionId)(FakeRequest())
@@ -107,7 +109,7 @@ class TransactionalControllerSpec extends SCRSSpec {
            |             }
     """.stripMargin).as[JsObject]
 
-      when(mockService.fetchCompanyProfile(eqTo(transactionId))(any()))
+      when(mockService.fetchCompanyProfile(eqTo(transactionId))(any(), any[ExecutionContext]))
         .thenReturn(Future.successful(Some(json)))
 
       val result: Future[Result] = controller.fetchCompanyProfile(transactionId)(FakeRequest())
@@ -116,7 +118,7 @@ class TransactionalControllerSpec extends SCRSSpec {
     }
 
     "return a 200 when a company profile is fetched" in new Setup {
-      when(mockService.fetchCompanyProfile(eqTo(transactionId))(any()))
+      when(mockService.fetchCompanyProfile(eqTo(transactionId))(any(), any[ExecutionContext]))
         .thenReturn(Future.successful(Some(json)))
 
       val result: Future[Result] = controller.fetchCompanyProfile(transactionId)(FakeRequest())
@@ -124,7 +126,7 @@ class TransactionalControllerSpec extends SCRSSpec {
     }
 
     "return a 404 when a company profile cannot be found using the supplied txID" in new Setup {
-      when(mockService.fetchCompanyProfile(eqTo(transactionId))(any()))
+      when(mockService.fetchCompanyProfile(eqTo(transactionId))(any(), any[ExecutionContext]))
         .thenReturn(Future.successful(None))
 
       val result: Future[Result] = controller.fetchCompanyProfile(transactionId)(FakeRequest())
@@ -178,7 +180,7 @@ class TransactionalControllerSpec extends SCRSSpec {
     val json = Json.parse("""{"test":"json"}""")
 
     "return a 200 and a json when an officer list is successfully fetched" in new Setup {
-      when(mockService.fetchOfficerList(eqTo(transactionId))(any()))
+      when(mockService.fetchOfficerList(eqTo(transactionId))(any(), any[ExecutionContext]))
         .thenReturn(Future.successful(json))
 
       val result: Future[Result] = controller.fetchOfficerList(transactionId)(FakeRequest())
@@ -187,7 +189,7 @@ class TransactionalControllerSpec extends SCRSSpec {
     }
 
     "return a 404 when an officer list could not be found by the supplied transaction Id" in new Setup {
-      when(mockService.fetchOfficerList(eqTo(transactionId))(any()))
+      when(mockService.fetchOfficerList(eqTo(transactionId))(any(), any[ExecutionContext]))
         .thenReturn(Future.failed(new FailedToFetchOfficerListFromTxAPI()))
 
       val result: Future[Result] = controller.fetchOfficerList(transactionId)(FakeRequest())
@@ -195,7 +197,7 @@ class TransactionalControllerSpec extends SCRSSpec {
     }
 
     "return a 500 when an unknown exception is caught" in new Setup {
-      when(mockService.fetchOfficerList(eqTo(transactionId))(any()))
+      when(mockService.fetchOfficerList(eqTo(transactionId))(any(), any[ExecutionContext]))
         .thenReturn(Future.failed(new Exception()))
 
       val result: Future[Result] = controller.fetchOfficerList(transactionId)(FakeRequest())
@@ -238,7 +240,7 @@ class TransactionalControllerSpec extends SCRSSpec {
     val sicJson = Json.parse("""{"sic_codes": ["12345", "23456"]}""")
 
     "return sic codes from the CH API using TxId" in new Setup {
-      when(mockService.fetchSicByTransId(eqTo(transactionId))(any[HeaderCarrier]))
+      when(mockService.fetchSicByTransId(eqTo(transactionId))(any[HeaderCarrier], any[ExecutionContext]))
         .thenReturn(Future.successful(Some(sicJson)))
 
       val result: Future[Result] = controller.fetchSicCodesByTransactionID(transactionId)(FakeRequest())
@@ -247,7 +249,7 @@ class TransactionalControllerSpec extends SCRSSpec {
     }
 
     "return no content when no data returned from the CH API using TxId" in new Setup {
-      when(mockService.fetchSicByTransId(eqTo(transactionId))(any[HeaderCarrier]))
+      when(mockService.fetchSicByTransId(eqTo(transactionId))(any[HeaderCarrier], any[ExecutionContext]))
         .thenReturn(Future.successful(None))
 
       val result: Future[Result] = controller.fetchSicCodesByTransactionID(transactionId)(FakeRequest())
@@ -259,7 +261,7 @@ class TransactionalControllerSpec extends SCRSSpec {
     val sicJson = Json.parse("""{"sic_codes": ["12345", "23456"]}""")
 
     "return sic codes from the CH API" in new Setup {
-      when(mockService.fetchSicByCRN(eqTo(crn))(any[HeaderCarrier]))
+      when(mockService.fetchSicByCRN(eqTo(crn))(any[HeaderCarrier], any[ExecutionContext]))
         .thenReturn(Future.successful(Some(sicJson)))
 
       val result: Future[Result] = controller.fetchSicCodesByCRN(crn)(FakeRequest())
@@ -268,7 +270,7 @@ class TransactionalControllerSpec extends SCRSSpec {
     }
 
     "return no content when no data returned from the CH API" in new Setup {
-      when(mockService.fetchSicByCRN(eqTo(crn))(any[HeaderCarrier]))
+      when(mockService.fetchSicByCRN(eqTo(crn))(any[HeaderCarrier], any[ExecutionContext]))
         .thenReturn(Future.successful(None))
 
       val result: Future[Result] = controller.fetchSicCodesByCRN(crn)(FakeRequest())
@@ -277,14 +279,14 @@ class TransactionalControllerSpec extends SCRSSpec {
   }
   "fetchShareholders" should {
     "return 204 if array is empty" in new Setup {
-      when(mockService.fetchShareholders(eqTo(transactionId))(any[HeaderCarrier]))
+      when(mockService.fetchShareholders(eqTo(transactionId))(any[HeaderCarrier], any[ExecutionContext]))
         .thenReturn(Future.successful(Some(Json.arr())))
       val res: Future[Result] = controller.fetchShareholders(transactionId)(FakeRequest())
       status(res) shouldBe 204
     }
 
     "return 200 if array is returned and size > 0" in new Setup {
-      when(mockService.fetchShareholders(eqTo(transactionId))(any[HeaderCarrier]))
+      when(mockService.fetchShareholders(eqTo(transactionId))(any[HeaderCarrier], any[ExecutionContext]))
         .thenReturn(Future.successful(Some(Json.arr(Json.obj("foo" -> "bar")))))
       val result: Future[Result] = controller.fetchShareholders(transactionId)(FakeRequest())
       status(result) shouldBe 200
@@ -298,7 +300,7 @@ class TransactionalControllerSpec extends SCRSSpec {
 
     }
     "return 404 if key does not exist in the json and service returned None" in new Setup {
-      when(mockService.fetchShareholders(eqTo(transactionId))(any[HeaderCarrier]))
+      when(mockService.fetchShareholders(eqTo(transactionId))(any[HeaderCarrier], any[ExecutionContext]))
         .thenReturn(Future.successful(None))
       val res: Future[Result] = controller.fetchShareholders(transactionId)(FakeRequest())
       status(res) shouldBe 404

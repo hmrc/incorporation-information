@@ -1,18 +1,18 @@
 /*
-* Copyright 2020 HM Revenue & Customs
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright 2021 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package apis.test
 
@@ -29,6 +29,7 @@ import repositories._
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
 import play.api.test.Helpers._
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase with MongoSpecSupport {
@@ -44,30 +45,38 @@ class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase with MongoSpecSu
   )
   val mongoTest = mongo
   val dbNameExtraForDbToBeUnique = ("iu" -> "qr")
-  def rmComp(dbNameExtra:String) = new ReactiveMongoComponent {
+
+  def rmComp(dbNameExtra: String) = new ReactiveMongoComponent {
     override def mongoConnector: MongoConnector = mongoConnectorForTest.copy(mongoUri + dbNameExtra)
   }
-  lazy val incRepo = new IncorpUpdateMongoRepository(mongoTest, IncorpUpdate.mongoFormat){
+
+  lazy val incRepo = new IncorpUpdateMongoRepository(mongoTest, IncorpUpdate.mongoFormat) {
     override lazy val collection: JSONCollection = mongoTest().collection[JSONCollection](databaseName + dbNameExtraForDbToBeUnique._1)
   }
-  lazy val queueRepository = new QueueMongoRepository(mongoTest, QueuedIncorpUpdate.format){
+  lazy val queueRepository = new QueueMongoRepository(mongoTest, QueuedIncorpUpdate.format) {
 
     override lazy val collection: JSONCollection = mongoTest().collection[JSONCollection](databaseName + dbNameExtraForDbToBeUnique._2)
   }
+
   object m extends AbstractModule {
     override def configure(): Unit = {
       bind(classOf[QueueMongo]).toInstance(QueueMongoFake)
       bind(classOf[IncorpUpdateMongo]).toInstance(IncorpUpdateMongoFake)
     }
   }
-   object IncorpUpdateMongoFake extends IncorpUpdateMongo {
+
+  object IncorpUpdateMongoFake extends IncorpUpdateMongo {
+    override implicit val ec: ExecutionContext = global
     override lazy val repo: IncorpUpdateMongoRepository = incRepo
     override lazy val mongo: ReactiveMongoComponent = rmComp(dbNameExtraForDbToBeUnique._1)
   }
+
   object QueueMongoFake extends QueueMongo {
+    override implicit val ec: ExecutionContext = global
     override lazy val repo: QueueMongoRepository = queueRepository
     override lazy val mongo: ReactiveMongoComponent = rmComp(dbNameExtraForDbToBeUnique._2)
   }
+
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
     .configure(fakeConfig(additionalConfiguration))
     .overrides(m)
@@ -78,17 +87,18 @@ class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase with MongoSpecSu
       withFollowRedirects(false)
 
   class Setup {
-    val i = IncorpUpdate("foo","bar",None,None,"",None)
+    val i = IncorpUpdate("foo", "bar", None, None, "", None)
     await(incRepo.drop)
     await(incRepo.ensureIndexes)
-    await(incRepo.insert(IncorpUpdate("foo","bar",None,None,"",None)))
+    await(incRepo.insert(IncorpUpdate("foo", "bar", None, None, "", None)))
     await(incRepo.remove("_id" -> "foo"))
     await(incRepo.count) shouldBe 0
     await(queueRepository.drop)
     await(queueRepository.ensureIndexes)
-    await(queueRepository.insert(QueuedIncorpUpdate(DateTime.now(),i)))
+    await(queueRepository.insert(QueuedIncorpUpdate(DateTime.now(), i)))
     await(queueRepository.removeAll())
     await(queueRepository.count) shouldBe 0
+
     def getIncorp(txid: String) = await(incRepo.getIncorpUpdate(txid))
   }
 
@@ -115,10 +125,10 @@ class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase with MongoSpecSu
 
       await(incRepo.count) shouldBe 1
       await(queueRepository.count) shouldBe 1
-      getIncorp(transactionId) shouldBe Some(IncorpUpdate("123abc","rejected",None,None,"-1",None))
+      getIncorp(transactionId) shouldBe Some(IncorpUpdate("123abc", "rejected", None, None, "-1", None))
     }
 
-    def toDateTime(d:String) = ISODateTimeFormat.dateParser().withOffsetParsed().parseDateTime(d)
+    def toDateTime(d: String) = ISODateTimeFormat.dateParser().withOffsetParsed().parseDateTime(d)
 
     "Allow a successful IU" in new Setup {
       val incorpDate = "2017-02-01"
@@ -133,7 +143,7 @@ class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase with MongoSpecSu
 
       await(incRepo.find()).size shouldBe 1
       await(queueRepository.find()).size shouldBe 1
-      getIncorp(transactionId) shouldBe Some(IncorpUpdate("123abc","accepted",Some("1234"),Some(toDateTime(incorpDate)),"-1",None))
+      getIncorp(transactionId) shouldBe Some(IncorpUpdate("123abc", "accepted", Some("1234"), Some(toDateTime(incorpDate)), "-1", None))
     }
   }
 }

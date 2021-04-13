@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 package connectors
 
 
-
 import Helpers.{LogCapturing, SCRSSpec}
 import com.codahale.metrics.{Counter, Timer}
 import mocks.MockMetrics
@@ -33,7 +32,8 @@ import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.http.ws.{WSHttp, WSProxy}
 import utils.{DateCalculators, FeatureSwitch, SCRSFeatureSwitches}
 
-import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future}
 
 class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventually {
 
@@ -80,6 +80,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       override val failureCounter: Counter = metrics.publicCohoApiFailureCounter
       override protected val loggingDays = "MON,TUE,WED,THU,FRI"
       override protected val loggingTimes = "08:00:00_17:00:00"
+      override implicit val ec: ExecutionContext = global
     }
   }
 
@@ -167,7 +168,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       val urlCaptor = ArgumentCaptor.forClass(classOf[String])
 
       when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
-        .thenReturn(Future.failed(new HttpException("400",400)))
+        .thenReturn(Future.failed(new HttpException("400", 400)))
 
       val result = await(connector.getCompanyProfile(testCrn))
 
@@ -257,7 +258,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
       result shouldBe None
 
-      urlCaptor.getValue shouldBe  "stubbed/company/1234567890/officers"
+      urlCaptor.getValue shouldBe "stubbed/company/1234567890/officers"
     }
 
     "report an error when receiving a 400" in new Setup {
@@ -309,7 +310,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       |   ]
       |}""".stripMargin)
 
-  val testOfficerId  = "123456"
+  val testOfficerId = "123456"
   val testOfficerUrl = "/officers/_Sdjhshdsnnsi-StreatMand-greattsfh/appointments"
   "getOfficerAppointmentList" should {
 
@@ -354,7 +355,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
       intercept[NotFoundException](await(connector.getOfficerAppointment(testOfficerId)))
 
-      urlCaptor.getValue shouldBe  "stubbed/get-officer-appointment?fn=testFirstName&sn=testSurname"
+      urlCaptor.getValue shouldBe "stubbed/get-officer-appointment?fn=testFirstName&sn=testSurname"
     }
 
     "report an error when receiving a 400" in new Setup {
@@ -389,14 +390,14 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
   }
 
   "getStubbedFirstAndLastName" should {
-    "return testFirstName and testSurname if string is less than 15 characters" in new Setup{
-      val (firstname, lastname) =  connector.getStubbedFirstAndLastName(testOfficerId)
+    "return testFirstName and testSurname if string is less than 15 characters" in new Setup {
+      val (firstname, lastname) = connector.getStubbedFirstAndLastName(testOfficerId)
       firstname shouldBe "testFirstName"
       lastname shouldBe "testSurname"
     }
 
-    "return a dynamic name if string is less than 15 characters" in new Setup{
-      val (firstname, lastname) =  connector.getStubbedFirstAndLastName(testOfficerUrl)
+    "return a dynamic name if string is less than 15 characters" in new Setup {
+      val (firstname, lastname) = connector.getStubbedFirstAndLastName(testOfficerUrl)
       firstname shouldBe "tMand-greattsfh"
       lastname shouldBe "officersSdjhshd"
     }
@@ -405,12 +406,12 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
   "createAPIAuthHeader" should {
 
     "return a HeaderCarrier with the correct Basic auth token" when {
-     "a request is made by an allowListed service" in new Setup {
-       connector.createAPIAuthHeader().authorization shouldBe Some(Authorization("Basic Q29ob1B1YmxpY1Rva2Vu"))
-     }
-     "a request is made by an un-allowlisted service" in new Setup {
-       connector.createAPIAuthHeader(isScrs = false).authorization shouldBe Some(Authorization("Basic Tm9uU0NSU0NvaG9QdWJsaWNUb2tlbg=="))
-     }
+      "a request is made by an allowListed service" in new Setup {
+        connector.createAPIAuthHeader().authorization shouldBe Some(Authorization("Basic Q29ob1B1YmxpY1Rva2Vu"))
+      }
+      "a request is made by an un-allowlisted service" in new Setup {
+        connector.createAPIAuthHeader(isScrs = false).authorization shouldBe Some(Authorization("Basic Tm9uU0NSU0NvaG9QdWJsaWNUb2tlbg=="))
+      }
     }
   }
 

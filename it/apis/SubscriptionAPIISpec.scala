@@ -1,18 +1,18 @@
 /*
-* Copyright 2020 HM Revenue & Customs
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright 2021 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package apis
 
@@ -26,6 +26,7 @@ import play.api.test.Helpers._
 import play.modules.reactivemongo.ReactiveMongoComponent
 import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo}
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class SubscriptionAPIISpec extends IntegrationSpecBase {
@@ -51,10 +52,12 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
 
   class Setup {
     val incRepo = new IncorpUpdateMongo {
+      override implicit val ec: ExecutionContext = global
       override val mongo: ReactiveMongoComponent = reactiveMongoComponent
     }.repo
     val repository = new SubscriptionsMongo(reactiveMongoComponent).repo
     val queueRepo = new QueueMongo {
+      override implicit val ec: ExecutionContext = global
       override val mongo: ReactiveMongoComponent = reactiveMongoComponent
     }.repo
 
@@ -168,22 +171,6 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
 
     }
 
-  }
-
-  "getSubscription" should {
-
-    "return a 200 HTTP response when a subscription with the given info exists" in new Setup {
-      await(repository.insertSub(sub))
-
-      val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").get.futureValue
-      response.status shouldBe 200
-    }
-
-    "return a 404 HTTP response when a subscription with the given info does not exist" in new Setup {
-
-      val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").get.futureValue
-      response.status shouldBe 404
-    }
   }
 
   "forceSubscription" should {

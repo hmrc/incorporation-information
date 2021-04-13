@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package connectors
 
 import com.codahale.metrics.Counter
 import config.{MicroserviceConfig, WSHttpProxy}
-import javax.inject.Inject
 import play.api.Logger
 import play.api.libs.json.JsValue
 import services.MetricsService
@@ -26,15 +25,16 @@ import uk.gov.hmrc.http._
 import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.http.ws.WSProxy
-import utils.{AlertLogging, Base64, DateCalculators, PagerDutyKeys, SCRSFeatureSwitches}
+import utils._
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import javax.inject.Inject
+import scala.concurrent.{ExecutionContext, Future}
 
 class PublicCohoApiConnectorImpl @Inject()(config: MicroserviceConfig, injMetricsService: MetricsService,
                                            val dateCalculators: DateCalculators,
                                            val httpProxy: WSHttpProxy,
-                                           val httpNoProxy: HttpClient) extends PublicCohoApiConnector {
+                                           val httpNoProxy: HttpClient
+                                          )(implicit val ec: ExecutionContext) extends PublicCohoApiConnector {
 
 
   protected val featureSwitch: SCRSFeatureSwitches.type = SCRSFeatureSwitches
@@ -55,6 +55,8 @@ class PublicCohoApiConnectorImpl @Inject()(config: MicroserviceConfig, injMetric
 
 trait PublicCohoApiConnector extends AlertLogging {
 
+  implicit val ec: ExecutionContext
+
   protected def httpProxy: CoreGet with WSProxy
 
   protected def httpNoProxy: CoreGet
@@ -69,12 +71,15 @@ trait PublicCohoApiConnector extends AlertLogging {
   protected val successCounter: Counter
   protected val failureCounter: Counter
 
-  def getCompanyProfile(crn: String, isScrs: Boolean = true)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
+  def getCompanyProfile(crn: String,
+                        isScrs: Boolean = true
+                       )(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
     import play.api.http.Status.NO_CONTENT
 
-    val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, createAPIAuthHeader(isScrs), s"$cohoPublicUrl/company/$crn")
-      case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company-profile/$crn")
+    val (http, realHc, url) = if (useProxy) {
+      (httpProxy, createAPIAuthHeader(isScrs), s"$cohoPublicUrl/company/$crn")
+    } else {
+      (httpNoProxy, hc, s"$cohoStubbedUrl/company-profile/$crn")
     }
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter), Some(metrics.publicAPITimer.time())) {
@@ -91,9 +96,10 @@ trait PublicCohoApiConnector extends AlertLogging {
   def getOfficerList(crn: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
     import play.api.http.Status.NO_CONTENT
 
-    val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, createAPIAuthHeader(), s"$cohoPublicUrl/company/$crn/officers")
-      case false => (httpNoProxy, hc, s"$cohoStubbedUrl/company/$crn/officers")
+    val (http, realHc, url) = if (useProxy) {
+      (httpProxy, createAPIAuthHeader(), s"$cohoPublicUrl/company/$crn/officers")
+    } else {
+      (httpNoProxy, hc, s"$cohoStubbedUrl/company/$crn/officers")
     }
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter), Some(metrics.publicAPITimer.time())) {
@@ -119,11 +125,11 @@ trait PublicCohoApiConnector extends AlertLogging {
   def getOfficerAppointment(officerAppointmentUrl: String)(implicit hc: HeaderCarrier): Future[JsValue] = {
     import play.api.http.Status.NO_CONTENT
 
-    val (http, realHc, url) = useProxy match {
-      case true => (httpProxy, createAPIAuthHeader(), s"$cohoPublicUrl$officerAppointmentUrl")
-      case false =>
-        val (fName, lName) = getStubbedFirstAndLastName(officerAppointmentUrl)
-        (httpNoProxy, hc, s"$cohoStubbedUrl/get-officer-appointment?fn=$fName&sn=$lName")
+    val (http, realHc, url) = if (useProxy) {
+      (httpProxy, createAPIAuthHeader(), s"$cohoPublicUrl$officerAppointmentUrl")
+    } else {
+      val (fName, lName) = getStubbedFirstAndLastName(officerAppointmentUrl)
+      (httpNoProxy, hc, s"$cohoStubbedUrl/get-officer-appointment?fn=$fName&sn=$lName")
     }
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter), Some(metrics.publicAPITimer.time())) {

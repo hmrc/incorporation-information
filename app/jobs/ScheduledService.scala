@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,11 @@ package jobs
 import scala.concurrent.{ExecutionContext, Future}
 
 sealed trait LockResponse
+
 case object MongoLocked extends LockResponse
+
 case object UnlockingFailed extends LockResponse
 
 trait ScheduledService[R] {
-  def invoke(implicit ec : ExecutionContext) : Future[R]
+  def invoke(implicit ec: ExecutionContext): Future[R]
 }

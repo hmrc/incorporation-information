@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@ import models.IncorpUpdate
 import play.api.Logger
 import reactivemongo.api.commands.WriteError
 import uk.gov.hmrc.mongo.MongoSpecSupport
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSpecSupport with LogCapturing {
 

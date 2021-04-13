@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,22 +16,23 @@
 
 package connectors
 
-import javax.inject.Inject
 import models.IncorpUpdateResponse
 import play.api.Logger
 import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.http._
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import javax.inject.Inject
+import scala.concurrent.{ExecutionContext, Future}
 
-class FiringSubscriptionsConnectorImpl @Inject()(val http: HttpClient) extends FiringSubscriptionsConnector {
+class FiringSubscriptionsConnectorImpl @Inject()(val http: HttpClient)
+                                                (implicit val ec: ExecutionContext) extends FiringSubscriptionsConnector {
 
 }
 
 trait FiringSubscriptionsConnector {
   val http: HttpClient
+  implicit val ec: ExecutionContext
 
   def connectToAnyURL(iuResponse: IncorpUpdateResponse, url: String)(implicit hc: HeaderCarrier): Future[HttpResponse] = {
     val json = Json.toJson[IncorpUpdateResponse](iuResponse)(IncorpUpdateResponse.writes)
