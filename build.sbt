@@ -37,4 +37,5 @@ lazy val microservice = Project(appName, file("."))
   .settings(IntegrationTest / javaOptions += "-Dlogger.resource=logback-test.xml")
   .settings(integrationTestSettings())
   .settings(majorVersion := 1)
+  .disablePlugins(JUnitXmlReportPlugin) //Required to prevent https://github.com/scalatest/scalatest/issues/1427
 
