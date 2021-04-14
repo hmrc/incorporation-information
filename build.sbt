@@ -29,7 +29,7 @@ lazy val microservice = Project(appName, file("."))
     libraryDependencies ++= AppDependencies.compile ++ AppDependencies.test(),
     retrieveManaged := true,
     evictionWarningOptions := EvictionWarningOptions.default.withWarnScalaVersionEviction(false),
-    scalaVersion := "2.12.13",
+    scalaVersion := "2.12.12",
     resolvers += Resolver.jcenterRepo
   )
   .configs(IntegrationTest)
