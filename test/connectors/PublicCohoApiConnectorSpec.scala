@@ -20,15 +20,14 @@ package connectors
 import Helpers.{LogCapturing, SCRSSpec}
 import com.codahale.metrics.{Counter, Timer}
 import mocks.MockMetrics
+import org.mockito.ArgumentMatchers
 import org.mockito.Mockito._
-import org.mockito.{ArgumentCaptor, Matchers}
 import org.scalatest.concurrent.Eventually
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.test.Helpers._
 import services.MetricsService
 import uk.gov.hmrc.http._
-import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.http.ws.{WSHttp, WSProxy}
 import utils.{DateCalculators, FeatureSwitch, SCRSFeatureSwitches}
 
@@ -109,32 +108,23 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
 
   val testCrn = "1234567890"
-  "getCompanyProfile" should {
 
+  "getCompanyProfile" should {
+    val url = "stubbed/company-profile/1234567890"
 
     "return some valid JSON when a valid CRN is provided and stop the timer metric" in new Setup {
-      val url = s"$cohoPublicUrlValue"
-
-      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
-
-      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.successful(HttpResponse(200, Some(validCompanyProfileResourceJson))))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(connector.getCompanyProfile(testCrn))
       result shouldBe Some(validCompanyProfileResourceJson)
 
-      urlCaptor.getValue shouldBe "stubbed/company-profile/1234567890"
-
       verify(mockTimerContext, times(1)).stop()
     }
 
     "report an error when receiving a 404 and isSCRS is true" in new Setup {
-      val url = s"$cohoPublicUrlValue"
-
-      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
-
-      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new NotFoundException("404")))
 
       withCaptureOfLoggingFrom(Logger) { logEvents =>
@@ -142,15 +132,10 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
         logEvents.map(_.getMessage) shouldBe List("COHO_PUBLIC_API_NOT_FOUND - Could not find company data for CRN - 1234567890")
         logEvents.size shouldBe 1
       }
-      urlCaptor.getValue shouldBe "stubbed/company-profile/1234567890"
     }
 
     "report an error when receiving a 404 and isSCRS is false" in new Setup {
-      val url = s"$cohoPublicUrlValue"
-
-      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
-
-      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new NotFoundException("404")))
 
       withCaptureOfLoggingFrom(Logger) { logEvents =>
@@ -158,41 +143,27 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
         logEvents.map(_.getMessage) shouldBe List("Could not find company data for CRN - 1234567890")
         logEvents.size shouldBe 1
       }
-
-      urlCaptor.getValue shouldBe "stubbed/company-profile/1234567890"
     }
 
     "report an error when receiving a 400" in new Setup {
-      val url = s"$cohoPublicUrlValue"
-
-      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
-
-      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new HttpException("400", 400)))
 
       val result = await(connector.getCompanyProfile(testCrn))
 
       result shouldBe None
 
-      urlCaptor.getValue shouldBe "stubbed/company-profile/1234567890"
-
       verify(mockTimerContext, times(1)).stop()
     }
 
     "report an error when receiving a Throwable exception and stop the timer metric" in new Setup {
-      val url = s"$cohoPublicUrlValue"
-
-      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
-
-      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new Throwable()))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(connector.getCompanyProfile(testCrn))
 
       result shouldBe None
-
-      urlCaptor.getValue shouldBe "stubbed/company-profile/1234567890"
     }
   }
 
@@ -228,68 +199,45 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       |}""".stripMargin)
 
   "getOfficerList" should {
+    val url = "stubbed/company/1234567890/officers"
 
     "return some valid JSON when a valid CRN is provided and stop the timer metric" in new Setup {
-      val url = s"$cohoPublicUrlValue"
-
-      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
-
-      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.successful(HttpResponse(200, Some(validOfficerListResourceJson))))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(connector.getOfficerList(testCrn))
       result shouldBe Some(validOfficerListResourceJson)
 
-      urlCaptor.getValue shouldBe "stubbed/company/1234567890/officers"
-
       verify(mockTimerContext, times(1)).stop()
     }
 
     "report an error when receiving a 404" in new Setup {
-      val url = s"$cohoPublicUrlValue"
-
-      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
-
-      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new NotFoundException("404")))
 
       val result = await(connector.getOfficerList(testCrn))
 
       result shouldBe None
-
-      urlCaptor.getValue shouldBe "stubbed/company/1234567890/officers"
     }
 
     "report an error when receiving a 400" in new Setup {
-      val url = s"$cohoPublicUrlValue"
-
-      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
-
-      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new HttpException("400", 400)))
 
       val result = await(connector.getOfficerList(testCrn))
 
       result shouldBe None
-
-      urlCaptor.getValue shouldBe "stubbed/company/1234567890/officers"
     }
 
     "report an error when receiving a Throwable exception and stop the timer metric" in new Setup {
-      val url = s"$cohoPublicUrlValue"
-
-      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
-
-      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new Throwable()))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(connector.getOfficerList(testCrn))
 
       result shouldBe None
-
-      urlCaptor.getValue shouldBe "stubbed/company/1234567890/officers"
 
       verify(mockTimerContext, times(1)).stop()
     }
@@ -312,79 +260,56 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
   val testOfficerId = "123456"
   val testOfficerUrl = "/officers/_Sdjhshdsnnsi-StreatMand-greattsfh/appointments"
+
   "getOfficerAppointmentList" should {
+    val url = "stubbed/get-officer-appointment?fn=testFirstName&sn=testSurname"
+
 
     "return some valid JSON when a valid Officer ID is provided and stop the timer metric" in new Setup {
-      val url = s"$cohoPublicUrlValue"
-
-      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
-
-      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.successful(HttpResponse(200, Some(validOfficerAppointmentsResourceJson))))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(connector.getOfficerAppointment(testOfficerId))
       result shouldBe validOfficerAppointmentsResourceJson
 
-      urlCaptor.getValue shouldBe "stubbed/get-officer-appointment?fn=testFirstName&sn=testSurname"
       verify(mockTimerContext, times(1)).stop()
     }
 
     "generate a unique officer name when a url longer than 15 characters is passed" in new Setup {
-      val url = s"$cohoPublicUrlValue"
+      val url = "stubbed/get-officer-appointment?fn=tMand-greattsfh&sn=officersSdjhshd"
 
-      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
-
-      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.successful(HttpResponse(200, Some(validOfficerAppointmentsResourceJson))))
 
 
       val result = await(connector.getOfficerAppointment(testOfficerUrl))
       result shouldBe validOfficerAppointmentsResourceJson
-
-      urlCaptor.getValue shouldBe "stubbed/get-officer-appointment?fn=tMand-greattsfh&sn=officersSdjhshd"
     }
 
     "report an error when receiving a 404" in new Setup {
-      val url = s"$cohoPublicUrlValue"
-
-      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
-
-      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new NotFoundException("404")))
 
       intercept[NotFoundException](await(connector.getOfficerAppointment(testOfficerId)))
-
-      urlCaptor.getValue shouldBe "stubbed/get-officer-appointment?fn=testFirstName&sn=testSurname"
     }
 
     "report an error when receiving a 400" in new Setup {
-      val url = s"$cohoPublicUrlValue"
-
-      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
-
-      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new HttpException("400", 400)))
 
       val ex = intercept[HttpException](await(connector.getOfficerAppointment(testOfficerId)))
 
       ex.responseCode shouldBe 400
-
-      urlCaptor.getValue shouldBe "stubbed/get-officer-appointment?fn=testFirstName&sn=testSurname"
     }
 
     "report an error when receiving a Throwable exception and stop the timer metric" in new Setup {
-      val url = s"$cohoPublicUrlValue"
-
-      val urlCaptor = ArgumentCaptor.forClass(classOf[String])
-
-      when(mockHttp.GET[HttpResponse](urlCaptor.capture())(Matchers.any(), Matchers.any(), Matchers.any()))
+      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new Throwable()))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
       intercept[Throwable](await(connector.getOfficerAppointment(testOfficerId)))
 
-      urlCaptor.getValue shouldBe "stubbed/get-officer-appointment?fn=testFirstName&sn=testSurname"
       verify(mockTimerContext, times(1)).stop()
     }
   }
@@ -404,13 +329,12 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
   }
 
   "createAPIAuthHeader" should {
-
-    "return a HeaderCarrier with the correct Basic auth token" when {
+    "return a Header with the correct Basic auth token" when {
       "a request is made by an allowListed service" in new Setup {
-        connector.createAPIAuthHeader().authorization shouldBe Some(Authorization("Basic Q29ob1B1YmxpY1Rva2Vu"))
+        connector.createAPIAuthHeader() shouldBe Seq("Authorization" -> "Basic Q29ob1B1YmxpY1Rva2Vu")
       }
       "a request is made by an un-allowlisted service" in new Setup {
-        connector.createAPIAuthHeader(isScrs = false).authorization shouldBe Some(Authorization("Basic Tm9uU0NSU0NvaG9QdWJsaWNUb2tlbg=="))
+        connector.createAPIAuthHeader(isScrs = false) shouldBe Seq("Authorization" -> "Basic Tm9uU0NSU0NvaG9QdWJsaWNUb2tlbg==")
       }
     }
   }

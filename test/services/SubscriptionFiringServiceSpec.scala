@@ -20,8 +20,8 @@ import Helpers.{JSONhelpers, SCRSSpec}
 import connectors.FiringSubscriptionsConnector
 import models.{IncorpUpdate, IncorpUpdateResponse, QueuedIncorpUpdate, Subscription}
 import org.joda.time.DateTime
-import org.mockito.Matchers
-import org.mockito.Matchers.any
+import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers
 import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
 import play.api.test.Helpers._
@@ -81,10 +81,10 @@ class SubscriptionFiringServiceSpec extends SCRSSpec with BeforeAndAfterEach wit
   "fireIncorpUpdateBatch" should {
     "return a sequence of true when there is one queued incorp update in the batch and the timestamp of this queued update is in" +
       " the past or present and the subscription successfully fires" in new Setup {
-      when(mockQueueRepository.getIncorpUpdates(Matchers.any())).thenReturn(Future.successful(Seq(queuedIncorpUpdate)))
-      when(mockSubscriptionsRepository.getSubscriptions(Matchers.any())).thenReturn(Future.successful(Seq(sub)), Future.successful(Seq()))
+      when(mockQueueRepository.getIncorpUpdates(ArgumentMatchers.any())).thenReturn(Future.successful(Seq(queuedIncorpUpdate)))
+      when(mockSubscriptionsRepository.getSubscriptions(ArgumentMatchers.any())).thenReturn(Future.successful(Seq(sub)), Future.successful(Seq()))
       when(mockQueueRepository.removeQueuedIncorpUpdate(sub.transactionId)).thenReturn(Future.successful(true))
-      when(mockFiringSubsConnector.connectToAnyURL(Matchers.any(), Matchers.any())(Matchers.any())).thenReturn(Future.successful(HttpResponse(200)))
+      when(mockFiringSubsConnector.connectToAnyURL(ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any())).thenReturn(Future.successful(HttpResponse(200)))
       when(mockQueueRepository.updateTimestamp(any(), any())).thenReturn(Future.successful(true))
 
       val result: Seq[Boolean] = await(service.fireIncorpUpdateBatch)
@@ -94,16 +94,16 @@ class SubscriptionFiringServiceSpec extends SCRSSpec with BeforeAndAfterEach wit
     "return a sequence of false when is one queued incorp update in the batch and the timestamp of this queued update is in" +
       " the future and therefore the subscription is not fired" in new Setup {
       val queuedIncorpUpdate: QueuedIncorpUpdate = QueuedIncorpUpdate(DateTime.now.plusMinutes(5), incorpUpdate)
-      when(mockQueueRepository.getIncorpUpdates(Matchers.any())).thenReturn(Future.successful(Seq(queuedIncorpUpdate)))
+      when(mockQueueRepository.getIncorpUpdates(ArgumentMatchers.any())).thenReturn(Future.successful(Seq(queuedIncorpUpdate)))
 
       val result: Seq[Boolean] = await(service.fireIncorpUpdateBatch)
       result shouldBe Seq(false)
     }
 
     "return a sequence of false when a successfully fired subscription has failed to be deleted" in new Setup {
-      when(mockQueueRepository.getIncorpUpdates(Matchers.any())).thenReturn(Future.successful(Seq(queuedIncorpUpdate)))
-      when(mockSubscriptionsRepository.getSubscriptions(Matchers.any())).thenReturn(Future.successful(Seq(sub)))
-      when(mockFiringSubsConnector.connectToAnyURL(Matchers.any(), Matchers.any())(Matchers.any())).thenReturn(Future.successful(HttpResponse(200)))
+      when(mockQueueRepository.getIncorpUpdates(ArgumentMatchers.any())).thenReturn(Future.successful(Seq(queuedIncorpUpdate)))
+      when(mockSubscriptionsRepository.getSubscriptions(ArgumentMatchers.any())).thenReturn(Future.successful(Seq(sub)))
+      when(mockFiringSubsConnector.connectToAnyURL(ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any())).thenReturn(Future.successful(HttpResponse(200)))
       when(mockSubscriptionsRepository.deleteSub(sub.transactionId, sub.regime, sub.subscriber)).thenReturn(Future.successful(DefaultWriteResult(false, 0, Seq(), None, None, None)))
 
       val result: Seq[Boolean] = await(service.fireIncorpUpdateBatch)
@@ -140,36 +140,36 @@ class SubscriptionFiringServiceSpec extends SCRSSpec with BeforeAndAfterEach wit
 
   "fireIncorpUpdate" should {
     "recover if an exception is thrown from the connector" in new Setup {
-      when(mockSubscriptionsRepository.getSubscriptions(Matchers.any()))
+      when(mockSubscriptionsRepository.getSubscriptions(ArgumentMatchers.any()))
         .thenReturn(Future.successful(Seq(sub)))
-      when(mockFiringSubsConnector.connectToAnyURL(Matchers.any(), Matchers.any())(Matchers.any()))
+      when(mockFiringSubsConnector.connectToAnyURL(ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any()))
         .thenReturn(Future.failed(new RuntimeException))
 
       val res: RuntimeException = intercept[RuntimeException](await(service.fireIncorpUpdate(queuedIncorpUpdate)))
 
-      verify(mockQueueRepository).updateTimestamp(Matchers.eq(sub.transactionId), Matchers.any())
+      verify(mockQueueRepository).updateTimestamp(ArgumentMatchers.eq(sub.transactionId), ArgumentMatchers.any())
     }
     "update timestamp if 202 is received from connector" in new Setup {
-      when(mockSubscriptionsRepository.getSubscriptions(Matchers.any()))
+      when(mockSubscriptionsRepository.getSubscriptions(ArgumentMatchers.any()))
         .thenReturn(Future.successful(Seq(sub)))
-      when(mockFiringSubsConnector.connectToAnyURL(Matchers.any(), Matchers.any())(Matchers.any()))
+      when(mockFiringSubsConnector.connectToAnyURL(ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any()))
         .thenReturn(Future.successful(HttpResponse(202)))
       when(mockQueueRepository.updateTimestamp(any(), any())).thenReturn(Future.successful(true))
 
       await(service.fireIncorpUpdate(queuedIncorpUpdate))
 
-      verify(mockQueueRepository).updateTimestamp(Matchers.eq(sub.transactionId), Matchers.any())
+      verify(mockQueueRepository).updateTimestamp(ArgumentMatchers.eq(sub.transactionId), ArgumentMatchers.any())
     }
     "delete subscription when a 200 is received from connector" in new Setup {
-      when(mockSubscriptionsRepository.getSubscriptions(Matchers.any()))
+      when(mockSubscriptionsRepository.getSubscriptions(ArgumentMatchers.any()))
         .thenReturn(Future.successful(Seq(sub)))
-      when(mockFiringSubsConnector.connectToAnyURL(Matchers.any(), Matchers.any())(Matchers.any()))
+      when(mockFiringSubsConnector.connectToAnyURL(ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any()))
         .thenReturn(Future.successful(HttpResponse(200)))
       when(mockSubscriptionsRepository.deleteSub(any(), any(), any())).thenReturn(Future.successful(DefaultWriteResult(true, 1, Nil, None, None, None)))
 
       await(service.fireIncorpUpdate(queuedIncorpUpdate))
 
-      verify(mockSubscriptionsRepository).deleteSub(Matchers.eq(sub.transactionId), Matchers.any(), Matchers.any())
+      verify(mockSubscriptionsRepository).deleteSub(ArgumentMatchers.eq(sub.transactionId), ArgumentMatchers.any(), ArgumentMatchers.any())
     }
   }
 }

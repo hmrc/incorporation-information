@@ -20,7 +20,7 @@ package controllers.test
 import play.api.Logger
 import play.api.libs.json.JsValue
 import play.api.mvc.{Action, ControllerComponents}
-import uk.gov.hmrc.play.bootstrap.controller.{BackendBaseController, BackendController}
+import uk.gov.hmrc.play.bootstrap.backend.controller.{BackendBaseController, BackendController}
 
 import javax.inject.Inject
 import scala.concurrent.Future

@@ -26,7 +26,6 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json.{JsValue, Reads, __}
 import services.MetricsService
 import uk.gov.hmrc.http._
-import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.http.ws.WSProxy
 import utils.{AlertLogging, DateCalculators, PagerDutyKeys, SCRSFeatureSwitches}
@@ -96,14 +95,14 @@ trait IncorporationAPIConnector extends AlertLogging {
   def checkForIncorpUpdate(timepoint: Option[String] = None)(implicit hc: HeaderCarrier): Future[Seq[IncorpUpdate]] = {
     import play.api.http.Status.NO_CONTENT
 
-    val (http, realHc, url) = if (useProxy) {
+    val (http, extraHeaders, url) = if (useProxy) {
       (httpProxy, createAPIAuthHeader, s"$cohoBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
     } else {
-      (httpNoProxy, hc, s"$stubBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
+      (httpNoProxy, Seq(), s"$stubBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
     }
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
-      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc, implicitly) map {
+      http.GET[HttpResponse](url = url, headers = extraHeaders).map {
         res =>
           res.status match {
             case NO_CONTENT => Seq()
@@ -131,14 +130,14 @@ trait IncorporationAPIConnector extends AlertLogging {
   def checkForIndividualIncorpUpdate(timepoint: Option[String] = None)(implicit hc: HeaderCarrier): Future[Seq[IncorpUpdate]] = {
     import play.api.http.Status.NO_CONTENT
 
-    val (http, realHc, url) = if (useProxy) {
+    val (http, extraHeaders, url) = if (useProxy) {
       (httpProxy, createAPIAuthHeader, s"$cohoBaseUrl/submissions${buildQueryString(timepoint, "1")}")
     } else {
-      (httpNoProxy, hc, s"$stubBaseUrl/submissions${buildQueryString(timepoint, "1")}")
+      (httpNoProxy, Seq(), s"$stubBaseUrl/submissions${buildQueryString(timepoint, "1")}")
     }
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
-      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc, implicitly) map {
+      http.GET[HttpResponse](url = url, headers = extraHeaders).map {
         res =>
           res.status match {
             case NO_CONTENT => Seq()
@@ -149,16 +148,17 @@ trait IncorporationAPIConnector extends AlertLogging {
   }
 
   def fetchTransactionalData(transactionID: String)(implicit hc: HeaderCarrier): Future[TransactionalAPIResponse] = {
-    val (http, realHc, url) = if (useProxy) {
+    val (http, extraHeaders, url) = if (useProxy) {
       (httpProxy, createAPIAuthHeader, s"$cohoBaseUrl/submissionData/$transactionID")
     } else {
-      (httpNoProxy, hc, s"$stubBaseUrl/fetch-data/$transactionID")
+      (httpNoProxy, Seq(), s"$stubBaseUrl/fetch-data/$transactionID")
     }
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter), Some(metrics.internalAPITimer.time())) {
-      http.GET[JsValue](url)(implicitly[HttpReads[JsValue]], realHc, implicitly) map { res =>
-        Logger.debug("[TransactionalData] json - " + res)
-        SuccessfulTransactionalAPIResponse(res)
+      http.GET[JsValue](url = url, headers = extraHeaders).map {
+        res =>
+          Logger.debug("[TransactionalData] json - " + res)
+          SuccessfulTransactionalAPIResponse(res)
       }
     } recover handleError(transactionID)
   }
@@ -210,10 +210,7 @@ trait IncorporationAPIConnector extends AlertLogging {
 
   private[connectors] def useProxy: Boolean = featureSwitch.transactionalAPI.enabled
 
-  private[connectors] def createAPIAuthHeader: HeaderCarrier = {
-    HeaderCarrier(authorization = Some(Authorization(s"Bearer $cohoApiAuthToken")))
-
-  }
+  private[connectors] def createAPIAuthHeader: Seq[(String, String)] = Seq("Authorization" -> s"Bearer $cohoApiAuthToken")
 
   private[connectors] def buildQueryString(timepoint: Option[String], itemsPerPage: String = "1") = {
     timepoint match {

@@ -20,7 +20,7 @@ import Helpers.SCRSSpec
 import com.codahale.metrics.{Counter, Histogram, MetricRegistry, Timer}
 import com.kenshoo.play.metrics.Metrics
 import models.{IncorpUpdate, Subscription}
-import org.mockito.Matchers
+import org.mockito.ArgumentMatchers
 import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
 import play.api.test.Helpers._
@@ -92,8 +92,8 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
 
       result shouldBe Map("wibble" -> 1)
 
-      verify(mockRegistry).remove(Matchers.contains("wibble"))
-      verify(mockRegistry).register(Matchers.contains("wibble"), Matchers.any())
+      verify(mockRegistry).remove(ArgumentMatchers.contains("wibble"))
+      verify(mockRegistry).register(ArgumentMatchers.contains("wibble"), ArgumentMatchers.any())
       verifyNoMoreInteractions(mockRegistry)
     }
 
@@ -105,12 +105,12 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
 
       result shouldBe Map("foo1" -> 1, "foo2" -> 2, "foo3" -> 3)
 
-      verify(mockRegistry).remove(Matchers.contains("foo1"))
-      verify(mockRegistry).register(Matchers.contains("foo1"), Matchers.any())
-      verify(mockRegistry).remove(Matchers.contains("foo2"))
-      verify(mockRegistry).register(Matchers.contains("foo2"), Matchers.any())
-      verify(mockRegistry).remove(Matchers.contains("foo3"))
-      verify(mockRegistry).register(Matchers.contains("foo3"), Matchers.any())
+      verify(mockRegistry).remove(ArgumentMatchers.contains("foo1"))
+      verify(mockRegistry).register(ArgumentMatchers.contains("foo1"), ArgumentMatchers.any())
+      verify(mockRegistry).remove(ArgumentMatchers.contains("foo2"))
+      verify(mockRegistry).register(ArgumentMatchers.contains("foo2"), ArgumentMatchers.any())
+      verify(mockRegistry).remove(ArgumentMatchers.contains("foo3"))
+      verify(mockRegistry).register(ArgumentMatchers.contains("foo3"), ArgumentMatchers.any())
       verifyNoMoreInteractions(mockRegistry)
     }
   }

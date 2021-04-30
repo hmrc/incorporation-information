@@ -41,7 +41,7 @@ trait WSHttpProxy extends HttpClient with WSHttp with HttpAuditing with WSProxy 
 
   lazy val wsProxyServer: Option[WSProxyServer] = WSProxyConfiguration(s"proxy", config)
 
-  override lazy val configuration: Option[Config] = Option(config.underlying)
+  override lazy val configuration: Config = config.underlying
 
   override val appName: String = AppName.fromConfiguration(config)
 

@@ -19,7 +19,7 @@ package controllers.test
 import Helpers.SCRSSpec
 import com.typesafe.akka.extension.quartz.QuartzSchedulerExtension
 import jobs.ScheduledJob
-import org.mockito.Matchers.any
+import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
 import play.api.mvc.ControllerComponents

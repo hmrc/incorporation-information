@@ -21,7 +21,7 @@ import akka.actor.ActorSystem
 import constants.JobNames._
 import jobs.SchedulingActor.ScheduledMessage
 import jobs.{LockResponse, ScheduledJob, SchedulingActor}
-import org.mockito.Matchers.any
+import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito._
 import play.api.Configuration
 import play.api.mvc.ControllerComponents

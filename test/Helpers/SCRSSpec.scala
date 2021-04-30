@@ -18,7 +18,7 @@ package Helpers
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import org.scalatest.mockito.MockitoSugar
+import org.scalatestplus.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 import uk.gov.hmrc.http.HeaderCarrier
 

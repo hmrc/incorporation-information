@@ -21,9 +21,9 @@ import Helpers.{JSONhelpers, LogCapturing, SCRSSpec}
 import connectors.IncorporationAPIConnector
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
 import org.joda.time.DateTime
-import org.mockito.Matchers.{any, eq => eqTo}
+import org.mockito.ArgumentMatchers.{any, eq => eqTo}
 import org.mockito.Mockito._
-import org.mockito.{ArgumentCaptor, Matchers}
+import org.mockito.{ArgumentCaptor, ArgumentMatchers}
 import play.api.Logger
 import play.api.test.Helpers._
 import reactivemongo.api.commands.{UpdateWriteResult, Upserted, WriteError}
@@ -101,7 +101,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
 
   "fetchIncorpUpdates" should {
     "return some updates" in new Setup {
-      when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
+      when(mockSubscriptionService.getSubscription(ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), ArgumentMatchers.anyString()))
         .thenReturn(Future(Some(subCT)))
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
       when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(incorpUpdates))
@@ -135,7 +135,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
       when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
       when(mockIncorpUpdateRepository.storeIncorpUpdates(incorpUpdates)).thenReturn(Future.successful(InsertResult(2, 0, Seq(), 0, incorpUpdates)))
-      when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
+      when(mockSubscriptionService.getSubscription(ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), ArgumentMatchers.anyString()))
         .thenReturn(Future(Some(subCT)))
 
       val response = await(service.storeIncorpUpdates(incorpUpdates))
@@ -146,7 +146,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
       when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
       when(mockIncorpUpdateRepository.storeIncorpUpdates(incorpUpdates)).thenReturn(Future.successful(InsertResult(2, 0, Seq(), 0, incorpUpdates)))
-      when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
+      when(mockSubscriptionService.getSubscription(ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), ArgumentMatchers.anyString()))
         .thenReturn(Future(None))
 
       val response = await(service.storeIncorpUpdates(incorpUpdates))
@@ -157,7 +157,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
       when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
       when(mockIncorpUpdateRepository.storeIncorpUpdates(incorpUpdates)).thenReturn(Future.successful(InsertResult(2, 0, Seq(), 0, incorpUpdates)))
-      when(mockSubscriptionService.getSubscription(any(), Matchers.anyString(), Matchers.anyString()))
+      when(mockSubscriptionService.getSubscription(any(), ArgumentMatchers.anyString(), ArgumentMatchers.anyString()))
         .thenReturn(Future(Some(subCT)), Future.successful(None), Future.successful(None))
 
       val response = await(service.storeIncorpUpdates(incorpUpdates))
@@ -301,18 +301,18 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
 
     "return a string stating that the timepoint has been updated to 'new timepoint' (which is actually non parsable)" in new Setup {
       val newTimepoint = timepointNew
-      when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
+      when(mockSubscriptionService.getSubscription(ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), ArgumentMatchers.anyString()))
         .thenReturn(Future(Some(subCT)))
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepointOld)))
-      when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Matchers.eq(Some(timepointOld)))(Matchers.any())).thenReturn(Future.successful(incorpUpdates))
+      when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(ArgumentMatchers.eq(Some(timepointOld)))(ArgumentMatchers.any())).thenReturn(Future.successful(incorpUpdates))
 
-      when(mockIncorpUpdateRepository.storeIncorpUpdates(Matchers.any())).thenReturn(Future.successful(InsertResult(2, 0, Seq(), 0, incorpUpdates)))
+      when(mockIncorpUpdateRepository.storeIncorpUpdates(ArgumentMatchers.any())).thenReturn(Future.successful(InsertResult(2, 0, Seq(), 0, incorpUpdates)))
 
-      when(mockQueueRepository.storeIncorpUpdates(Matchers.any())).thenReturn(Future.successful(InsertResult(2, 0, Seq())))
+      when(mockQueueRepository.storeIncorpUpdates(ArgumentMatchers.any())).thenReturn(Future.successful(InsertResult(2, 0, Seq())))
 
       val captor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockTimepointRepository.updateTimepoint(Matchers.any())).thenReturn(Future.successful(newTimepoint))
+      when(mockTimepointRepository.updateTimepoint(ArgumentMatchers.any())).thenReturn(Future.successful(newTimepoint))
 
       val response = await(service.updateNextIncorpUpdateJobLot)
       verify(mockTimepointRepository).updateTimepoint(captor.capture())
@@ -323,18 +323,18 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
       val iup1 = IncorpUpdate("transIdNew", "accepted", None, None, "2016010101000", None)
       val iup2 = IncorpUpdate("transIdNew", "accepted", None, None, "201501010100", None)
       val incorpUpdatesvalidTP = Seq(iup2, iup1)
-      when(mockSubscriptionService.getSubscription(Matchers.anyString(), Matchers.anyString(), Matchers.anyString()))
+      when(mockSubscriptionService.getSubscription(ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), ArgumentMatchers.anyString()))
         .thenReturn(Future(Some(subCT)))
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepointOld)))
-      when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Matchers.eq(Some(timepointOld)))(Matchers.any())).thenReturn(Future.successful(incorpUpdatesvalidTP))
+      when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(ArgumentMatchers.eq(Some(timepointOld)))(ArgumentMatchers.any())).thenReturn(Future.successful(incorpUpdatesvalidTP))
 
-      when(mockIncorpUpdateRepository.storeIncorpUpdates(Matchers.any())).thenReturn(Future.successful(InsertResult(2, 0, Seq(), 0, incorpUpdatesvalidTP)))
+      when(mockIncorpUpdateRepository.storeIncorpUpdates(ArgumentMatchers.any())).thenReturn(Future.successful(InsertResult(2, 0, Seq(), 0, incorpUpdatesvalidTP)))
 
-      when(mockQueueRepository.storeIncorpUpdates(Matchers.any())).thenReturn(Future.successful(InsertResult(2, 0, Seq())))
+      when(mockQueueRepository.storeIncorpUpdates(ArgumentMatchers.any())).thenReturn(Future.successful(InsertResult(2, 0, Seq())))
 
       val captor = ArgumentCaptor.forClass(classOf[String])
 
-      when(mockTimepointRepository.updateTimepoint(Matchers.any())).thenReturn(Future.successful("2016010101000"))
+      when(mockTimepointRepository.updateTimepoint(ArgumentMatchers.any())).thenReturn(Future.successful("2016010101000"))
 
       val response = await(service.updateNextIncorpUpdateJobLot)
       verify(mockTimepointRepository).updateTimepoint(captor.capture())
@@ -352,18 +352,18 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
 
       val seqOfQueuedIncorpUpdates = Seq(queuedIncorpUpdate, queuedIncorpUpdate2)
 
-      when(mockQueueRepository.removeQueuedIncorpUpdate(Matchers.any()))
+      when(mockQueueRepository.removeQueuedIncorpUpdate(ArgumentMatchers.any()))
         .thenReturn(Future.successful(true))
 
-      when(mockQueueRepository.getIncorpUpdate(Matchers.any()))
+      when(mockQueueRepository.getIncorpUpdate(ArgumentMatchers.any()))
         .thenReturn(Future.successful(Some(queuedIncorpUpdate)))
 
-      when(mockIncorpUpdateRepository.storeSingleIncorpUpdate(Matchers.any())).thenReturn(Future.successful(UWR))
+      when(mockIncorpUpdateRepository.storeSingleIncorpUpdate(ArgumentMatchers.any())).thenReturn(Future.successful(UWR))
 
-      when(mockIncorporationCheckAPIConnector.checkForIndividualIncorpUpdate(Matchers.any())(Matchers.any[HeaderCarrier]()))
+      when(mockIncorporationCheckAPIConnector.checkForIndividualIncorpUpdate(ArgumentMatchers.any())(ArgumentMatchers.any[HeaderCarrier]()))
         .thenReturn(Future.successful(Seq(incorpUpdate)), Future.successful(Seq(incorpUpdateNew)))
 
-      when(mockQueueRepository.storeIncorpUpdates(Matchers.any()))
+      when(mockQueueRepository.storeIncorpUpdates(ArgumentMatchers.any()))
         .thenReturn(Future.successful(InsertResult(1, 0, Nil)))
 
       val response = await(service.updateSpecificIncorpUpdateByTP(timepointSeq))
@@ -377,18 +377,18 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
 
       val seqOfQueuedIncorpUpdates = Seq(queuedIncorpUpdate, queuedIncorpUpdate2)
 
-      when(mockQueueRepository.removeQueuedIncorpUpdate(Matchers.any()))
+      when(mockQueueRepository.removeQueuedIncorpUpdate(ArgumentMatchers.any()))
         .thenReturn(Future.successful(true))
 
-      when(mockQueueRepository.getIncorpUpdate(Matchers.any()))
+      when(mockQueueRepository.getIncorpUpdate(ArgumentMatchers.any()))
         .thenReturn(Future.successful(None))
 
-      when(mockIncorpUpdateRepository.storeSingleIncorpUpdate(Matchers.any())).thenReturn(Future.successful(UWR))
+      when(mockIncorpUpdateRepository.storeSingleIncorpUpdate(ArgumentMatchers.any())).thenReturn(Future.successful(UWR))
 
-      when(mockIncorporationCheckAPIConnector.checkForIndividualIncorpUpdate(Matchers.any())(Matchers.any[HeaderCarrier]()))
+      when(mockIncorporationCheckAPIConnector.checkForIndividualIncorpUpdate(ArgumentMatchers.any())(ArgumentMatchers.any[HeaderCarrier]()))
         .thenReturn(Future.successful(Seq(incorpUpdate)), Future.successful(Seq(incorpUpdateNew)))
 
-      when(mockQueueRepository.storeIncorpUpdates(Matchers.any()))
+      when(mockQueueRepository.storeIncorpUpdates(ArgumentMatchers.any()))
         .thenReturn(Future.successful(InsertResult(1, 0, Nil)))
 
       val response = await(service.updateSpecificIncorpUpdateByTP(timepointSeq))
@@ -403,18 +403,18 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
 
       val seqOfQueuedIncorpUpdates = Seq(queuedIncorpUpdate, queuedIncorpUpdate2)
 
-      when(mockQueueRepository.removeQueuedIncorpUpdate(Matchers.any()))
+      when(mockQueueRepository.removeQueuedIncorpUpdate(ArgumentMatchers.any()))
         .thenReturn(Future.successful(true))
 
-      when(mockQueueRepository.getIncorpUpdate(Matchers.any()))
+      when(mockQueueRepository.getIncorpUpdate(ArgumentMatchers.any()))
         .thenReturn(Future.successful(None))
 
-      when(mockIncorpUpdateRepository.storeSingleIncorpUpdate(Matchers.any())).thenReturn(Future.successful(UWR))
+      when(mockIncorpUpdateRepository.storeSingleIncorpUpdate(ArgumentMatchers.any())).thenReturn(Future.successful(UWR))
 
-      when(mockIncorporationCheckAPIConnector.checkForIndividualIncorpUpdate(Matchers.any())(Matchers.any[HeaderCarrier]()))
+      when(mockIncorporationCheckAPIConnector.checkForIndividualIncorpUpdate(ArgumentMatchers.any())(ArgumentMatchers.any[HeaderCarrier]()))
         .thenReturn(Future.successful(Seq(incorpUpdate)), Future.successful(Seq(incorpUpdateNew)))
 
-      when(mockQueueRepository.storeIncorpUpdates(Matchers.any()))
+      when(mockQueueRepository.storeIncorpUpdates(ArgumentMatchers.any()))
         .thenReturn(Future.successful(InsertResult(1, 0, Nil)))
 
       val response = await(service.updateSpecificIncorpUpdateByTP(timepointSeq, true))
