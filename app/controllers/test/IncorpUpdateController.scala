@@ -22,7 +22,7 @@ import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import repositories.{IncorpUpdateMongo, IncorpUpdateRepository, QueueMongo, QueueRepository}
-import uk.gov.hmrc.play.bootstrap.controller.{BackendBaseController, BackendController}
+import uk.gov.hmrc.play.bootstrap.backend.controller.{BackendBaseController, BackendController}
 
 import scala.concurrent.{ExecutionContext, Future}
 

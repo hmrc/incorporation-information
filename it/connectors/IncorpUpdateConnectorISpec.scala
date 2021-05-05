@@ -23,7 +23,7 @@ import org.joda.time.DateTime
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.test.Helpers._
-import uk.gov.hmrc.http.logging.Authorization
+import uk.gov.hmrc.http.Authorization
 import uk.gov.hmrc.http.{BadRequestException, HeaderCarrier}
 
 class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
@@ -76,19 +76,6 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
       verify(getRequestedFor(urlMatching("/incorporation-frontend-stubs/submissions.*"))
         .withHeader("Authorization", matching("foo"))
         .withHeader("bar", matching("wizz")))
-    }
-
-    "header carrier is reset when calling coho" in {
-      setupFeatures(transactionalAPI = true)
-      stubGet("/coho/submissions.*", 200, responseOne)
-
-      val connector = app.injector.instanceOf[IncorporationAPIConnector]
-
-      val result = await(connector.checkForIncorpUpdate(None)(HeaderCarrier(authorization = Some(Authorization("foo")), extraHeaders = Seq("bar" -> "wizz"))))
-      result shouldBe Seq(item1)
-      verify(getRequestedFor(urlMatching("/coho/submissions.*"))
-        .withHeader("Authorization", matching("Bearer N/A"))
-        .withoutHeader("bar"))
     }
 
     "Return no items if a 204 (no content) result is returned" in {

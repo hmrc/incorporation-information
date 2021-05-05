@@ -19,7 +19,7 @@ package services
 import Helpers.SCRSSpec
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
 import org.joda.time.DateTime
-import org.mockito.Matchers.{eq => eqTo, _}
+import org.mockito.ArgumentMatchers.{eq => eqTo, _}
 import org.mockito.Mockito._
 import reactivemongo.api.commands.{DefaultWriteResult, WriteError}
 import repositories._

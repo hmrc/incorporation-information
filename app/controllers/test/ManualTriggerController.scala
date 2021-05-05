@@ -22,7 +22,7 @@ import javax.inject.{Inject, Named}
 import jobs.ScheduledJob
 import play.api.Logger
 import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
-import uk.gov.hmrc.play.bootstrap.controller.{BackendBaseController, BackendController}
+import uk.gov.hmrc.play.bootstrap.backend.controller.{BackendBaseController, BackendController}
 
 import scala.concurrent.{ExecutionContext, Future}
 

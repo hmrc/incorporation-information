@@ -22,7 +22,6 @@ import play.api.Logger
 import play.api.libs.json.JsValue
 import services.MetricsService
 import uk.gov.hmrc.http._
-import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.http.ws.WSProxy
 import utils._
@@ -76,14 +75,14 @@ trait PublicCohoApiConnector extends AlertLogging {
                        )(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
     import play.api.http.Status.NO_CONTENT
 
-    val (http, realHc, url) = if (useProxy) {
+    val (http, extraHeaders, url) = if (useProxy) {
       (httpProxy, createAPIAuthHeader(isScrs), s"$cohoPublicUrl/company/$crn")
     } else {
-      (httpNoProxy, hc, s"$cohoStubbedUrl/company-profile/$crn")
+      (httpNoProxy, Seq(), s"$cohoStubbedUrl/company-profile/$crn")
     }
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter), Some(metrics.publicAPITimer.time())) {
-      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc, implicitly) map {
+      http.GET[HttpResponse](url = url, headers = extraHeaders).map {
         res =>
           res.status match {
             case NO_CONTENT => None
@@ -96,14 +95,14 @@ trait PublicCohoApiConnector extends AlertLogging {
   def getOfficerList(crn: String)(implicit hc: HeaderCarrier): Future[Option[JsValue]] = {
     import play.api.http.Status.NO_CONTENT
 
-    val (http, realHc, url) = if (useProxy) {
+    val (http, extraHeaders, url) = if (useProxy) {
       (httpProxy, createAPIAuthHeader(), s"$cohoPublicUrl/company/$crn/officers")
     } else {
-      (httpNoProxy, hc, s"$cohoStubbedUrl/company/$crn/officers")
+      (httpNoProxy, Seq(), s"$cohoStubbedUrl/company/$crn/officers")
     }
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter), Some(metrics.publicAPITimer.time())) {
-      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc, implicitly) map {
+      http.GET[HttpResponse](url = url, headers = extraHeaders).map {
         res =>
           res.status match {
             case NO_CONTENT => None
@@ -125,15 +124,15 @@ trait PublicCohoApiConnector extends AlertLogging {
   def getOfficerAppointment(officerAppointmentUrl: String)(implicit hc: HeaderCarrier): Future[JsValue] = {
     import play.api.http.Status.NO_CONTENT
 
-    val (http, realHc, url) = if (useProxy) {
+    val (http, extraHeaders, url) = if (useProxy) {
       (httpProxy, createAPIAuthHeader(), s"$cohoPublicUrl$officerAppointmentUrl")
     } else {
       val (fName, lName) = getStubbedFirstAndLastName(officerAppointmentUrl)
-      (httpNoProxy, hc, s"$cohoStubbedUrl/get-officer-appointment?fn=$fName&sn=$lName")
+      (httpNoProxy, Seq(), s"$cohoStubbedUrl/get-officer-appointment?fn=$fName&sn=$lName")
     }
 
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter), Some(metrics.publicAPITimer.time())) {
-      http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], realHc, implicitly) map {
+      http.GET[HttpResponse](url = url, headers = extraHeaders).map {
         res =>
           res.status match {
             case NO_CONTENT =>
@@ -198,12 +197,12 @@ trait PublicCohoApiConnector extends AlertLogging {
 
   private[connectors] def useProxy: Boolean = featureSwitch.transactionalAPI.enabled
 
-  private[connectors] def createAPIAuthHeader(isScrs: Boolean = true): HeaderCarrier = {
+  private[connectors] def createAPIAuthHeader(isScrs: Boolean = true): Seq[(String, String)] = {
     val encodedToken = if (isScrs) {
       Base64.encode(cohoPublicApiAuthToken)
     } else {
       Base64.encode(nonSCRSPublicApiAuthToken)
     }
-    HeaderCarrier(authorization = Some(Authorization(s"Basic $encodedToken")))
+    Seq("Authorization" -> s"Basic $encodedToken")
   }
 }

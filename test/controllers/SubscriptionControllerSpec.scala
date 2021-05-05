@@ -19,8 +19,8 @@ package controllers
 import Helpers.{JSONhelpers, SCRSSpec}
 import models.{IncorpUpdate, Subscription}
 import org.joda.time.DateTime
-import org.mockito.Matchers
-import org.mockito.Matchers.{any, eq => eqTo}
+import org.mockito.ArgumentMatchers.{any, eq => eqTo}
+import org.mockito.ArgumentMatchers
 import org.mockito.Mockito._
 import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.mvc.{AnyContentAsEmpty, ControllerComponents, Result}
@@ -115,7 +115,7 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
 
   "Remove subscription" should {
     "return a 200 when a subscription is deleted" in new Setup {
-      when(mockService.deleteSubscription(Matchers.eq(transactionId),Matchers.eq(regime),Matchers.eq(subscriber)))
+      when(mockService.deleteSubscription(ArgumentMatchers.eq(transactionId),ArgumentMatchers.eq(regime),ArgumentMatchers.eq(subscriber)))
         .thenReturn(Future.successful(DeletedSub))
 
       val request: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
@@ -125,7 +125,7 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
     }
 
     "return a 404 when a subscription cannot be found" in new Setup {
-      when(mockService.deleteSubscription(Matchers.eq(transactionId),Matchers.eq(regime),Matchers.eq(subscriber)))
+      when(mockService.deleteSubscription(ArgumentMatchers.eq(transactionId),ArgumentMatchers.eq(regime),ArgumentMatchers.eq(subscriber)))
         .thenReturn(Future.successful(NotDeletedSub))
 
       val request: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()

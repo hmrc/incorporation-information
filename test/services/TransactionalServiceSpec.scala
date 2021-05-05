@@ -21,8 +21,8 @@ import connectors.{FailedTransactionalAPIResponse, IncorporationAPIConnector, Pu
 import models.IncorpUpdate
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
-import org.mockito.Matchers
-import org.mockito.Matchers.{any, eq => eqTo}
+import org.mockito.ArgumentMatchers.{any, eq => eqTo}
+import org.mockito.ArgumentMatchers
 import org.mockito.Mockito._
 import play.api.Logger
 import play.api.libs.json.JodaWrites.JodaDateTimeNumberWrites
@@ -365,7 +365,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
 
       "Company exists and has a crn" in new Setup {
         val incorpUpdate = IncorpUpdate("transId", "accepted", Some("foo"), None, "", None)
-        when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(Some(incorpUpdate)))
+        when(mockRepos.getIncorpUpdate(ArgumentMatchers.any[String])).thenReturn(Future.successful(Some(incorpUpdate)))
 
         await(service.checkIfCompIncorporated("fooBarTest")) shouldBe Some("foo")
       }
@@ -375,13 +375,13 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
 
       "Company exists, has a status != rejected but has no crn" in new Setup {
         val incorpUpdate = IncorpUpdate("transId", "foo", None, None, "", None)
-        when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(Some(incorpUpdate)))
+        when(mockRepos.getIncorpUpdate(ArgumentMatchers.any[String])).thenReturn(Future.successful(Some(incorpUpdate)))
 
         await(service.checkIfCompIncorporated("fooBarTest")) shouldBe None
       }
 
       "Company does not exist" in new Setup {
-        when(mockRepos.getIncorpUpdate(Matchers.any[String])).thenReturn(Future.successful(None))
+        when(mockRepos.getIncorpUpdate(ArgumentMatchers.any[String])).thenReturn(Future.successful(None))
         await(service.checkIfCompIncorporated("fooBarTest")) shouldBe None
       }
     }
@@ -391,14 +391,14 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
 
     "return None when companyProfile cannot be found" in new Setup {
       val response = FailedTransactionalAPIResponse
-      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any())).thenReturn(Future.successful(None))
-      when(mockConnector.fetchTransactionalData(Matchers.any[String])(any())).thenReturn(Future.successful(response))
+      when(mockCohoConnector.getCompanyProfile(ArgumentMatchers.any[String], any())(any())).thenReturn(Future.successful(None))
+      when(mockConnector.fetchTransactionalData(ArgumentMatchers.any[String])(any())).thenReturn(Future.successful(response))
       await(service.fetchCompanyProfileFromCoho("num", "")) shouldBe None
     }
 
     "return Some(json) when companyProfile can be found" in new SetupForCohoTransform {
       val json = buildJson("foo")
-      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any())).thenReturn(Future.successful(Some(service.jsonObj)))
+      when(mockCohoConnector.getCompanyProfile(ArgumentMatchers.any[String], any())(any())).thenReturn(Future.successful(Some(service.jsonObj)))
       await(service.fetchCompanyProfileFromCoho("num", "")) shouldBe Some(service.jsonObj)
     }
   }
@@ -1052,14 +1052,14 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
   "fetchSicCodes" should {
 
     "return None if no json was returned by the public API" in new Setup {
-      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+      when(mockCohoConnector.getCompanyProfile(ArgumentMatchers.any[String], any())(any()))
         .thenReturn(Future.successful(None))
 
       await(service.fetchSicCodes(crn, usePublicAPI = true)) shouldBe None
     }
 
     "return None if no json was returned by the transactional API" in new Setup {
-      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+      when(mockCohoConnector.getCompanyProfile(ArgumentMatchers.any[String], any())(any()))
         .thenReturn(Future.successful(None))
 
       await(service.fetchSicCodes(crn, usePublicAPI = false)) shouldBe None
@@ -1068,7 +1068,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
     "return None if no SIC codes were returned by the public API" in new Setup {
       val unexpectedResponse = Json.parse("""{ "foo":"bar" }""")
 
-      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+      when(mockCohoConnector.getCompanyProfile(ArgumentMatchers.any[String], any())(any()))
         .thenReturn(Future.successful(Some(unexpectedResponse)))
 
       await(service.fetchSicCodes(crn, usePublicAPI = true)) shouldBe None
@@ -1077,7 +1077,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
     "return None if no SIC codes were returned by the transactional API" in new Setup {
       val unexpectedResponse = Json.parse("""{ "foo":"bar" }""")
 
-      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+      when(mockCohoConnector.getCompanyProfile(ArgumentMatchers.any[String], any())(any()))
         .thenReturn(Future.successful(Some(unexpectedResponse)))
 
       await(service.fetchSicCodes(crn, usePublicAPI = false)) shouldBe None
@@ -1099,7 +1099,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
         """.stripMargin).as[JsObject]
       val expectedCodes: JsValue = Json.parse("""{"sic_codes": ["12345","67890"]}""")
 
-      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+      when(mockCohoConnector.getCompanyProfile(ArgumentMatchers.any[String], any())(any()))
         .thenReturn(Future.successful(Some(expectedJson)))
 
       await(service.fetchSicCodes(crn, usePublicAPI = true)) shouldBe Some(expectedCodes)
@@ -1122,7 +1122,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
         """.stripMargin).as[JsObject]
       val expectedCodes: JsValue = Json.parse("""{"sic_codes": ["12345","67890"]}""")
 
-      when(mockConnector.fetchTransactionalData(Matchers.any[String])(any()))
+      when(mockConnector.fetchTransactionalData(ArgumentMatchers.any[String])(any()))
         .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(expectedJson)))
 
       await(service.fetchSicCodes(transactionId, usePublicAPI = false)) shouldBe Some(expectedCodes)
@@ -1140,7 +1140,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
         """.stripMargin).as[JsObject]
       val expectedCodes: JsValue = Json.parse("""{"sic_codes": ["12345","67890"]}""")
 
-      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+      when(mockCohoConnector.getCompanyProfile(ArgumentMatchers.any[String], any())(any()))
         .thenReturn(Future.successful(Some(expectedJson)))
 
       await(service.fetchSicCodes(crn, usePublicAPI = true)) shouldBe None
@@ -1164,13 +1164,13 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
     val expectedCodes: JsValue = Json.parse("""{"sic_codes": ["12345","67890"]}""")
 
     "return some SIC codes" in new Setup {
-      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+      when(mockCohoConnector.getCompanyProfile(ArgumentMatchers.any[String], any())(any()))
         .thenReturn(Future.successful(Some(expectedJson)))
 
       await(service.fetchSicByCRN(crn)) shouldBe Some(expectedCodes)
     }
     "return no SIC codes" in new Setup {
-      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+      when(mockCohoConnector.getCompanyProfile(ArgumentMatchers.any[String], any())(any()))
         .thenReturn(Future.successful(None))
 
       await(service.fetchSicByCRN(crn)) shouldBe None
@@ -1214,7 +1214,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
       when(mockRepos.getIncorpUpdate(eqTo(transactionId)))
         .thenReturn(incorporated(true))
 
-      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+      when(mockCohoConnector.getCompanyProfile(ArgumentMatchers.any[String], any())(any()))
         .thenReturn(Future.successful(Some(expectedJson)))
 
       await(service.fetchSicByTransId(transactionId)) shouldBe Some(expectedCodes)
@@ -1224,10 +1224,10 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
       when(mockRepos.getIncorpUpdate(eqTo(transactionId)))
         .thenReturn(incorporated(true))
 
-      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+      when(mockCohoConnector.getCompanyProfile(ArgumentMatchers.any[String], any())(any()))
         .thenReturn(Future.successful(None))
 
-      when(mockConnector.fetchTransactionalData(Matchers.any[String])(any()))
+      when(mockConnector.fetchTransactionalData(ArgumentMatchers.any[String])(any()))
         .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(transactionalJson)))
 
       await(service.fetchSicByTransId(transactionId)) shouldBe Some(expectedCodes)
@@ -1237,10 +1237,10 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
       when(mockRepos.getIncorpUpdate(eqTo(transactionId)))
         .thenReturn(incorporated(true))
 
-      when(mockCohoConnector.getCompanyProfile(Matchers.any[String], any())(any()))
+      when(mockCohoConnector.getCompanyProfile(ArgumentMatchers.any[String], any())(any()))
         .thenReturn(Future.successful(None))
 
-      when(mockConnector.fetchTransactionalData(Matchers.any[String])(any()))
+      when(mockConnector.fetchTransactionalData(ArgumentMatchers.any[String])(any()))
         .thenReturn(Future.successful(FailedTransactionalAPIResponse))
 
       await(service.fetchSicByTransId(transactionId)) shouldBe None
@@ -1250,7 +1250,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
       when(mockRepos.getIncorpUpdate(eqTo(transactionId)))
         .thenReturn(incorporated(false))
 
-      when(mockConnector.fetchTransactionalData(Matchers.any[String])(any()))
+      when(mockConnector.fetchTransactionalData(ArgumentMatchers.any[String])(any()))
         .thenReturn(Future.successful(FailedTransactionalAPIResponse))
 
       await(service.fetchSicByTransId(transactionId)) shouldBe None
@@ -1260,7 +1260,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
       when(mockRepos.getIncorpUpdate(eqTo(transactionId)))
         .thenReturn(incorporated(false))
 
-      when(mockConnector.fetchTransactionalData(Matchers.any[String])(any()))
+      when(mockConnector.fetchTransactionalData(ArgumentMatchers.any[String])(any()))
         .thenReturn(Future.successful(FailedTransactionalAPIResponse))
 
       await(service.fetchSicByTransId(transactionId)) shouldBe None
@@ -1309,7 +1309,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
           | ]
           |  """.stripMargin).as[JsArray]
 
-      when(mockConnector.fetchTransactionalData(Matchers.any[String])(any()))
+      when(mockConnector.fetchTransactionalData(ArgumentMatchers.any[String])(any()))
         .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(txJsonContainingShareholders)))
       withCaptureOfLoggingFrom(Logger) { logEvents =>
         await(service.fetchShareholders(transactionId)) shouldBe Some(extractedJson)
@@ -1334,7 +1334,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
         Json.parse(
           """[]
           """.stripMargin)
-      when(mockConnector.fetchTransactionalData(Matchers.any[String])(any()))
+      when(mockConnector.fetchTransactionalData(ArgumentMatchers.any[String])(any()))
         .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(txJsonContainingEmptyListOfShareholders)))
       withCaptureOfLoggingFrom(Logger) { logEvents =>
         await(service.fetchShareholders(transactionId)) shouldBe Some(extractedJson)
@@ -1354,7 +1354,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
              |  "type": "ltd"
              |  }""".stripMargin)
 
-      when(mockConnector.fetchTransactionalData(Matchers.any[String])(any()))
+      when(mockConnector.fetchTransactionalData(ArgumentMatchers.any[String])(any()))
         .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(txJsonContainingNOShareholdersKey)))
       withCaptureOfLoggingFrom(Logger) { logEvents =>
         await(service.fetchShareholders(transactionId)) shouldBe None

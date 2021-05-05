@@ -22,7 +22,7 @@ import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import repositories._
 import services.SubscriptionService
-import uk.gov.hmrc.play.bootstrap.controller.{BackendBaseController, BackendController}
+import uk.gov.hmrc.play.bootstrap.backend.controller.{BackendBaseController, BackendController}
 
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext

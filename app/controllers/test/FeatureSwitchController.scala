@@ -19,7 +19,7 @@ package controllers.test
 import javax.inject.{Inject, Named}
 import jobs.ScheduledJob
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
-import uk.gov.hmrc.play.bootstrap.controller.{BackendBaseController, BackendController}
+import uk.gov.hmrc.play.bootstrap.backend.controller.{BackendBaseController, BackendController}
 import utils.FeatureSwitch
 
 import scala.concurrent.Future

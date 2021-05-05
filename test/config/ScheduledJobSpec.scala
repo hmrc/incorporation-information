@@ -23,7 +23,7 @@ import jobs.SchedulingActor.FireSubscriptions
 import jobs.{ScheduledJob, SchedulingActor}
 import org.mockito.Mockito._
 import org.quartz.CronExpression
-import org.scalatest.mockito.MockitoSugar
+import org.scalatestplus.mockito.MockitoSugar
 import play.api.Configuration
 import services.SubscriptionFiringService
 

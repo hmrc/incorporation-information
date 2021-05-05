@@ -21,7 +21,7 @@ import connectors.PublicCohoApiConnector
 import models.IncorpUpdate
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
-import org.mockito.Matchers.{any, eq => eqTo}
+import org.mockito.ArgumentMatchers.{any, eq => eqTo}
 import org.mockito.Mockito._
 import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.mvc.{ControllerComponents, Result}
