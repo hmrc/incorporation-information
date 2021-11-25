@@ -21,7 +21,7 @@ import config.{MicroserviceConfig, WSHttpProxy}
 import models.IncorpUpdate
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
-import play.api.Logger
+import play.api.Logging
 import play.api.libs.functional.syntax._
 import play.api.libs.json.{JsValue, Reads, __}
 import services.MetricsService
@@ -76,7 +76,7 @@ case class SuccessfulTransactionalAPIResponse(js: JsValue) extends Transactional
 
 case object FailedTransactionalAPIResponse extends TransactionalAPIResponse
 
-trait IncorporationAPIConnector extends AlertLogging {
+trait IncorporationAPIConnector extends AlertLogging with Logging {
 
   def httpProxy: CoreGet with WSProxy
 
@@ -113,8 +113,8 @@ trait IncorporationAPIConnector extends AlertLogging {
                   case IncorpUpdate(_, "accepted", Some(crn), Some(incorpDate), _, _) => false
                   case IncorpUpdate(_, "rejected", _, _, _, _) => false
                   case failure =>
-                    Logger.error("CH_UPDATE_INVALID")
-                    Logger.info(s"CH Update failed for transaction ID: ${failure.transactionId}. Status: ${failure.status}, incorpdate provided: ${failure.incorpDate.isDefined}")
+                    logger.error("CH_UPDATE_INVALID")
+                    logger.info(s"CH Update failed for transaction ID: ${failure.transactionId}. Status: ${failure.status}, incorpdate provided: ${failure.incorpDate.isDefined}")
                     true
                 }
               ) {
@@ -157,14 +157,14 @@ trait IncorporationAPIConnector extends AlertLogging {
     metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter), Some(metrics.internalAPITimer.time())) {
       http.GET[JsValue](url = url, headers = extraHeaders).map {
         res =>
-          Logger.debug("[TransactionalData] json - " + res)
+          logger.debug("[TransactionalData] json - " + res)
           SuccessfulTransactionalAPIResponse(res)
       }
     } recover handleError(transactionID)
   }
 
   private def logError(ex: HttpException, timepoint: Option[String]) = {
-    Logger.error(s"[IncorporationCheckAPIConnector] [incorpUpdates]" +
+    logger.error(s"[IncorporationCheckAPIConnector] [incorpUpdates]" +
       s" request to fetch incorp updates returned a ${ex.responseCode}. " +
       s"No incorporations were processed for timepoint $timepoint - Reason = ${ex.getMessage}")
   }
@@ -177,13 +177,13 @@ trait IncorporationAPIConnector extends AlertLogging {
       logError(ex, timepoint)
       throw new IncorpUpdateAPIFailure(ex)
     case ex: Upstream4xxResponse =>
-      Logger.error("[IncorporationCheckAPIConnector] [checkForIncorpUpdate]" + ex.upstreamResponseCode + " " + ex.message)
+      logger.error("[IncorporationCheckAPIConnector] [checkForIncorpUpdate]" + ex.upstreamResponseCode + " " + ex.message)
       throw new IncorpUpdateAPIFailure(ex)
     case ex: Upstream5xxResponse =>
-      Logger.error("[IncorporationCheckAPIConnector] [checkForIncorpUpdate]" + ex.upstreamResponseCode + " " + ex.message)
+      logger.error("[IncorporationCheckAPIConnector] [checkForIncorpUpdate]" + ex.upstreamResponseCode + " " + ex.message)
       throw new IncorpUpdateAPIFailure(ex)
     case ex: Exception =>
-      Logger.error("[IncorporationCheckAPIConnector] [checkForIncorpUpdate]" + ex)
+      logger.error("[IncorporationCheckAPIConnector] [checkForIncorpUpdate]" + ex)
       throw new IncorpUpdateAPIFailure(ex)
   }
 
@@ -204,7 +204,7 @@ trait IncorporationAPIConnector extends AlertLogging {
       pagerduty(PagerDutyKeys.COHO_TX_API_5XX, Some(s"Returned status code: ${ex.upstreamResponseCode} for $transactionID - reason: ${ex.getMessage}"))
       FailedTransactionalAPIResponse
     case ex: Throwable =>
-      Logger.info(s"[TransactionalConnector] [fetchTransactionalData] - Failed for $transactionID - reason: ${ex.getMessage}")
+      logger.info(s"[TransactionalConnector] [fetchTransactionalData] - Failed for $transactionID - reason: ${ex.getMessage}")
       FailedTransactionalAPIResponse
   }
 

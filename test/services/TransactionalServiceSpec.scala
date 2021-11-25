@@ -1311,7 +1311,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
 
       when(mockConnector.fetchTransactionalData(ArgumentMatchers.any[String])(any()))
         .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(txJsonContainingShareholders)))
-      withCaptureOfLoggingFrom(Logger) { logEvents =>
+      withCaptureOfLoggingFrom(Logger(service.getClass)) { logEvents =>
         await(service.fetchShareholders(transactionId)) shouldBe Some(extractedJson)
         val message = "[fetchShareholders] returned an array with the size - 1"
         val log =  logEvents.map(l => (l.getLevel, l.getMessage)).head
@@ -1336,7 +1336,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
           """.stripMargin)
       when(mockConnector.fetchTransactionalData(ArgumentMatchers.any[String])(any()))
         .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(txJsonContainingEmptyListOfShareholders)))
-      withCaptureOfLoggingFrom(Logger) { logEvents =>
+      withCaptureOfLoggingFrom(Logger(service.getClass)) { logEvents =>
         await(service.fetchShareholders(transactionId)) shouldBe Some(extractedJson)
         val message = "[fetchShareholders] returned an array with the size - 0"
         val log = logEvents.map(l => (l.getLevel, l.getMessage)).head
@@ -1356,7 +1356,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
 
       when(mockConnector.fetchTransactionalData(ArgumentMatchers.any[String])(any()))
         .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(txJsonContainingNOShareholdersKey)))
-      withCaptureOfLoggingFrom(Logger) { logEvents =>
+      withCaptureOfLoggingFrom(Logger(service.getClass)) { logEvents =>
         await(service.fetchShareholders(transactionId)) shouldBe None
         val message = "[fetchShareholders] returned nothing as key 'shareholders' was not found"
         val log = logEvents.map(l => (l.getLevel, l.getMessage)).head

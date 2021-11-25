@@ -16,6 +16,7 @@
 
 package config
 
+import com.google.inject.Singleton
 import play.api.{Configuration, Logger}
 import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo, TimepointMongo}
 import services.{IncorpUpdateService, SubscriptionService}
@@ -25,69 +26,60 @@ import java.util.Base64
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
-class StartUpJobsImpl @Inject()(val configuration: Configuration,
-                                val incorpUpdateService: IncorpUpdateService,
-                                val subscriptionService: SubscriptionService,
-                                val timepointMongo: TimepointMongo,
-                                val subsRepo: SubscriptionsMongo,
-                                val incorpUpdateRepo: IncorpUpdateMongo,
-                                val queueRepo: QueueMongo
-                               )(implicit val ec: ExecutionContext) extends StartUpJobs
-
-trait StartUpJobs {
-  implicit val ec: ExecutionContext
-  val configuration: Configuration
-  val incorpUpdateService: IncorpUpdateService
-  val subscriptionService: SubscriptionService
-  val timepointMongo: TimepointMongo
-  val subsRepo: SubscriptionsMongo
-  val incorpUpdateRepo: IncorpUpdateMongo
-  val queueRepo: QueueMongo
-
-  lazy val tpConfig = configuration.getString("timepointList")
+@Singleton
+class StartUpJobs @Inject()(val configuration: Configuration,
+                            val incorpUpdateService: IncorpUpdateService,
+                            val subscriptionService: SubscriptionService,
+                            val timepointMongo: TimepointMongo,
+                            val subsRepo: SubscriptionsMongo,
+                            val incorpUpdateRepo: IncorpUpdateMongo,
+                            val queueRepo: QueueMongo,
+                            val logger: Logger
+                           )(implicit val ec: ExecutionContext) {
+  lazy val tpConfig = configuration.getOptional[String]("timepointList")
 
   private def reFetchIncorpInfo(): Future[Unit] = {
     tpConfig match {
-      case None => Future.successful(Logger.info(s"[Config] No timepoints to re-fetch"))
+      case None => Future.successful(logger.info(s"[Config] No timepoints to re-fetch"))
       case Some(timepointList) =>
         val tpList = new String(Base64.getDecoder.decode(timepointList), "UTF-8")
-        Logger.info(s"[Config] List of timepoints are $tpList")
+        logger.info(s"[Config] List of timepoints are $tpList")
         incorpUpdateService.updateSpecificIncorpUpdateByTP(tpList.split(","))(HeaderCarrier(), ec) map { result =>
-          Logger.info(s"Updating incorp data is switched on - result = $result")
+          logger.info(s"Updating incorp data is switched on - result = $result")
         }
     }
   }
 
   private def recreateSubscription(): Future[Unit] = {
-    configuration.getString("resubscribe") match {
-      case None => Future.successful(Logger.info(s"[Config] No re-subscriptions"))
+    configuration.getOptional[String]("resubscribe") match {
+      case None => Future.successful(logger.info(s"[Config] No re-subscriptions"))
       case Some(resubs) =>
         val configString = new String(Base64.getDecoder.decode(resubs), "UTF-8")
         configString.split(",").toList match {
           case txId :: callbackUrl :: Nil =>
             subscriptionService.checkForSubscription(txId, "ctax", "scrs", callbackUrl, true) map {
-              result => Logger.info(s"[Config] result of subscription service call for $txId = $result")
+              result => logger.info(s"[Config] result of subscription service call for $txId = $result")
             }
-          case _ => Future.successful(Logger.info(s"[Config] No info in re-subscription variable"))
+          case _ => Future.successful(logger.info(s"[Config] No info in re-subscription variable"))
         }
     }
   }
 
   private def reFetchIncorpInfoWhenNoQueue(): Future[Unit] = {
 
-    configuration.getString("timepointListNoQueue") match {
-      case None => Future.successful(Logger.info(s"[Config] No timepoints to re-fetch for no queue entries"))
+    configuration.getOptional[String]("timepointListNoQueue") match {
+      case None => Future.successful(logger.info(s"[Config] No timepoints to re-fetch for no queue entries"))
       case Some(timepointListNQ) =>
         val tpList = new String(Base64.getDecoder.decode(timepointListNQ), "UTF-8")
-        Logger.info(s"[Config] List of timepoints for no queue entries are $tpList")
+        logger.info(s"[Config] List of timepoints for no queue entries are $tpList")
         incorpUpdateService.updateSpecificIncorpUpdateByTP(tpList.split(","), forNoQueue = true)(HeaderCarrier(), ec) map { result =>
-          Logger.info(s"Updating incorp data is switched on for no queue entries - result = $result")
+          logger.info(s"Updating incorp data is switched on for no queue entries - result = $result")
         }
     }
   }
 
   def logIncorpInfo(): Unit = {
-    val transIdsFromConfig = configuration.getString("transactionIdList")
+    val transIdsFromConfig = configuration.getOptional[String]("transactionIdList")
     transIdsFromConfig.fold(()) { transIds =>
       val transIdList = utils.Base64.decode(transIds).split(",")
       transIdList.foreach { transId =>
@@ -96,7 +88,7 @@ trait StartUpJobs {
           incorpUpdate <- incorpUpdateRepo.repo.getIncorpUpdate(transId)
           queuedUpdate <- queueRepo.repo.getIncorpUpdate(transId)
         } yield {
-          Logger.info(s"[HeldDocs] For txId: $transId - " +
+          logger.info(s"[HeldDocs] For txId: $transId - " +
             s"subscriptions: ${if (subscriptions.isEmpty) "No subs" else subscriptions} - " +
             s"""incorp update: ${
               incorpUpdate.fold("No incorp update")(incorp =>
@@ -113,24 +105,24 @@ trait StartUpJobs {
   }
 
   def logRemainingSubscriptionIdentifiers(): Unit = {
-    val regime = configuration.getString("log-regime").getOrElse("ct")
-    val maxAmountToLog = configuration.getInt("log-count").getOrElse(20)
+    val regime = configuration.getOptional[String]("log-regime").getOrElse("ct")
+    val maxAmountToLog = configuration.getOptional[Int]("log-count").getOrElse(20)
 
     subsRepo.repo.getSubscriptionsByRegime(regime, maxAmountToLog) map { subs =>
-      Logger.info(s"Logging existing subscriptions for $regime regime, found ${subs.size} subscriptions")
+      logger.info(s"Logging existing subscriptions for $regime regime, found ${subs.size} subscriptions")
       subs foreach { sub =>
-        Logger.info(s"[Subscription] [$regime] Transaction ID: ${sub.transactionId}, Subscriber: ${sub.subscriber}")
+        logger.info(s"[Subscription] [$regime] Transaction ID: ${sub.transactionId}, Subscriber: ${sub.subscriber}")
       }
     }
   }
 
   private def resetTimepoint(): Future[Boolean] = {
-    configuration.getString("microservice.services.reset-timepoint-to").fold {
-      Logger.info("[ResetTimepoint] Could not find a timepoint to reset to (config key microservice.services.reset-timepoint-to)")
+    configuration.getOptional[String]("microservice.services.reset-timepoint-to").fold {
+      logger.info("[ResetTimepoint] Could not find a timepoint to reset to (config key microservice.services.reset-timepoint-to)")
       Future(false)
     } {
       timepoint =>
-        Logger.info(s"[ResetTimepoint] Found timepoint from config - $timepoint")
+        logger.info(s"[ResetTimepoint] Found timepoint from config - $timepoint")
         timepointMongo.repo.resetTimepointTo(timepoint)
     }
   }

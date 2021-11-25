@@ -20,7 +20,7 @@ import config.MicroserviceConfig
 import connectors.{IncorporationAPIConnector, PublicCohoApiConnectorImpl, SuccessfulTransactionalAPIResponse}
 import jobs._
 import org.joda.time.Duration
-import play.api.Logger
+import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.lock.LockKeeper
 import utils.Base64
@@ -44,7 +44,7 @@ class ProactiveMonitoringServiceImpl @Inject()(val transactionalConnector: Incor
   }
 }
 
-trait ProactiveMonitoringService extends ScheduledService[Either[(String, String), LockResponse]] {
+trait ProactiveMonitoringService extends ScheduledService[Either[(String, String), LockResponse]] with Logging {
 
   val lockKeeper: LockKeeper
   protected val transactionalConnector: IncorporationAPIConnector
@@ -60,14 +60,14 @@ trait ProactiveMonitoringService extends ScheduledService[Either[(String, String
     implicit val hc: HeaderCarrier = HeaderCarrier()
     lockKeeper.tryLock(pollAPIs).map {
       case Some(res) =>
-        Logger.info("ProactiveMonitoringService acquired lock and returned results")
-        Logger.info(s"Result: $res")
+        logger.info("ProactiveMonitoringService acquired lock and returned results")
+        logger.info(s"Result: $res")
         Left(res)
       case None =>
-        Logger.info("ProactiveMonitoringService cant acquire lock")
+        logger.info("ProactiveMonitoringService cant acquire lock")
         Right(MongoLocked)
     }.recover {
-      case e: Exception => Logger.error(s"Error running pollAPIs with message: ${e.getMessage}")
+      case e: Exception => logger.error(s"Error running pollAPIs with message: ${e.getMessage}")
         Right(UnlockingFailed)
     }
   }

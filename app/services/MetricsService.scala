@@ -21,7 +21,7 @@ import com.kenshoo.play.metrics.{Metrics, MetricsDisabledException}
 import config.MicroserviceConfig
 import jobs._
 import org.joda.time.Duration
-import play.api.Logger
+import play.api.Logging
 import repositories._
 import uk.gov.hmrc.lock.LockKeeper
 
@@ -53,7 +53,7 @@ class MetricsServiceImpl @Inject()(val injSubRepo: SubscriptionsMongo,
   }
 }
 
-trait MetricsService extends ScheduledService[Either[Map[String, Int], LockResponse]] {
+trait MetricsService extends ScheduledService[Either[Map[String, Int], LockResponse]] with Logging {
 
   protected val metrics: Metrics
   protected val subRepo: SubscriptionsRepository
@@ -69,14 +69,14 @@ trait MetricsService extends ScheduledService[Either[Map[String, Int], LockRespo
   def invoke(implicit ec: ExecutionContext): Future[Either[Map[String, Int], LockResponse]] = {
     lockKeeper.tryLock(updateSubscriptionMetrics).map {
       case Some(res) =>
-        Logger.info("MetricsService acquired lock and returned results")
-        Logger.info(s"Result: $res")
+        logger.info("MetricsService acquired lock and returned results")
+        logger.info(s"Result: $res")
         Left(res)
       case None =>
-        Logger.info("MetricsService cant acquire lock")
+        logger.info("MetricsService cant acquire lock")
         Right(MongoLocked)
     }.recover {
-      case e: Exception => Logger.error(s"Error running updateSubscriptionMetrics with message: ${e.getMessage}")
+      case e: Exception => logger .error(s"Error running updateSubscriptionMetrics with message: ${e.getMessage}")
         Right(UnlockingFailed)
     }
   }
@@ -104,7 +104,7 @@ trait MetricsService extends ScheduledService[Either[Map[String, Int], LockRespo
       metrics.defaultRegistry.register(metricName, gauge)
     } catch {
       case ex: MetricsDisabledException => {
-        Logger.warn(s"[MetricsService] [recordSubscriptionRegimeStat] Metrics disabled - ${metricName} -> ${count}")
+        logger.warn(s"[MetricsService] [recordSubscriptionRegimeStat] Metrics disabled - ${metricName} -> ${count}")
       }
     }
   }

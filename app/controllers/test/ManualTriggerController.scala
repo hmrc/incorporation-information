@@ -17,13 +17,12 @@
 package controllers.test
 
 import constants.JobNames._
-
-import javax.inject.{Inject, Named}
 import jobs.ScheduledJob
-import play.api.Logger
+import play.api.Logging
 import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
 import uk.gov.hmrc.play.bootstrap.backend.controller.{BackendBaseController, BackendController}
 
+import javax.inject.{Inject, Named}
 import scala.concurrent.{ExecutionContext, Future}
 
 class ManualTriggerControllerImpl @Inject()(@Named("incorp-update-job") val incUpdatesJob: ScheduledJob,
@@ -31,7 +30,7 @@ class ManualTriggerControllerImpl @Inject()(@Named("incorp-update-job") val incU
                                             override val controllerComponents: ControllerComponents
                                            )(implicit val ec: ExecutionContext) extends BackendController(controllerComponents) with ManualTriggerController
 
-trait ManualTriggerController extends BackendBaseController {
+trait ManualTriggerController extends BackendBaseController with Logging {
 
   implicit val ec: ExecutionContext
   protected val incUpdatesJob: ScheduledJob
@@ -43,7 +42,7 @@ trait ManualTriggerController extends BackendBaseController {
       case FIRE_SUBS => triggerFireSubsJob
       case _ =>
         val message = s"$jobName did not match any known jobs"
-        Logger.info(message)
+        logger.info(message)
         Future.successful(NotFound(message))
     }
   }

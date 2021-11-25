@@ -44,7 +44,7 @@ class ProactiveMonitoringServiceSpec extends SCRSSpec {
   val crn: String = "test-crn"
 
   class Setup {
-    val service: ProactiveMonitoringService = new ProactiveMonitoringService {
+    def service: ProactiveMonitoringService = new ProactiveMonitoringService {
       val transactionalConnector: IncorporationAPIConnector = mockTransactionalConnector
       override val lockKeeper: LockKeeper = mockLockKeeper
       val publicCohoConnector: PublicCohoApiConnectorImpl = mockPublicCohoConnector

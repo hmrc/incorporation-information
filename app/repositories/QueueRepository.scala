@@ -16,10 +16,8 @@
 
 package repositories
 
-import javax.inject.Inject
 import models.QueuedIncorpUpdate
 import org.joda.time.DateTime
-import play.api.Logger
 import play.api.libs.json.{Format, Json}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.indexes.{Index, IndexType}
@@ -30,6 +28,7 @@ import reactivemongo.play.json.ImplicitBSONHandlers._
 import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
 
+import javax.inject.Inject
 import scala.collection.Seq
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -87,7 +86,7 @@ class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate])(
         InsertResult(inserted, duplicates.size, errors)
     } recover {
       case ex: DatabaseException =>
-        Logger.info(s"Failed to store incorp update with transactionId: ${ex.originalDocument.get.get("incorp_update.transaction_id").get.toString} due to error: $ex")
+        logger.info(s"Failed to store incorp update with transactionId: ${ex.originalDocument.get.get("incorp_update.transaction_id").get.toString} due to error: $ex")
         throw new Exception
     }
   }
@@ -125,13 +124,13 @@ class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate])(
         res.value.fold(false) {
           _.value("timestamp").validate[Long]
             .fold(_ => {
-              Logger.error("updateTimestamp could not be converted to a long")
+              logger.error("updateTimestamp could not be converted to a long")
               false
             }, tsFromUpdate =>
               if (tsFromUpdate == ts) {
                 true
               } else {
-                Logger.info(s"updateTimestamp did not return the correct timestamp that was inserted on doc: $tsFromUpdate inserted: $ts")
+                logger.info(s"updateTimestamp did not return the correct timestamp that was inserted on doc: $tsFromUpdate inserted: $ts")
                 false
               }
             )

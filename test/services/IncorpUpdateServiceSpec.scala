@@ -16,7 +16,6 @@
 
 package services
 
-import java.time.LocalTime
 import Helpers.{JSONhelpers, LogCapturing, SCRSSpec}
 import connectors.IncorporationAPIConnector
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
@@ -33,8 +32,9 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.lock.LockKeeper
 import utils.{DateCalculators, PagerDutyKeys}
 
+import java.time.LocalTime
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturing {
 
@@ -250,13 +250,13 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
     }
 
     "throw a PAGER DUTY log message if working day true and timepoint > now" in new Setup(nDCalc(time(8, 0, 1), mondayWorking)) {
-      withCaptureOfLoggingFrom(Logger) { loggingEvents =>
+      withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         service.latestTimepoint(incorpUpdatesGoodAndBad) shouldBe badDateTimePointWorkingDay.toString
         loggingEvents.head.getMessage shouldBe s"${PagerDutyKeys.TIMEPOINT_INVALID} - last timepoint received from coho invalid: $badDateTimePointWorkingDay"
       }
     }
     "throw a PAGER DUTY log message at level ERROR if working day true and timepoint cannot be parsed" in new Setup(nDCalc(time(8, 0, 1), mondayWorking)) {
-      withCaptureOfLoggingFrom(Logger) { loggingEvents =>
+      withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         service.latestTimepoint(incorpUpdatesNonParsable) shouldBe badNonParsableTimePoint.toString
         loggingEvents.head.getMessage shouldBe "couldn't parse Foobar"
         loggingEvents.tail.head.getMessage shouldBe s"${PagerDutyKeys.TIMEPOINT_INVALID} - last timepoint received from coho invalid: ${inu4BADNonParsable.timepoint}"
@@ -264,19 +264,19 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
     }
 
     "throw a PAGER DUTY log message if working day false, timepoint > now" in new Setup(nDCalc(time(7, 0, 1), mondayWorking.plusDays(1))) {
-      withCaptureOfLoggingFrom(Logger) { loggingEvents =>
+      withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         service.latestTimepoint(incorpUpdatesGoodAndBad) shouldBe badDateTimePointWorkingDay.toString
         loggingEvents.head.getMessage shouldBe s"${PagerDutyKeys.TIMEPOINT_INVALID} - last timepoint received from coho invalid: $badDateTimePointWorkingDay"
       }
     }
     "don't throw a log message if working day true, timepoint < now" in new Setup(nDCalc(time(8, 0, 1), mondayWorking)) {
-      withCaptureOfLoggingFrom(Logger) { loggingEvents =>
+      withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         service.latestTimepoint(incorpUpdatesGoodOnlyRealTimepoints) shouldBe previousGoodTimePoint.toString
         loggingEvents.size shouldBe 0
       }
     }
     "don't throw a log message if working day true, timepoint = now" in new Setup(nDCalc(time(8, 0, 1), mondayWorking)) {
-      withCaptureOfLoggingFrom(Logger) { loggingEvents =>
+      withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         service.latestTimepoint(incorpUpdatesGoodOnlyRealTimepoints) shouldBe previousGoodTimePoint.toString
         loggingEvents.size shouldBe 0
       }
@@ -456,7 +456,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
       when(mockSubscriptionService.getSubscription(any(), eqTo(regimeCT), eqTo(subscriber)))
         .thenReturn(Future(Some(subCT)))
 
-      withCaptureOfLoggingFrom(Logger) { loggingEvents =>
+      withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         val result = await(service.alertOnNoCTInterest(seqOfIncorpUpdates))
         result shouldBe 0
 
@@ -471,7 +471,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
       when(mockSubscriptionService.getSubscription(any(), eqTo(regimeCTAX), eqTo(subscriber)))
         .thenReturn(Future(None))
 
-      withCaptureOfLoggingFrom(Logger) { loggingEvents =>
+      withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         val result = await(service.alertOnNoCTInterest(incorpUpdates))
         result shouldBe 2
 
@@ -486,7 +486,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
       when(mockSubscriptionService.getSubscription(any(), eqTo(regimeCTAX), eqTo(subscriber)))
         .thenReturn(Future(None))
 
-      withCaptureOfLoggingFrom(Logger) { loggingEvents =>
+      withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         val result = await(service.alertOnNoCTInterest(seqOfIncorpUpdates))
         result shouldBe 1
 
@@ -501,7 +501,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
       when(mockSubscriptionService.getSubscription(eqTo(transId), eqTo(regimeCTAX), eqTo(subscriber)))
         .thenReturn(Future(Some(subCT)))
 
-      withCaptureOfLoggingFrom(Logger) { loggingEvents =>
+      withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         val result = await(service.alertOnNoCTInterest(Seq(incorpUpdate)))
         result shouldBe 0
 
@@ -513,7 +513,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
       when(mockSubscriptionService.getSubscription(any(), any(), eqTo(subscriber)))
         .thenReturn(Future.successful(Some(subCT)), Future.successful(None), Future.successful(Some(subCTAX)))
 
-      withCaptureOfLoggingFrom(Logger) { loggingEvents =>
+      withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         val result = await(service.alertOnNoCTInterest(Seq(incorpUpdate, incorpUpdate2)))
         result shouldBe 0
 
