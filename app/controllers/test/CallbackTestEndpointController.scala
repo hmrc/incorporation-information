@@ -17,7 +17,7 @@
 package controllers.test
 
 
-import play.api.Logger
+import play.api.Logging
 import play.api.libs.json.JsValue
 import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.play.bootstrap.backend.controller.{BackendBaseController, BackendController}
@@ -29,11 +29,11 @@ import scala.concurrent.Future
 class CallbackTestEndpointControllerImpl @Inject()(override val controllerComponents: ControllerComponents
                                                   ) extends BackendController(controllerComponents) with CallbackTestEndpointController
 
-trait CallbackTestEndpointController extends BackendBaseController {
+trait CallbackTestEndpointController extends BackendBaseController with Logging {
 
   def post: Action[JsValue] = Action.async(parse.json) {
     implicit request =>
-      Logger.info("[Callback] - callback to test endpoint received")
+      logger.info("[Callback] - callback to test endpoint received")
       Future.successful(Ok)
   }
 }

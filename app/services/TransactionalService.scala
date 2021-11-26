@@ -18,7 +18,7 @@ package services
 
 import connectors._
 import models.Shareholders
-import play.api.Logger
+import play.api.Logging
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
@@ -43,7 +43,7 @@ class TransactionalServiceImpl @Inject()(val connector: IncorporationAPIConnecto
   lazy val incorpRepo = incorpMongo.repo
 }
 
-trait TransactionalService {
+trait TransactionalService extends Logging {
 
   protected val connector: IncorporationAPIConnector
   val incorpRepo: IncorpUpdateRepository
@@ -58,13 +58,13 @@ trait TransactionalService {
 
   def fetchShareholders(transactionId: String)(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[Option[JsArray]] = {
     val logExistenceOfShareholders = (optShareholders: Option[JsArray]) => {
-      optShareholders.fold(Logger.info("[fetchShareholders] returned nothing as key 'shareholders' was not found")) { jsArray =>
+      optShareholders.fold(logger.info("[fetchShareholders] returned nothing as key 'shareholders' was not found")) { jsArray =>
         val arraySize = jsArray.value.size
         val message = s"[fetchShareholders] returned an array with the size - $arraySize"
         if (arraySize > 0) {
-          Logger.info(message)
+          logger.info(message)
         } else {
-          Logger.warn(message)
+          logger.warn(message)
         }
       }
     }
@@ -75,7 +75,7 @@ trait TransactionalService {
         logExistenceOfShareholders(shareholders)
         shareholders
       case _ =>
-        Logger.error("[fetchShareholders] call to transactionalApi failed, returning None to controller")
+        logger.error("[fetchShareholders] call to transactionalApi failed, returning None to controller")
         None
     }
   }
@@ -133,7 +133,7 @@ trait TransactionalService {
     publicCohoConnector.getCompanyProfile(crn) flatMap {
       case Some(s) => Future.successful(transformDataFromCoho(s.as[JsObject]))
       case _ =>
-        Logger.info(s"[TransactionalService][fetchCompanyProfileFromCoho] Service failed to fetch a company that appeared incorporated in INCORPORATION_INFORMATION with the crn number: $crn")
+        logger.info(s"[TransactionalService][fetchCompanyProfileFromCoho] Service failed to fetch a company that appeared incorporated in INCORPORATION_INFORMATION with the crn number: $crn")
         fetchCompanyProfileFromTx(transactionId)
     }
   }
@@ -155,7 +155,7 @@ trait TransactionalService {
         }
       case None =>
 
-        Logger.info(s"[TransactionalService][fetchCompanyProfileFromCoho] Service failed to fetch a company that appeared incorporated in INCORPORATION_INFORMATION with the crn number: $crn")
+        logger.info(s"[TransactionalService][fetchCompanyProfileFromCoho] Service failed to fetch a company that appeared incorporated in INCORPORATION_INFORMATION with the crn number: $crn")
         fetchOfficerListFromTxAPI(transactionId)
     }
   }

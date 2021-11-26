@@ -21,7 +21,7 @@ import connectors.FiringSubscriptionsConnector
 import jobs._
 import models.{IncorpUpdateResponse, QueuedIncorpUpdate}
 import org.joda.time.{DateTime, Duration}
-import play.api.{Environment, Logger}
+import play.api.{Environment, Logging}
 import reactivemongo.api.commands.DefaultWriteResult
 import repositories._
 import uk.gov.hmrc.http.HeaderCarrier
@@ -55,7 +55,7 @@ class SubscriptionFiringServiceImpl @Inject()(fsConnector: FiringSubscriptionsCo
   implicit val hc = HeaderCarrier()
 }
 
-trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], LockResponse]] {
+trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], LockResponse]] with Logging {
   implicit val ec: ExecutionContext
   val firingSubsConnector: FiringSubscriptionsConnector
   val lockKeeper: LockKeeper
@@ -71,14 +71,14 @@ trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], Lo
   def invoke(implicit ec: ExecutionContext): Future[Either[Seq[Boolean], LockResponse]] = {
     lockKeeper.tryLock(fireIncorpUpdateBatch).map {
       case Some(res) =>
-        Logger.info("SubscriptionFiringService acquired lock and returned results")
-        Logger.info(s"Result: $res")
+        logger.info("SubscriptionFiringService acquired lock and returned results")
+        logger.info(s"Result: $res")
         Left(res)
       case None =>
-        Logger.info("SubscriptionFiringService cant acquire lock")
+        logger.info("SubscriptionFiringService cant acquire lock")
         Right(MongoLocked)
     }.recover {
-      case e: Exception => Logger.error(s"Error running fireIncorpUpdateBatch with message: ${e.getMessage}")
+      case e: Exception => logger.error(s"Error running fireIncorpUpdateBatch with message: ${e.getMessage}")
         Right(UnlockingFailed)
     }
   }
@@ -98,7 +98,7 @@ trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], Lo
     if (tsRes) {
       fireIncorpUpdate(update)
     } else {
-      Logger.info(s"[SubscriptionFiringService][fire] QueuedIncorpUpdate with transactionId: ${update.incorpUpdate.transactionId} and timestamp: ${update.timestamp}" +
+      logger.info(s"[SubscriptionFiringService][fire] QueuedIncorpUpdate with transactionId: ${update.incorpUpdate.transactionId} and timestamp: ${update.timestamp}" +
         s" cannot be processed at this time as the timestamp is in the future")
       Future.successful(false)
     }
@@ -111,9 +111,9 @@ trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], Lo
   private def deleteSub(transId: String, regime: String, subscriber: String): Future[Boolean] = {
     subscriptionsRepository.deleteSub(transId, regime, subscriber) map {
       case DefaultWriteResult(true, 1, _, _, _, _) =>
-        Logger.info(s"[SubscriptionFiringService][deleteSub] Subscription with transactionId: ${transId} deleted sub for $regime")
+        logger.info(s"[SubscriptionFiringService][deleteSub] Subscription with transactionId: ${transId} deleted sub for $regime")
         true
-      case _ => Logger.info(s"[SubscriptionFiringService][deleteSub] Subscription with transactionId: ${transId} failed to delete")
+      case _ => logger.info(s"[SubscriptionFiringService][deleteSub] Subscription with transactionId: ${transId} failed to delete")
         false
     }
   }
@@ -121,15 +121,15 @@ trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], Lo
   private def deleteQueuedIU(transId: String): Future[Boolean] = {
     subscriptionsRepository.getSubscriptions(transId) flatMap {
       case h :: t => {
-        Logger.info(s"[SubscriptionFiringService][deleteQueuedIU] QueuedIncorpUdate with transactionId: ${transId} cannot be deleted as there are other " +
+        logger.info(s"[SubscriptionFiringService][deleteQueuedIU] QueuedIncorpUdate with transactionId: ${transId} cannot be deleted as there are other " +
           s"subscriptions with this transactionId")
         Future.successful(false)
       }
       case Nil => {
         queueRepository.removeQueuedIncorpUpdate(transId).map {
-          case true => Logger.info(s"[SubscriptionFiringService][deleteQueuedIU] QueuedIncorpUpdate with transactionId: ${transId} was deleted")
+          case true => logger.info(s"[SubscriptionFiringService][deleteQueuedIU] QueuedIncorpUpdate with transactionId: ${transId} was deleted")
             true
-          case false => Logger.info(s"[SubscriptionFiringService][deleteQueuedIU] QueuedIncorpUpdate with transactionId: ${transId} failed to delete")
+          case false => logger.info(s"[SubscriptionFiringService][deleteQueuedIU] QueuedIncorpUpdate with transactionId: ${transId} failed to delete")
             false
         }
       }
@@ -144,7 +144,7 @@ trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], Lo
         val iuResponse: IncorpUpdateResponse = IncorpUpdateResponse(sub.regime, sub.subscriber, sub.callbackUrl, iu.incorpUpdate)
 
         firingSubsConnector.connectToAnyURL(iuResponse, httpHttpsConverter(sub.callbackUrl)) flatMap { response =>
-          Logger.info(s"[SubscriptionFiringService] [fireIncorpUpdate] - Posting response to callback for txid : ${iu.incorpUpdate.transactionId} was successful")
+          logger.info(s"[SubscriptionFiringService] [fireIncorpUpdate] - Posting response to callback for txid : ${iu.incorpUpdate.transactionId} was successful")
           response.status match {
             case 202 => {
               val newTS = DateTime.now.plusSeconds(queueRetryDelay)
@@ -154,7 +154,7 @@ trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], Lo
           }
         } recoverWith {
           case e: Exception =>
-            Logger.info(s"[SubscriptionFiringService][fireIncorpUpdate] Subscription with transactionId: ${sub.transactionId} failed to return a 200 response")
+            logger.info(s"[SubscriptionFiringService][fireIncorpUpdate] Subscription with transactionId: ${sub.transactionId} failed to return a 200 response")
             val newTS = DateTime.now.plusSeconds(queueFailureDelay)
             queueRepository.updateTimestamp(sub.transactionId, newTS).map(_ => false)
         }

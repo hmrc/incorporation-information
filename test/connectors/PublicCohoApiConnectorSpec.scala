@@ -127,7 +127,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new NotFoundException("404")))
 
-      withCaptureOfLoggingFrom(Logger) { logEvents =>
+      withCaptureOfLoggingFrom(Logger(connector.getClass)) { logEvents =>
         await(connector.getCompanyProfile(testCrn, isScrs = true)) shouldBe None
         logEvents.map(_.getMessage) shouldBe List("COHO_PUBLIC_API_NOT_FOUND - Could not find company data for CRN - 1234567890")
         logEvents.size shouldBe 1
@@ -138,7 +138,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new NotFoundException("404")))
 
-      withCaptureOfLoggingFrom(Logger) { logEvents =>
+      withCaptureOfLoggingFrom(Logger(connector.getClass)) { logEvents =>
         await(connector.getCompanyProfile(testCrn, isScrs = false)) shouldBe None
         logEvents.map(_.getMessage) shouldBe List("Could not find company data for CRN - 1234567890")
         logEvents.size shouldBe 1

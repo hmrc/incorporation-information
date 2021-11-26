@@ -18,7 +18,7 @@ package services
 
 import config.MicroserviceConfig
 import models.{IncorpUpdate, Subscription}
-import play.api.Logger
+import play.api.Logging
 import reactivemongo.api.commands.DefaultWriteResult
 import repositories._
 
@@ -37,7 +37,7 @@ class SubscriptionServiceImpl @Inject()(injSubRepo: SubscriptionsMongo,
   override lazy val forcedSubDelay: Int = config.forcedSubscriptionDelay
 }
 
-trait SubscriptionService {
+trait SubscriptionService extends Logging {
 
   implicit val ec: ExecutionContext
   protected val subRepo: SubscriptionsRepository
@@ -65,7 +65,7 @@ trait SubscriptionService {
     val queuedItem = incorpUpdateService.createQueuedIncorpUpdate(incorpUpdate, Some(forcedSubDelay))
     addSubscription(transactionId, regime, subscriber, callBackUrl) flatMap {
       case SuccessfulSub(_) =>
-        Logger.info(s"[SubscriptionService] [forceSubscription] subscription for transaction id : $transactionId forced successfully for regime : $regime")
+        logger.info(s"[SubscriptionService] [forceSubscription] subscription for transaction id : $transactionId forced successfully for regime : $regime")
         incorpUpdateService.upsertToQueue(queuedItem) map {
           case true => SuccessfulSub(forced = true)
           case _ => FailedSub
@@ -82,10 +82,10 @@ trait SubscriptionService {
     val sub = Subscription(transactionId, regime, subscriber, callbackUrl)
     subRepo.insertSub(sub) map {
       case UpsertResult(a, b, Seq()) =>
-        Logger.info(s"[MongoSubscriptionsRepository] [insertSub] $a was updated and $b was upserted for transactionId: $transactionId")
+        logger.info(s"[MongoSubscriptionsRepository] [insertSub] $a was updated and $b was upserted for transactionId: $transactionId")
         SuccessfulSub()
       case UpsertResult(_, _, errs) if errs.nonEmpty =>
-        Logger.error(s"[SubscriptionService] [addSubscription] Error encountered when attempting to add a subscription - ${errs.toString()}")
+        logger.error(s"[SubscriptionService] [addSubscription] Error encountered when attempting to add a subscription - ${errs.toString()}")
         FailedSub
     }
   }
@@ -99,11 +99,11 @@ trait SubscriptionService {
                          subscriber: String
                         ): Future[UnsubscribeStatus] =
     subRepo.deleteSub(transactionId, regime, subscriber) map {
-      case DefaultWriteResult(true, 1, _, _, _, _) => Logger.info(s"[SubscriptionService] [deleteSubscription] Subscription with transactionId: $transactionId, " +
+      case DefaultWriteResult(true, 1, _, _, _, _) => logger.info(s"[SubscriptionService] [deleteSubscription] Subscription with transactionId: $transactionId, " +
         s"and regime: $regime, and subscriber: $subscriber was deleted")
         DeletedSub
       case e@_ =>
-        Logger.warn(s"[SubscriptionsRepository] [deleteSub] Didn't delete the subscription with TransId: $transactionId, and regime: $regime, and subscriber: $subscriber." +
+        logger.warn(s"[SubscriptionsRepository] [deleteSub] Didn't delete the subscription with TransId: $transactionId, and regime: $regime, and subscriber: $subscriber." +
           s"Error message: $e")
         NotDeletedSub
     }

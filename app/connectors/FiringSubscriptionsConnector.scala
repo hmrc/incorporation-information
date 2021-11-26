@@ -17,10 +17,10 @@
 package connectors
 
 import models.IncorpUpdateResponse
-import play.api.Logger
+import play.api.{Logging}
 import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.http._
-import uk.gov.hmrc.play.bootstrap.http.HttpClient
+import uk.gov.hmrc.http.HttpClient
 
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
@@ -30,7 +30,7 @@ class FiringSubscriptionsConnectorImpl @Inject()(val http: HttpClient)
 
 }
 
-trait FiringSubscriptionsConnector {
+trait FiringSubscriptionsConnector extends Logging {
   val http: HttpClient
   implicit val ec: ExecutionContext
 
@@ -41,7 +41,7 @@ trait FiringSubscriptionsConnector {
     } catch {
       case ex: Exception =>
         // Exceptions like MalformedUrlException won't be wrapped in a future by default :-(
-        Logger.error(s"[FiringSubscriptionsConnector] [connectToAnyURL] - Error posting incorp response to $url - ${ex.getMessage}", ex)
+        logger.error(s"[FiringSubscriptionsConnector] [connectToAnyURL] - Error posting incorp response to $url - ${ex.getMessage}", ex)
         Future.failed(ex)
     }
   }

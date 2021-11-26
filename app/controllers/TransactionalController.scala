@@ -19,7 +19,7 @@ package controllers
 import config.MicroserviceConfig
 import connectors.PublicCohoApiConnector
 import models.IncorpUpdate
-import play.api.Logger
+import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import repositories.{IncorpUpdateMongo, IncorpUpdateMongoRepository, IncorpUpdateRepository}
@@ -40,7 +40,7 @@ class TransactionalControllerImpl @Inject()(config: MicroserviceConfig,
   override val allowlistedServices: Set[String] = config.knownSCRSServices.split(",").toSet
 }
 
-trait TransactionalController extends BackendBaseController {
+trait TransactionalController extends BackendBaseController with Logging {
 
   implicit val ec: ExecutionContext
   protected val service: TransactionalService
@@ -80,12 +80,12 @@ trait TransactionalController extends BackendBaseController {
     implicit request =>
       service.fetchOfficerList(transactionId).map(Ok(_)) recover {
         case ex: TransactionalServiceException =>
-          Logger.error(s"[TransactionalController] [fetchOfficerList] - TransactionalServiceException caught - reason: ${
+          logger.error(s"[TransactionalController] [fetchOfficerList] - TransactionalServiceException caught - reason: ${
             ex.message
           }", ex)
           NotFound
         case ex: Throwable =>
-          Logger.error(s"[TransactionalController] [fetchOfficerList] - Exception caught - reason: ${
+          logger.error(s"[TransactionalController] [fetchOfficerList] - Exception caught - reason: ${
             ex.getMessage
           }", ex)
           InternalServerError

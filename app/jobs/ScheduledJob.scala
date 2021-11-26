@@ -20,9 +20,9 @@ import akka.actor.{ActorRef, ActorSystem}
 import com.typesafe.akka.extension.quartz.QuartzSchedulerExtension
 import jobs.SchedulingActor.ScheduledMessage
 import org.quartz.CronExpression
-import play.api.{Configuration, Logger}
+import play.api.{Configuration, Logging}
 
-trait ScheduledJob {
+trait ScheduledJob extends Logging {
   val scheduledMessage: ScheduledMessage[_]
   val config: Configuration
   val actorSystem: ActorSystem
@@ -32,11 +32,11 @@ trait ScheduledJob {
 
   lazy val schedulingActorRef: ActorRef = actorSystem.actorOf(SchedulingActor.props)
 
-  def enabled: Boolean = config.getBoolean(s"schedules.$jobName.enabled").getOrElse(false)
+  def enabled: Boolean = config.get[Boolean](s"schedules.$jobName.enabled")
 
-  lazy val description: Option[String] = config.getString(s"schedules.$jobName.description")
+  lazy val description: Option[String] = config.getOptional[String](s"schedules.$jobName.description")
 
-  lazy val expression: String = config.getString(s"schedules.$jobName.expression") map (_.replaceAll("_", " ")) getOrElse ""
+  lazy val expression: String = config.get[String](s"schedules.$jobName.expression") .replaceAll("_", " ")
 
   lazy val expressionValid = CronExpression.isValidExpression(expression)
 
@@ -45,13 +45,13 @@ trait ScheduledJob {
       case (true, true) =>
         scheduler.createSchedule(jobName, description, expression)
         scheduler.schedule(jobName, schedulingActorRef, scheduledMessage)
-        Logger.info(s"Scheduler for $jobName has been started")
+        logger.info(s"Scheduler for $jobName has been started")
         true
       case (true, false) =>
-        Logger.info(s"Scheduler for $jobName is disabled as there is no valid quartz expression: $expression")
+        logger.info(s"Scheduler for $jobName is disabled as there is no valid quartz expression: $expression")
         false
       case (false, _) =>
-        Logger.info(s"Scheduler for $jobName is disabled by configuration")
+        logger.info(s"Scheduler for $jobName is disabled by configuration")
         false
     }
   }

@@ -18,7 +18,6 @@ package repositories
 
 import models.IncorpUpdate
 import org.apache.commons.lang3.StringUtils
-import play.api.Logger
 import play.api.libs.json.Format
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DB
@@ -82,7 +81,7 @@ class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])
     }
 
     val uniques = (updates.map(_.transactionId) diff duplicates).toSet
-    uniques foreach (u => Logger.info(s"[UniqueIncorp] transactionId : $u"))
+    uniques foreach (u => logger.info(s"[UniqueIncorp] transactionId : $u"))
 
     updates.filter(i => uniques.contains(i.transactionId))
   }

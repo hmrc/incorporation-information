@@ -17,7 +17,6 @@
 package repositories
 
 
-import play.api.Logger
 import play.api.libs.json.{JsValue, Json}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DB
@@ -56,7 +55,8 @@ trait TimepointRepository {
 
 class TimepointMongoRepository(mongo: () => DB)
                               (implicit val ec: ExecutionContext)
-  extends ReactiveRepository[TimePoint, BSONObjectID]("time-points", mongo, TimePoint.formats, ReactiveMongoFormats.objectIdFormats) with TimepointRepository {
+  extends ReactiveRepository[TimePoint, BSONObjectID]("time-points", mongo, TimePoint.formats, ReactiveMongoFormats.objectIdFormats)
+    with TimepointRepository {
 
   private val selector = BSONDocument("_id" -> "CH-INCORPSTATUS-TIMEPOINT")
 
@@ -73,7 +73,7 @@ class TimepointMongoRepository(mongo: () => DB)
       .one[TimePoint] map {
       case Some(res) => Some(res.timepoint)
       case _ =>
-        Logger.warn("Could not find an existing Timepoint - this is ok for first run of the system")
+        logger.warn("Could not find an existing Timepoint - this is ok for first run of the system")
         None
     }
   }

@@ -41,7 +41,7 @@ class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSpecSupport with Log
     }
 
     "log the transaction id's of the unique incorporations" in new Setup {
-      withCaptureOfLoggingFrom(Logger) { logEvents =>
+      withCaptureOfLoggingFrom(Logger(repo.getClass)) { logEvents =>
 
         val incorps = incorpUpdates("trans1", "trans2", "trans3")
 
@@ -62,7 +62,7 @@ class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSpecSupport with Log
 
 
     "log the transaction id's of the unique incorporations when a non-duplicate error ir present" in new Setup {
-      withCaptureOfLoggingFrom(Logger) { logEvents =>
+      withCaptureOfLoggingFrom(Logger(repo.getClass)) { logEvents =>
 
         val incorps = incorpUpdates("trans1", "trans2", "trans3")
 
@@ -83,7 +83,7 @@ class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSpecSupport with Log
     }
 
     "not log anything when there are no unique incorporations" in new Setup {
-      withCaptureOfLoggingFrom(Logger) { logEvents =>
+      withCaptureOfLoggingFrom(Logger(repo.getClass)) { logEvents =>
 
         val incorps = incorpUpdates("trans1", "trans2", "trans3")
 
@@ -101,7 +101,7 @@ class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSpecSupport with Log
     }
 
     "log all incorporations when an empty error list is supplied" in new Setup {
-      withCaptureOfLoggingFrom(Logger) { logEvents =>
+      withCaptureOfLoggingFrom(Logger(repo.getClass)) { logEvents =>
         val incorps = incorpUpdates("trans1", "trans2", "trans3")
 
         val result = repo.nonDuplicateIncorporations(incorps, Seq.empty)

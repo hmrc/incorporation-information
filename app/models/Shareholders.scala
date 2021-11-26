@@ -16,15 +16,15 @@
 
 package models
 
-import play.api.Logger
+import play.api.Logging
 import play.api.libs.json._
 
-object Shareholders {
+object Shareholders extends Logging {
   val reads = new Reads[Option[JsArray]] {
     override def reads(json: JsValue): JsResult[Option[JsArray]] = {
       val j = json \ "shareholders"
       JsSuccess(j.validateOpt[JsArray].fold[Option[JsArray]](_ => {
-        Logger.error("[ShareholdersReads] 'shareholders' is not an array")
+        logger.error("[ShareholdersReads] 'shareholders' is not an array")
         Option.empty
       }, identity))
     }
