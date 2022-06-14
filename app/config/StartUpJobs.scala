@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 HM Revenue & Customs
+ * Copyright 2022 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,14 @@
 package config
 
 import com.google.inject.Singleton
-import play.api.{Configuration, Logger}
+import play.api.{Configuration, Logging}
 import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo, TimepointMongo}
 import services.{IncorpUpdateService, SubscriptionService}
 import uk.gov.hmrc.http.HeaderCarrier
-
 import java.util.Base64
+
 import javax.inject.Inject
+
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
@@ -33,9 +34,8 @@ class StartUpJobs @Inject()(val configuration: Configuration,
                             val timepointMongo: TimepointMongo,
                             val subsRepo: SubscriptionsMongo,
                             val incorpUpdateRepo: IncorpUpdateMongo,
-                            val queueRepo: QueueMongo,
-                            val logger: Logger
-                           )(implicit val ec: ExecutionContext) {
+                            val queueRepo: QueueMongo
+                           )(implicit val ec: ExecutionContext) extends Logging {
   lazy val tpConfig = configuration.getOptional[String]("timepointList")
 
   private def reFetchIncorpInfo(): Future[Unit] = {
@@ -127,6 +127,23 @@ class StartUpJobs @Inject()(val configuration: Configuration,
     }
   }
 
+  def removeBrokenSubmissions(): Unit = {
+    val transIdsFromConfig = configuration.getOptional[String]("brokenTxIds")
+    transIdsFromConfig.fold(
+      logger.info(s"[Start Up] No broken submissions in config")
+    ) { transIds =>
+      val transIdList = utils.Base64.decode(transIds).split(",")
+      transIdList.foreach { transId =>
+        for {
+          writeResult <- subsRepo.repo.deleteSub(transId,"ctax","scrs")
+          queueResult <- queueRepo.repo.removeQueuedIncorpUpdate(transId)
+        } yield {
+          logger.info(s"[Start Up] Removed broken submission with txId: $transId - delete sub: $writeResult queue result: $queueResult")
+        }
+      }
+    }
+  }
+
   reFetchIncorpInfo()
 
   reFetchIncorpInfoWhenNoQueue()
@@ -138,5 +155,7 @@ class StartUpJobs @Inject()(val configuration: Configuration,
   logIncorpInfo()
 
   logRemainingSubscriptionIdentifiers()
+
+  removeBrokenSubmissions()
 
 }
