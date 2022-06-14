@@ -26,8 +26,10 @@ import play.api.{Configuration, Logger}
 import repositories._
 import services.{IncorpUpdateService, SubscriptionService}
 import uk.gov.hmrc.http.HeaderCarrier
-
 import java.util.UUID
+
+import reactivemongo.api.commands.{DefaultWriteResult}
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -69,8 +71,7 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually {
       mocktpRepo,
       mockSubsMongo,
       mockIncorpUpdateMongo,
-      mockQueueMongo,
-      testLogger
+      mockQueueMongo
     )
 
     resetMocks()
@@ -113,7 +114,7 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually {
       when(mockQueueRepo.getIncorpUpdate(eqTo(transId2)))
         .thenReturn(Future.successful(None))
 
-      withCaptureOfLoggingFrom(testLogger) { logEvents =>
+      withCaptureOfLoggingFrom(Logger(appStartupJobs(Configuration.from(Map("transactionIdList" -> "dHJhbnMtMSx0cmFucy0y", "timepointList" -> "MTIzNDU="))).getClass)) { logEvents =>
         appStartupJobs(Configuration.from(Map("transactionIdList" -> "dHJhbnMtMSx0cmFucy0y", "timepointList" -> "MTIzNDU=")))
 
         eventually {
@@ -162,7 +163,7 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually {
       }
       when(mockSubsRepo.getSubscriptionsByRegime(any(), any())) thenReturn Future.successful(subscriptions)
 
-      withCaptureOfLoggingFrom(testLogger) { logEvents =>
+      withCaptureOfLoggingFrom(Logger(appStartupJobs(Configuration.from(Map("transactionIdList" -> "dHJhbnMtMSx0cmFucy0y", "timepointList" -> "MTIzNDU="))).getClass)) { logEvents =>
         appStartupJobs(Configuration.from(Map("transactionIdList" -> "dHJhbnMtMSx0cmFucy0y", "timepointList" -> "MTIzNDU=")))
 
         eventually {
@@ -181,7 +182,7 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually {
 
       when(mockSubsRepo.getSubscriptionsByRegime(any(), any())) thenReturn Future.successful(Seq())
 
-      withCaptureOfLoggingFrom(testLogger) { logEvents =>
+      withCaptureOfLoggingFrom(Logger(appStartupJobs(Configuration()).getClass)) { logEvents =>
         appStartupJobs(Configuration.from(Map("transactionIdList" -> "dHJhbnMtMSx0cmFucy0y", "timepointList" -> "MTIzNDU=")))
 
         eventually {
@@ -190,6 +191,79 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually {
             "Logging existing subscriptions for ct regime, found 0 subscriptions"
           )
           logEvents.map(_.getMessage).count(r => expectedLogs.contains(r)) shouldBe 1
+        }
+      }
+    }
+  }
+
+  "removeBrokenSubmissions" should {
+
+    val encodedTransIds = "dHJhbnMtMSx0cmFucy0y"
+
+    val dateTime = DateTime.parse("2010-06-30T01:20+00:00")
+
+    val transId1 = "trans-1"
+    val transId2 = "trans-2"
+
+    val subscription1 = Subscription(transId1, "ctax", "scrs", "testCallbackUrl1")
+    val subscription2 = Subscription(transId1, "ctax", "scrs", "testCallbackUrl1")
+
+    val incorpUpdate1 = IncorpUpdate(transId1, "accepted", Some("crn-1"), Some(dateTime), "12345", None)
+    val incorpUpdate2 = IncorpUpdate(transId1, "accepted", Some("crn-2"), Some(dateTime), "12345", None)
+
+    val queuedUpdate1 = QueuedIncorpUpdate(dateTime, incorpUpdate1)
+    val queuedUpdate2 = QueuedIncorpUpdate(dateTime, incorpUpdate2)
+
+    val writeResult = DefaultWriteResult(true, 1, Seq(), None, None, None).flatten
+
+    "log when broken submissions are removed" in new Setup {
+      when(mockSubsMongo.repo).thenReturn(mockSubsRepo)
+      when(mockIncorpUpdateMongo.repo).thenReturn(mockIncorpUpdateRepo)
+      when(mockQueueMongo.repo).thenReturn(mockQueueRepo)
+
+      when(mockSubsRepo.getSubscriptionsByRegime(any(), any())) thenReturn Future.successful(Seq())
+
+
+      when(mockSubsRepo.deleteSub(eqTo(transId1),eqTo("ctax"),eqTo("scrs")))
+        .thenReturn(Future.successful(writeResult))
+      when(mockSubsRepo.deleteSub(eqTo(transId2),eqTo("ctax"),eqTo("scrs")))
+        .thenReturn(Future.successful(writeResult))
+
+
+      when(mockQueueRepo.removeQueuedIncorpUpdate(eqTo(transId1)))
+        .thenReturn(Future.successful(true))
+      when(mockQueueRepo.removeQueuedIncorpUpdate(eqTo(transId2)))
+        .thenReturn(Future.successful(true))
+
+
+      withCaptureOfLoggingFrom(Logger(appStartupJobs(Configuration()).getClass)) { logEvents =>
+        appStartupJobs(Configuration.from(Map("brokenTxIds" -> encodedTransIds)))
+
+        eventually {
+          val expectedLogs = List(
+              "[Start Up] Removed broken submission with txId: trans-1 - delete sub: DefaultWriteResult(true,1,List(),None,None,None) queue result: true",
+              "[Start Up] Removed broken submission with txId: trans-2 - delete sub: DefaultWriteResult(true,1,List(),None,None,None) queue result: true"
+          )
+          logEvents.map(_.getMessage).count(expectedLogs.contains(_)) shouldBe 2
+        }
+      }
+    }
+
+    "log when no broken submissions are supplied" in new Setup {
+      when(mockSubsMongo.repo).thenReturn(mockSubsRepo)
+      when(mockIncorpUpdateMongo.repo).thenReturn(mockIncorpUpdateRepo)
+      when(mockQueueMongo.repo).thenReturn(mockQueueRepo)
+
+      when(mockSubsRepo.getSubscriptionsByRegime(any(), any())) thenReturn Future.successful(Seq())
+
+      withCaptureOfLoggingFrom(Logger(appStartupJobs(Configuration()).getClass)) { logEvents =>
+        appStartupJobs(Configuration.from(Map()))
+
+        eventually {
+          val expectedLogs = List(
+            "[Start Up] No broken submissions in config"
+          )
+          logEvents.map(_.getMessage).count(expectedLogs.contains(_)) shouldBe 1
         }
       }
     }

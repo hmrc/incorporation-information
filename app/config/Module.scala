@@ -63,5 +63,6 @@ class Module extends AbstractModule {
     bind(classOf[PublicCohoApiConnector]).to(classOf[PublicCohoApiConnectorImpl]).asEagerSingleton()
 
     bind(classOf[DateCalculators]).to(classOf[DateCalculatorsImpl]).asEagerSingleton()
+    bind(classOf[StartUpJobs]).asEagerSingleton()
   }
 }
