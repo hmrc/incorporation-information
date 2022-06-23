@@ -26,16 +26,13 @@ import play.api.{Configuration, Logger}
 import repositories._
 import services.{IncorpUpdateService, SubscriptionService}
 import uk.gov.hmrc.http.HeaderCarrier
-import java.util.UUID
-
-import reactivemongo.api.commands.{DefaultWriteResult}
-
+import play.api.test.DefaultAwaitTimeout
+import reactivemongo.api.commands.DefaultWriteResult
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually {
+class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually with DefaultAwaitTimeout{
 
-  val mockConfig: Configuration = mock[Configuration]
 
   val mockSubsMongo: SubscriptionsMongo = mock[SubscriptionsMongo]
   val mockSubsRepo: SubscriptionsMongoRepository = mock[SubscriptionsMongoRepository]
@@ -53,16 +50,14 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually {
 
   def resetMocks() {
     reset(
-      mockConfig, mockSubsMongo, mockSubsRepo,
+      mockSubsMongo, mockSubsRepo,
       mockIncorpUpdateMongo, mockIncorpUpdateRepo,
       mockQueueMongo, mockQueueRepo, mockIIService, mocksubService
     )
   }
 
   class Setup {
-    val loggerId: String = UUID.randomUUID().toString
-
-    val testLogger: Logger = Logger(loggerId)
+    resetMocks()
 
     def appStartupJobs(config: Configuration): StartUpJobs = new StartUpJobs(
       config,
@@ -74,98 +69,27 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually {
       mockQueueMongo
     )
 
-    resetMocks()
-  }
-
-  "logIncorpInfo" should {
-
-    //"trans-1,trans-2"
-    //val encodedTransIds = "dHJhbnMtMSx0cmFucy0y"
-
-    val dateTime = DateTime.parse("2010-06-30T01:20+00:00")
-
-    val transId1 = "trans-1"
-    val transId2 = "trans-2"
-
-    val subscription1 = Subscription(transId1, "testRegime", "testSubscriber", "testCallbackUrl")
-
-    val incorpUpdate1 = IncorpUpdate(transId1, "accepted", Some("crn-1"), Some(dateTime), "12345", None)
-
-    val queuedUpdate = QueuedIncorpUpdate(dateTime, incorpUpdate1)
-
-    "log specific incorporation information relating to each transaction ID found in config" in new Setup {
-      when(mockSubsMongo.repo).thenReturn(mockSubsRepo)
-      when(mockIncorpUpdateMongo.repo).thenReturn(mockIncorpUpdateRepo)
-      when(mockQueueMongo.repo).thenReturn(mockQueueRepo)
-      when(mockIIService.updateSpecificIncorpUpdateByTP(any(), any())(any(), any())).thenReturn(Future.successful(Seq()))
-      when(mockSubsRepo.getSubscriptions(eqTo(transId1)))
-        .thenReturn(Future.successful(Seq(subscription1)))
-      when(mockSubsRepo.getSubscriptionsByRegime(any(), any())).thenReturn(Future.successful(Seq(subscription1)))
-      when(mockSubsRepo.getSubscriptions(eqTo(transId2)))
-        .thenReturn(Future.successful(Seq()))
-
-      when(mockIncorpUpdateRepo.getIncorpUpdate(eqTo(transId1)))
-        .thenReturn(Future.successful(Some(incorpUpdate1)))
-      when(mockIncorpUpdateRepo.getIncorpUpdate(eqTo(transId2)))
-        .thenReturn(Future.successful(None))
-
-      when(mockQueueRepo.getIncorpUpdate(eqTo(transId1)))
-        .thenReturn(Future.successful(Some(queuedUpdate)))
-      when(mockQueueRepo.getIncorpUpdate(eqTo(transId2)))
-        .thenReturn(Future.successful(None))
-
-      withCaptureOfLoggingFrom(Logger(appStartupJobs(Configuration.from(Map("transactionIdList" -> "dHJhbnMtMSx0cmFucy0y", "timepointList" -> "MTIzNDU="))).getClass)) { logEvents =>
-        appStartupJobs(Configuration.from(Map("transactionIdList" -> "dHJhbnMtMSx0cmFucy0y", "timepointList" -> "MTIzNDU=")))
-
-        eventually {
-          val expectedLogs = List(
-            "[HeldDocs] For txId: trans-1 - subscriptions: List(Subscription(trans-1,testRegime,testSubscriber,testCallbackUrl)) - " +
-              "incorp update: incorp status: accepted - incorp date: Some(2010-06-30T01:20:00.000Z) - crn: Some(crn-1) - timepoint: 12345 - queue: In queue",
-            "[HeldDocs] For txId: trans-2 - subscriptions: No subs - incorp update: No incorp update - queue: No queued incorp update"
-          )
-          logEvents.map(_.getMessage).count(expectedLogs.contains(_)) shouldBe 2
-        }
-      }
-    }
-
-    "not log anything is an encoded transaction ID list is not provided in config" in new Setup {
-      when(mockSubsMongo.repo).thenReturn(mockSubsRepo)
-      when(mockIncorpUpdateMongo.repo).thenReturn(mockIncorpUpdateRepo)
-      when(mockQueueMongo.repo).thenReturn(mockQueueRepo)
-      when(mockIIService.updateSpecificIncorpUpdateByTP(any(), any())(any(), any())).thenReturn(Future.successful(Seq()))
-      when(mockSubsRepo.getSubscriptionsByRegime(any(), any())).thenReturn(Future.successful(Seq()))
-      withCaptureOfLoggingFrom(testLogger) { logEvents =>
-        appStartupJobs(Configuration.from(Map("timepointList" -> "MTIzNDU=")))
-        eventually {
-          logEvents.map(_.getMessage).filter(_.contains("[HeldDocs]")) shouldBe empty
-        }
-      }
-    }
   }
 
   "logRemainingSubscriptionIdentifiers" should {
 
-    val subscription1 = Subscription("transId", "testRegime", "testSubscriber", "testCallbackUrl")
-
     "log information about subscriptions with default values as nothing exists in config" in new Setup {
+      val subscription1 = Subscription("transId", "testRegime", "testSubscriber", "testCallbackUrl")
+      val subscriptions: Seq[Subscription] = Seq.fill(5)(subscription1)
       when(mockSubsMongo.repo).thenReturn(mockSubsRepo)
       when(mockIncorpUpdateMongo.repo).thenReturn(mockIncorpUpdateRepo)
       when(mockQueueMongo.repo).thenReturn(mockQueueRepo)
       when(mockIIService.updateSpecificIncorpUpdateByTP(any(), any())(any(), any())).thenReturn(Future.successful(Seq()))
-      when(mockSubsRepo.getSubscriptions(any()))
-        .thenReturn(Future.successful(Seq(subscription1)))
-      when(mockSubsRepo.getSubscriptionsByRegime(any(), any())).thenReturn(Future.successful(Seq(subscription1)))
+      when(mockSubsRepo.getSubscriptions(any())).thenReturn(Future.successful(Seq()))
+      when(mockSubsRepo.getSubscriptionsByRegime(eqTo("ct"), eqTo(20))).thenReturn(Future.successful(subscriptions))
 
-      val subscriptions = List.fill(5)(subscription1)
       val expectedLogOfSubscriptions = {
         List("Logging existing subscriptions for ct regime, found 5 subscriptions") ++
           List.fill(5)("[Subscription] [ct] Transaction ID: transId, Subscriber: testSubscriber")
       }
-      when(mockSubsRepo.getSubscriptionsByRegime(any(), any())) thenReturn Future.successful(subscriptions)
 
-      withCaptureOfLoggingFrom(Logger(appStartupJobs(Configuration.from(Map("transactionIdList" -> "dHJhbnMtMSx0cmFucy0y", "timepointList" -> "MTIzNDU="))).getClass)) { logEvents =>
-        appStartupJobs(Configuration.from(Map("transactionIdList" -> "dHJhbnMtMSx0cmFucy0y", "timepointList" -> "MTIzNDU=")))
-
+      withCaptureOfLoggingFrom(Logger(appStartupJobs(Configuration()).getClass)) { logEvents =>
+        appStartupJobs(Configuration())
         eventually {
           logEvents.map(_.getMessage).count(r => expectedLogOfSubscriptions.contains(r)) shouldBe 6
         }
@@ -183,14 +107,75 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually {
       when(mockSubsRepo.getSubscriptionsByRegime(any(), any())) thenReturn Future.successful(Seq())
 
       withCaptureOfLoggingFrom(Logger(appStartupJobs(Configuration()).getClass)) { logEvents =>
-        appStartupJobs(Configuration.from(Map("transactionIdList" -> "dHJhbnMtMSx0cmFucy0y", "timepointList" -> "MTIzNDU=")))
-
+        appStartupJobs(Configuration())
         eventually {
 
           val expectedLogs = List(
             "Logging existing subscriptions for ct regime, found 0 subscriptions"
           )
           logEvents.map(_.getMessage).count(r => expectedLogs.contains(r)) shouldBe 1
+        }
+      }
+    }
+  }
+
+  "logIncorpInfo" should {
+
+    val dateTime = DateTime.parse("2010-06-30T01:20+00:00")
+
+    val transId1 = "trans-1"
+    val transId2 = "trans-2"
+
+    val subscription1 = Subscription(transId1, "testRegime", "testSubscriber", "testCallbackUrl")
+
+    val incorpUpdate1 = IncorpUpdate(transId1, "accepted", Some("crn-1"), Some(dateTime), "12345", None)
+
+    val queuedUpdate = QueuedIncorpUpdate(dateTime, incorpUpdate1)
+
+    "log specific incorporation information relating to each transaction ID found in config" in new Setup {
+      when(mockSubsMongo.repo).thenReturn(mockSubsRepo)
+      when(mockIncorpUpdateMongo.repo).thenReturn(mockIncorpUpdateRepo)
+      when(mockQueueMongo.repo).thenReturn(mockQueueRepo)
+      when(mockIIService.updateSpecificIncorpUpdateByTP(any(), any())(any(), any())).thenReturn(Future.successful(Seq()))
+      when(mockSubsRepo.getSubscriptions(eqTo(transId1))).thenReturn(Future.successful(Seq(subscription1)))
+      when(mockSubsRepo.getSubscriptions(eqTo(transId2))).thenReturn(Future.successful(Seq()))
+      when(mockSubsRepo.getSubscriptionsByRegime(any(), any())).thenReturn(Future.successful(Seq()))
+
+      when(mockIncorpUpdateRepo.getIncorpUpdate(eqTo(transId1)))
+        .thenReturn(Future.successful(Some(incorpUpdate1)))
+      when(mockIncorpUpdateRepo.getIncorpUpdate(eqTo(transId2)))
+        .thenReturn(Future.successful(None))
+
+      when(mockQueueRepo.getIncorpUpdate(eqTo(transId1)))
+        .thenReturn(Future.successful(Some(queuedUpdate)))
+      when(mockQueueRepo.getIncorpUpdate(eqTo(transId2)))
+        .thenReturn(Future.successful(None))
+
+      val expectedLogs = List(
+        "[HeldDocs] For txId: trans-1 - subscriptions: List(Subscription(trans-1,testRegime,testSubscriber,testCallbackUrl)) - " +
+          "incorp update: incorp status: accepted - incorp date: Some(2010-06-30T01:20:00.000Z) - crn: Some(crn-1) - timepoint: 12345 - queue: In queue",
+        "[HeldDocs] For txId: trans-2 - subscriptions: No subs - incorp update: No incorp update - queue: No queued incorp update"
+      )
+
+      withCaptureOfLoggingFrom(Logger(appStartupJobs(Configuration()).getClass)) { logEvents =>
+
+        appStartupJobs(Configuration.from(Map("transactionIdList" -> "dHJhbnMtMSx0cmFucy0y")))
+        eventually {
+          logEvents.map(_.getMessage).count(expectedLogs.contains(_)) shouldBe 2
+        }
+      }
+    }
+
+    "not log anything is an encoded transaction ID list is not provided in config" in new Setup {
+      when(mockSubsMongo.repo).thenReturn(mockSubsRepo)
+      when(mockIncorpUpdateMongo.repo).thenReturn(mockIncorpUpdateRepo)
+      when(mockQueueMongo.repo).thenReturn(mockQueueRepo)
+      when(mockIIService.updateSpecificIncorpUpdateByTP(any(), any())(any(), any())).thenReturn(Future.successful(Seq()))
+      when(mockSubsRepo.getSubscriptionsByRegime(any(), any())).thenReturn(Future.successful(Seq()))
+      withCaptureOfLoggingFrom(Logger(appStartupJobs(Configuration()).getClass)) { logEvents =>
+        appStartupJobs(Configuration())
+        eventually {
+          logEvents.map(_.getMessage).filter(_.contains("[HeldDocs]")) shouldBe empty
         }
       }
     }
