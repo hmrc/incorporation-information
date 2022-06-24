@@ -143,7 +143,6 @@ class StartUpJobs @Inject()(val configuration: Configuration,
       }
     }
   }
-
   reFetchIncorpInfo()
 
   reFetchIncorpInfoWhenNoQueue()
@@ -157,5 +156,4 @@ class StartUpJobs @Inject()(val configuration: Configuration,
   logRemainingSubscriptionIdentifiers()
 
   removeBrokenSubmissions()
-
 }
