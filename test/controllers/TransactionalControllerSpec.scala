@@ -56,7 +56,7 @@ class TransactionalControllerSpec extends SCRSSpec {
   val crn = "some-crn"
   val officerId = "off-12345"
 
-  "fetchCompanyProfile" should {
+  "fetchCompanyProfile" must {
 
     val json = Json.parse("""{"test":"json"}""")
 
@@ -65,8 +65,8 @@ class TransactionalControllerSpec extends SCRSSpec {
         .thenReturn(Future.successful(Some(json)))
 
       val result: Future[Result] = controller.fetchCompanyProfile(transactionId)(FakeRequest())
-      status(result) shouldBe 200
-      contentAsJson(result) shouldBe json
+      status(result) mustBe 200
+      contentAsJson(result) mustBe json
     }
 
     "return a 404 when a company profile could not be found by the supplied transaction Id (from transactional api) when company not incorporated" in new Setup {
@@ -75,7 +75,7 @@ class TransactionalControllerSpec extends SCRSSpec {
         .thenReturn(Future.successful(None))
 
       val result: Future[Result] = controller.fetchCompanyProfile(transactionId)(FakeRequest())
-      status(result) shouldBe 404
+      status(result) mustBe 404
     }
 
     "return a 200 and json when a company profile is successfully fetched from Public API (because it is incorporated)" in new Setup {
@@ -113,8 +113,8 @@ class TransactionalControllerSpec extends SCRSSpec {
         .thenReturn(Future.successful(Some(json)))
 
       val result: Future[Result] = controller.fetchCompanyProfile(transactionId)(FakeRequest())
-      status(result) shouldBe 200
-      contentAsJson(result) shouldBe json
+      status(result) mustBe 200
+      contentAsJson(result) mustBe json
     }
 
     "return a 200 when a company profile is fetched" in new Setup {
@@ -122,7 +122,7 @@ class TransactionalControllerSpec extends SCRSSpec {
         .thenReturn(Future.successful(Some(json)))
 
       val result: Future[Result] = controller.fetchCompanyProfile(transactionId)(FakeRequest())
-      status(result) shouldBe 200
+      status(result) mustBe 200
     }
 
     "return a 404 when a company profile cannot be found using the supplied txID" in new Setup {
@@ -130,12 +130,12 @@ class TransactionalControllerSpec extends SCRSSpec {
         .thenReturn(Future.successful(None))
 
       val result: Future[Result] = controller.fetchCompanyProfile(transactionId)(FakeRequest())
-      status(result) shouldBe 404
+      status(result) mustBe 404
     }
 
   }
 
-  "fetchIncorporatedCompanyProfile" should {
+  "fetchIncorporatedCompanyProfile" must {
     val crn = "01234567"
     val json = Json.parse("""{"example":"response"}""")
     "return a 200 with JSON" when {
@@ -144,24 +144,24 @@ class TransactionalControllerSpec extends SCRSSpec {
           .thenReturn(Future.successful(Some(json)))
 
         val result: Future[Result] = controller.fetchIncorporatedCompanyProfile(crn)(FakeRequest().withHeaders("User-Agent" -> "test"))
-        status(result) shouldBe 200
-        contentAsJson(result) shouldBe json
+        status(result) mustBe 200
+        contentAsJson(result) mustBe json
       }
       "called by a non-allowlisted service" in new Setup {
         when(mockApiConnector.getCompanyProfile(eqTo(crn), eqTo(false))(any()))
           .thenReturn(Future.successful(Some(json)))
 
         val result: Future[Result] = controller.fetchIncorporatedCompanyProfile(crn)(FakeRequest().withHeaders("User-Agent" -> "not allowlisted"))
-        status(result) shouldBe 200
-        contentAsJson(result) shouldBe json
+        status(result) mustBe 200
+        contentAsJson(result) mustBe json
       }
       "called by an unidentifiable service" in new Setup {
         when(mockApiConnector.getCompanyProfile(eqTo(crn), eqTo(false))(any()))
           .thenReturn(Future.successful(Some(json)))
 
         val result: Future[Result] = controller.fetchIncorporatedCompanyProfile(crn)(FakeRequest())
-        status(result) shouldBe 200
-        contentAsJson(result) shouldBe json
+        status(result) mustBe 200
+        contentAsJson(result) mustBe json
       }
     }
     "return a 404" when {
@@ -170,12 +170,12 @@ class TransactionalControllerSpec extends SCRSSpec {
           .thenReturn(Future.successful(None))
 
         val result: Future[Result] = controller.fetchIncorporatedCompanyProfile(crn)(FakeRequest().withHeaders("User-Agent" -> "test"))
-        status(result) shouldBe 404
+        status(result) mustBe 404
       }
     }
   }
 
-  "fetchOfficerList" should {
+  "fetchOfficerList" must {
 
     val json = Json.parse("""{"test":"json"}""")
 
@@ -184,8 +184,8 @@ class TransactionalControllerSpec extends SCRSSpec {
         .thenReturn(Future.successful(json))
 
       val result: Future[Result] = controller.fetchOfficerList(transactionId)(FakeRequest())
-      status(result) shouldBe 200
-      contentAsJson(result) shouldBe json
+      status(result) mustBe 200
+      contentAsJson(result) mustBe json
     }
 
     "return a 404 when an officer list could not be found by the supplied transaction Id" in new Setup {
@@ -193,7 +193,7 @@ class TransactionalControllerSpec extends SCRSSpec {
         .thenReturn(Future.failed(new FailedToFetchOfficerListFromTxAPI()))
 
       val result: Future[Result] = controller.fetchOfficerList(transactionId)(FakeRequest())
-      status(result) shouldBe 404
+      status(result) mustBe 404
     }
 
     "return a 500 when an unknown exception is caught" in new Setup {
@@ -201,11 +201,11 @@ class TransactionalControllerSpec extends SCRSSpec {
         .thenReturn(Future.failed(new Exception()))
 
       val result: Future[Result] = controller.fetchOfficerList(transactionId)(FakeRequest())
-      status(result) shouldBe 500
+      status(result) mustBe 500
     }
   }
 
-  "fetchIncorpUpdate" should {
+  "fetchIncorpUpdate" must {
     "return a 200 and the CRN as JSON" in new Setup {
       val incorpUpdate: IncorpUpdate = IncorpUpdate(transactionId, "accepted", Some("example CRN"), Some(DateTime.parse("2018-05-01", DateTimeFormat.forPattern(TimestampFormats.datePattern))), "", None)
       val expectedJson: JsValue = Json.parse(
@@ -224,19 +224,19 @@ class TransactionalControllerSpec extends SCRSSpec {
 
       val result: Future[Result] = controller.fetchIncorpUpdate(transactionId)(FakeRequest())
 
-      status(result) shouldBe 200
-      contentAsJson(result) shouldBe expectedJson
+      status(result) mustBe 200
+      contentAsJson(result) mustBe expectedJson
     }
     "return a 204" in new Setup {
       when(mockIncorpUpdateRepository.getIncorpUpdate(eqTo(transactionId)))
         .thenReturn(Future.successful(None))
 
       val result: Future[Result] = controller.fetchIncorpUpdate(transactionId)(FakeRequest())
-      status(result) shouldBe 204
+      status(result) mustBe 204
     }
   }
 
-  "fetchSicCodesByTransactionID" should {
+  "fetchSicCodesByTransactionID" must {
     val sicJson = Json.parse("""{"sic_codes": ["12345", "23456"]}""")
 
     "return sic codes from the CH API using TxId" in new Setup {
@@ -244,8 +244,8 @@ class TransactionalControllerSpec extends SCRSSpec {
         .thenReturn(Future.successful(Some(sicJson)))
 
       val result: Future[Result] = controller.fetchSicCodesByTransactionID(transactionId)(FakeRequest())
-      status(result) shouldBe 200
-      contentAsJson(result) shouldBe sicJson
+      status(result) mustBe 200
+      contentAsJson(result) mustBe sicJson
     }
 
     "return no content when no data returned from the CH API using TxId" in new Setup {
@@ -253,11 +253,11 @@ class TransactionalControllerSpec extends SCRSSpec {
         .thenReturn(Future.successful(None))
 
       val result: Future[Result] = controller.fetchSicCodesByTransactionID(transactionId)(FakeRequest())
-      status(result) shouldBe 204
+      status(result) mustBe 204
     }
   }
 
-  "fetchSicCodesByCRN" should {
+  "fetchSicCodesByCRN" must {
     val sicJson = Json.parse("""{"sic_codes": ["12345", "23456"]}""")
 
     "return sic codes from the CH API" in new Setup {
@@ -265,8 +265,8 @@ class TransactionalControllerSpec extends SCRSSpec {
         .thenReturn(Future.successful(Some(sicJson)))
 
       val result: Future[Result] = controller.fetchSicCodesByCRN(crn)(FakeRequest())
-      status(result) shouldBe 200
-      contentAsJson(result) shouldBe sicJson
+      status(result) mustBe 200
+      contentAsJson(result) mustBe sicJson
     }
 
     "return no content when no data returned from the CH API" in new Setup {
@@ -274,23 +274,23 @@ class TransactionalControllerSpec extends SCRSSpec {
         .thenReturn(Future.successful(None))
 
       val result: Future[Result] = controller.fetchSicCodesByCRN(crn)(FakeRequest())
-      status(result) shouldBe 204
+      status(result) mustBe 204
     }
   }
-  "fetchShareholders" should {
+  "fetchShareholders" must {
     "return 204 if array is empty" in new Setup {
       when(mockService.fetchShareholders(eqTo(transactionId))(any[HeaderCarrier], any[ExecutionContext]))
         .thenReturn(Future.successful(Some(Json.arr())))
       val res: Future[Result] = controller.fetchShareholders(transactionId)(FakeRequest())
-      status(res) shouldBe 204
+      status(res) mustBe 204
     }
 
     "return 200 if array is returned and size > 0" in new Setup {
       when(mockService.fetchShareholders(eqTo(transactionId))(any[HeaderCarrier], any[ExecutionContext]))
         .thenReturn(Future.successful(Some(Json.arr(Json.obj("foo" -> "bar")))))
       val result: Future[Result] = controller.fetchShareholders(transactionId)(FakeRequest())
-      status(result) shouldBe 200
-      contentAsJson(result) shouldBe Json.parse(
+      status(result) mustBe 200
+      contentAsJson(result) mustBe Json.parse(
         """[
           | {
           |   "foo": "bar"
@@ -303,7 +303,7 @@ class TransactionalControllerSpec extends SCRSSpec {
       when(mockService.fetchShareholders(eqTo(transactionId))(any[HeaderCarrier], any[ExecutionContext]))
         .thenReturn(Future.successful(None))
       val res: Future[Result] = controller.fetchShareholders(transactionId)(FakeRequest())
-      status(res) shouldBe 404
+      status(res) mustBe 404
     }
   }
 }

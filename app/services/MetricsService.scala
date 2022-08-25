@@ -20,12 +20,12 @@ import com.codahale.metrics.{Counter, Gauge, Timer}
 import com.kenshoo.play.metrics.{Metrics, MetricsDisabledException}
 import config.MicroserviceConfig
 import jobs._
-import org.joda.time.Duration
 import play.api.Logging
 import repositories._
-import uk.gov.hmrc.lock.LockKeeper
+import uk.gov.hmrc.mongo.lock.LockService
 
 import javax.inject.Inject
+import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 
 
@@ -46,11 +46,7 @@ class MetricsServiceImpl @Inject()(val injSubRepo: SubscriptionsMongo,
 
   lazy val lockoutTimeout = msConfig.getConfigInt("schedules.metrics-job.lockTimeout")
 
-  lazy val lockKeeper: LockKeeper = new LockKeeper() {
-    override val lockId = "metrics-job-lock"
-    override val forceLockReleaseAfter: Duration = Duration.standardSeconds(lockoutTimeout)
-    override lazy val repo = lockRepositoryProvider.repo
-  }
+  lazy val lockKeeper: LockService = LockService(lockRepositoryProvider.repo, "metrics-job-lock", lockoutTimeout.seconds)
 }
 
 trait MetricsService extends ScheduledService[Either[Map[String, Int], LockResponse]] with Logging {
@@ -61,13 +57,13 @@ trait MetricsService extends ScheduledService[Either[Map[String, Int], LockRespo
   val publicCohoApiFailureCounter: Counter
   val transactionApiSuccessCounter: Counter
   val transactionApiFailureCounter: Counter
-  val lockKeeper: LockKeeper
+  val lockKeeper: LockService
 
   val publicAPITimer: Timer
   val internalAPITimer: Timer
 
   def invoke(implicit ec: ExecutionContext): Future[Either[Map[String, Int], LockResponse]] = {
-    lockKeeper.tryLock(updateSubscriptionMetrics).map {
+    lockKeeper.withLock(updateSubscriptionMetrics).map {
       case Some(res) =>
         logger.info("MetricsService acquired lock and returned results")
         logger.info(s"Result: $res")

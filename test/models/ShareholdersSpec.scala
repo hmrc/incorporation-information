@@ -30,7 +30,7 @@ class ShareholdersSpec extends SCRSSpec with LogCapturing{
           |   "foo" : "bar"
           |}
         """.stripMargin)
-    json.as[Option[JsArray]](Shareholders.reads).isDefined shouldBe false
+    json.as[Option[JsArray]](Shareholders.reads).isDefined mustBe false
   }
   "return None if key exists but is not a JsArray" in {
     val json =
@@ -41,11 +41,11 @@ class ShareholdersSpec extends SCRSSpec with LogCapturing{
           |}
         """.stripMargin)
     withCaptureOfLoggingFrom(Logger(Shareholders.getClass)) { logEvents =>
-      json.as[Option[JsArray]](Shareholders.reads).isDefined shouldBe false
+      json.as[Option[JsArray]](Shareholders.reads).isDefined mustBe false
       val message = "[ShareholdersReads] 'shareholders' is not an array"
       val log =  logEvents.map(l => (l.getLevel, l.getMessage)).head
-      log._1.toString shouldBe "ERROR"
-      log._2 shouldBe message
+      log._1.toString mustBe "ERROR"
+      log._2 mustBe message
     }
   }
   "return Some if key exists and is jsArray" in {
@@ -56,6 +56,6 @@ class ShareholdersSpec extends SCRSSpec with LogCapturing{
           |   "shareholders" : []
           |}
         """.stripMargin)
-    json.as[Option[JsArray]](Shareholders.reads).get shouldBe Json.arr()
+    json.as[Option[JsArray]](Shareholders.reads).get mustBe Json.arr()
   }
 }

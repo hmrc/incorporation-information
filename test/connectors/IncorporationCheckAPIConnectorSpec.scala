@@ -310,7 +310,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       "123456789")
   )
 
-  "checkForIncorpUpdate" should {
+  "checkForIncorpUpdate" must {
 
     val testTimepoint = UUID.randomUUID().toString
     val url = s"$testProxyUrl/submissions?items_per_page=1"
@@ -320,7 +320,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         .thenReturn(Future.successful(HttpResponse(200, Some(validSubmissionResponseJson))))
 
       val result = await(connector.checkForIncorpUpdate())
-      result shouldBe validSubmissionResponseItems
+      result mustBe validSubmissionResponseItems
     }
 
     "verify a timepoint is appended as a query string to the url when one is supplied" in new Setup {
@@ -330,7 +330,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         .thenReturn(Future.successful(HttpResponse(200, Some(validSubmissionResponseJson))))
 
       val result = await(connector.checkForIncorpUpdate(Some(testTimepoint)))
-      result shouldBe validSubmissionResponseItems
+      result mustBe validSubmissionResponseItems
     }
 
     "report an error when receiving a 400" in new Setup {
@@ -370,7 +370,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
     }
   }
 
-  "checkForIndividualIncorpUpdate" should {
+  "checkForIndividualIncorpUpdate" must {
 
     val testTimepoint = UUID.randomUUID().toString
     val url = s"$testProxyUrl/submissions?items_per_page=1"
@@ -380,7 +380,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         .thenReturn(Future.successful(HttpResponse(200, Some(validSubmissionResponseJson))))
 
       val result = await(connector.checkForIndividualIncorpUpdate())
-      result shouldBe validSubmissionResponseItems
+      result mustBe validSubmissionResponseItems
     }
 
     "verify a timepoint is appended as a query string to the url when one is supplied" in new Setup {
@@ -390,7 +390,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         .thenReturn(Future.successful(HttpResponse(200, Some(validSubmissionResponseJson))))
 
       val result = await(connector.checkForIndividualIncorpUpdate(Some(testTimepoint)))
-      result shouldBe validSubmissionResponseItems
+      result mustBe validSubmissionResponseItems
     }
 
     "report an error when receiving a 404" in new Setup {
@@ -409,7 +409,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
   }
 
-  "checkForIncorpUpdate" should {
+  "checkForIncorpUpdate" must {
     "return a sequence of updates" when {
       "it has no invalid updates" in new Setup {
         val url = s"$testProxyUrl/submissions?timepoint=$timepoint&items_per_page=1"
@@ -426,7 +426,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
           .thenReturn(Future.successful(HttpResponse(200, Some(manyValidSubmissionResponseJson))))
 
         val result = await(connector.checkForIncorpUpdate(Some(timepoint)))
-        result shouldBe Seq(incorpUpdate("9999999997"), incorpUpdate("9999999998"), incorpUpdate("9999999999"))
+        result mustBe Seq(incorpUpdate("9999999997"), incorpUpdate("9999999998"), incorpUpdate("9999999999"))
       }
     }
     "return no updates for an accepted response from CH" when {
@@ -436,7 +436,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
           .thenReturn(Future.successful(HttpResponse(200, Some(invalidNoCRNSubmissionResponseJson))))
 
         val result = await(connector.checkForIncorpUpdate(Some(timepoint)))
-        result shouldBe Seq()
+        result mustBe Seq()
       }
       "there is no date of incorporation" in new Setup {
         val url = s"$testProxyUrl/submissions?timepoint=$timepoint&items_per_page=1"
@@ -445,7 +445,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
           .thenReturn(Future.successful(HttpResponse(200, Some(invalidNoDateSubmissionResponseJson))))
 
         val result = await(connector.checkForIncorpUpdate(Some(timepoint)))
-        result shouldBe Seq()
+        result mustBe Seq()
       }
       "there is a date of incorporation in the wrong format" in new Setup {
         val url = s"$testProxyUrl/submissions?timepoint=$timepoint&items_per_page=1"
@@ -456,7 +456,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         val result = connector.checkForIncorpUpdate(Some(timepoint))
         val failure = intercept[IncorpUpdateAPIFailure](await(result))
 
-        failure.ex shouldBe a[IllegalArgumentException]
+        failure.ex mustBe a[IllegalArgumentException]
       }
       "there is an empty date of incorporation" in new Setup {
         val url = s"$testProxyUrl/submissions?timepoint=$timepoint&items_per_page=1"
@@ -467,7 +467,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         val result = connector.checkForIncorpUpdate(Some(timepoint))
         val failure = intercept[IncorpUpdateAPIFailure](await(result))
 
-        failure.ex shouldBe a[IllegalArgumentException]
+        failure.ex mustBe a[IllegalArgumentException]
       }
       "only one of many submissions is invalid" in new Setup {
         val url = s"$testProxyUrl/submissions?timepoint=$timepoint&items_per_page=1"
@@ -477,7 +477,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
         val result = await(connector.checkForIncorpUpdate(Some(timepoint)))
 
-        result shouldBe Seq()
+        result mustBe Seq()
       }
     }
 
@@ -488,7 +488,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         .thenReturn(Future.successful(HttpResponse(200, Some(validRejectedSubmissionResponseJson))))
 
       val result = await(connector.checkForIncorpUpdate(Some(timepoint)))
-      result shouldBe Seq(rejectedIncorpUpdate)
+      result mustBe Seq(rejectedIncorpUpdate)
     }
 
   }
@@ -497,7 +497,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
     val transactionId = "12345"
 
-    "not using the proxy" should {
+    "not using the proxy" must {
 
       val json = Json.parse(
         """
@@ -513,7 +513,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         when(mockTimer.time()).thenReturn(mockTimerContext)
 
         val result = await(connector.fetchTransactionalData(transactionId))
-        result shouldBe SuccessfulTransactionalAPIResponse(json)
+        result mustBe SuccessfulTransactionalAPIResponse(json)
 
         verify(mockTimerContext, times(1)).stop()
       }
@@ -527,7 +527,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
           val result = await(connector.fetchTransactionalData(transactionId))
 
-          result shouldBe FailedTransactionalAPIResponse
+          result mustBe FailedTransactionalAPIResponse
         }
 
         "any other http exception status (4xx / 5xx) is returned" in new Setup {
@@ -537,7 +537,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
           val result = await(connector.fetchTransactionalData(transactionId))
 
-          result shouldBe FailedTransactionalAPIResponse
+          result mustBe FailedTransactionalAPIResponse
         }
 
         "any Throwable is caught and the timer metric is stopped" in new Setup {
@@ -546,17 +546,17 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
           when(mockTimer.time()).thenReturn(mockTimerContext)
 
           val result = await(connector.fetchTransactionalData(transactionId))
-          result shouldBe FailedTransactionalAPIResponse
+          result mustBe FailedTransactionalAPIResponse
 
           verify(mockTimerContext, times(1)).stop()
         }
       }
     }
   }
-  "createAPIAuthHeader" should {
+  "createAPIAuthHeader" must {
     "return a Header with the correct Bearer token" when {
       "a request is made " in new Setup {
-        connector.createAPIAuthHeader shouldBe Seq("Authorization" -> "Bearer CohoPublicToken")
+        connector.createAPIAuthHeader mustBe Seq("Authorization" -> "Bearer CohoPublicToken")
       }
     }
   }

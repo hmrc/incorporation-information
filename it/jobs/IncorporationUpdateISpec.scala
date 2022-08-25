@@ -18,23 +18,24 @@ package jobs
 
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.google.inject.name.Names
+import com.mongodb.bulk.BulkWriteError
 import helpers.IntegrationSpecBase
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
 import org.joda.time.DateTime
-import play.api.Application
+import org.mongodb.scala.MongoWriteException
+import org.mongodb.scala.bson.BsonDocument
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.inject.{BindingKey, QualifierInstance}
-import play.api.libs.json.{JsObject, Json}
+import play.api.libs.json.Json
 import play.api.test.Helpers._
-import reactivemongo.api.ReadConcern
-import reactivemongo.api.commands.WriteError
-import reactivemongo.play.json.ImplicitBSONHandlers._
+import play.api.{Application, inject}
 import repositories._
+import uk.gov.hmrc.mongo.MongoComponent
+import uk.gov.hmrc.mongo.test.MongoSupport
 
-import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class IncorporationUpdateISpec extends IntegrationSpecBase {
+class IncorporationUpdateISpec extends IntegrationSpecBase with MongoSupport with DocValidator {
 
   val mockUrl = s"http://$wiremockHost:$wiremockPort"
   val additionalConfiguration = Map(
@@ -45,20 +46,22 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
   )
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
     .configure(fakeConfig(additionalConfiguration))
+    .overrides(inject.bind[MongoComponent].toInstance(mongoComponent))
     .build
 
+  lazy val incorpRepo = app.injector.instanceOf[IncorpUpdateMongoImpl].repo
+  lazy val timepointRepo = app.injector.instanceOf[TimepointMongo].repo
+  lazy val queueRepo = app.injector.instanceOf[QueueMongoImpl].repo
+  lazy val subRepo = app.injector.instanceOf[SubscriptionsMongo].repo
+
   class Setup {
-    val incorpRepo = app.injector.instanceOf[IncorpUpdateMongo].repo
-    val timepointRepo = app.injector.instanceOf[TimepointMongo].repo
-    val queueRepo = app.injector.instanceOf[QueueMongo].repo
-    val subRepo = app.injector.instanceOf[SubscriptionsMongo].repo
 
-    def insert(u: QueuedIncorpUpdate) = await(queueRepo.collection.insert(false).one(u)(implicitly[ExecutionContext], QueuedIncorpUpdate.format))
+    def insert(u: QueuedIncorpUpdate) = await(queueRepo.collection.insertOne(u).toFuture())
 
-    await(incorpRepo.drop)
-    await(timepointRepo.drop)
-    await(queueRepo.drop)
-    await(subRepo.drop)
+    await(incorpRepo.collection.drop().toFuture())
+    await(timepointRepo.collection.drop().toFuture())
+    await(queueRepo.collection.drop().toFuture())
+    await(subRepo.collection.drop().toFuture())
 
     await(incorpRepo.ensureIndexes)
     await(timepointRepo.ensureIndexes)
@@ -91,7 +94,7 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
 
   def chResponse(items: String) = s"""{"items":[${items}], "links":{"next":"xxx"}}"""
 
-  "incorp update check with no data" should {
+  "incorp update check with no data" must {
 
     "Should do no processing when disabled" in new Setup {
       setupAuditMocks()
@@ -100,7 +103,7 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       val job = lookupJob("incorp-update-job")
 
       val f = job.schedule
-      f shouldBe false
+      f mustBe false
     }
 
     "process successfully when enabled" in new Setup {
@@ -110,19 +113,19 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       val emptyChResponse = chResponse("")
       stubGet("/incorporation-frontend-stubs/submissions.*", 200, emptyChResponse)
 
-      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 0
+      await(incorpRepo.collection.countDocuments().toFuture()) mustBe 0
 
       val job = lookupJob("incorp-update-job")
 
       val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult, LockResponse]])
       val r = await(f)
-      r shouldBe Left(InsertResult(0, 0))
+      r mustBe Left(InsertResult(0, 0))
 
-      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 0
+      await(incorpRepo.collection.countDocuments().toFuture()) mustBe 0
     }
   }
 
-  "incorp update check with some data" should {
+  "incorp update check with some data" must {
     "insert one" in new Setup {
       setupAuditMocks()
       setupFeatures(submissionCheck = false)
@@ -132,8 +135,8 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       val response = chResponse(json)
       stubGet("/incorporation-frontend-stubs/submissions.*", 200, response)
 
-      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 0
-      await(timepointRepo.retrieveTimePoint) shouldBe None
+      await(incorpRepo.collection.countDocuments().toFuture()) mustBe 0
+      await(timepointRepo.retrieveTimePoint) mustBe None
 
       val job = lookupJob("incorp-update-job")
 
@@ -141,20 +144,23 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       val r = await(f)
 
       val inserted = Seq(iu(json))
-      r shouldBe Left(InsertResult(1, 0, alerts = 1, insertedItems = inserted))
+      r mustBe Left(InsertResult(1, 0, alerts = 1, insertedItems = inserted))
 
-      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 1
-      await(timepointRepo.retrieveTimePoint) shouldBe Some(timepoint)
+      await(incorpRepo.collection.countDocuments().toFuture()) mustBe 1
+      await(timepointRepo.retrieveTimePoint) mustBe Some(timepoint)
       verify(getRequestedFor(urlMatching("/incorporation-frontend-stubs/submissions.*")).
         withQueryParam("timepoint", absent).
         withQueryParam("items_per_page", equalTo("3")))
     }
 
-    "not update the timepoint if there's an error in processing" in new Setup with DocValidator {
+    "not update the timepoint if there's an error in processing" in new Setup {
       setupAuditMocks()
       setupFeatures(submissionCheck = false)
 
+      //Dummy Insert to Create Collection (required for creating the CRN validation rule below)
+      await(incorpRepo.collection.insertOne(iu(jsonItem("12345", tp2, "bar1"))).toFuture())
       await(validateCRN("^bar[12345679]$"))
+      await(incorpRepo.collection.deleteMany(BsonDocument()).toFuture())
 
       val (tp1, tp2, tp3) = ("12345", "23456", "34567")
       private val json1 = jsonItem("12345", tp2, "bar1")
@@ -169,13 +175,16 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult, LockResponse]])
       val r = await(f)
       val inserted = Seq(iu(json1), iu(json2))
-      val errors = Seq(WriteError(1, 121, "Document failed validation"))
 
-      r shouldBe Left(InsertResult(1, 0, errors, 2, inserted))
+      r.left.get.inserted mustBe 1
+      r.left.get.alerts mustBe 2
+      r.left.get.insertedItems mustBe inserted
+      r.left.get.errors.head.getCode mustBe 121
+      r.left.get.errors.head.getMessage mustBe "Document failed validation"
 
-      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 1
+      await(incorpRepo.collection.countDocuments().toFuture()) mustBe 1
 
-      await(timepointRepo.retrieveTimePoint) shouldBe Some(tp1)
+      await(timepointRepo.retrieveTimePoint) mustBe Some(tp1)
       verify(getRequestedFor(urlMatching("/incorporation-frontend-stubs/submissions.*")).
         withQueryParam("timepoint", equalTo(tp1)))
     }
@@ -186,11 +195,11 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       val (tx1, tx2) = ("12345", "23456")
       val (tp1, tp2) = ("12345", "23456")
 
-      val item = Json.parse(jsonItem(tx1, txFieldName = "_id")).as[JsObject]
-      await(incorpRepo.collection.insert(false).one(item))
+      val item = Json.parse(jsonItem(tx1, txFieldName = "_id")).as[IncorpUpdate](IncorpUpdate.mongoFormat)
+      await(incorpRepo.collection.insertOne(item).toFuture())
       await(timepointRepo.updateTimepoint(tp1))
-      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 1
-      await(queueRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 0
+      await(incorpRepo.collection.countDocuments().toFuture()) mustBe 1
+      await(queueRepo.collection.countDocuments().toFuture()) mustBe 0
 
       private val json1 = jsonItem(tx1, tp1)
       private val json2 = jsonItem(tx2, tp2, "bar8")
@@ -205,12 +214,12 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       val r = await(f)
 
       val inserted = Seq(iu(json2))
-      r shouldBe Left(InsertResult(1, 1, alerts = 1, insertedItems = inserted))
+      r mustBe Left(InsertResult(1, 1, alerts = 1, insertedItems = inserted))
 
-      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 2
-      await(queueRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 1
+      await(incorpRepo.collection.countDocuments().toFuture()) mustBe 2
+      await(queueRepo.collection.countDocuments().toFuture()) mustBe 1
 
-      await(timepointRepo.retrieveTimePoint) shouldBe Some(tp2)
+      await(timepointRepo.retrieveTimePoint) mustBe Some(tp2)
       verify(getRequestedFor(urlMatching("/incorporation-frontend-stubs/submissions.*")).
         withQueryParam("timepoint", equalTo(tp1)))
     }
@@ -222,17 +231,16 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       val (tx2, tp2) = ("23456", "23456")
       val (tx3, tp3) = ("34567", "34567")
 
-      Seq(
-        Json.parse(jsonItem(tx1, tp1, txFieldName = "_id")).as[JsObject],
-        Json.parse(jsonItem(tx2, tp2, txFieldName = "_id")).as[JsObject],
-        Json.parse(jsonItem(tx3, tp3, txFieldName = "_id")).as[JsObject]
-      ) map { item =>
-        await(incorpRepo.collection.insert(false).one(item))
-      }
+
+      await(incorpRepo.storeIncorpUpdates(Seq(
+        Json.parse(jsonItem(tx1, tp1, txFieldName = "_id")).as[IncorpUpdate](IncorpUpdate.mongoFormat),
+        Json.parse(jsonItem(tx2, tp2, txFieldName = "_id")).as[IncorpUpdate](IncorpUpdate.mongoFormat),
+        Json.parse(jsonItem(tx3, tp3, txFieldName = "_id")).as[IncorpUpdate](IncorpUpdate.mongoFormat)
+      )))
 
       await(timepointRepo.updateTimepoint(tp1))
-      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 3
-      await(queueRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 0
+      await(incorpRepo.collection.countDocuments().toFuture()) mustBe 3
+      await(queueRepo.collection.countDocuments().toFuture()) mustBe 0
 
       val items = jsonItem(tx1, tp1) + "," + jsonItem(tx2, tp2) + "," + jsonItem(tx3, tp3)
       val response = chResponse(items)
@@ -242,12 +250,12 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
 
       val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult, LockResponse]])
       val r = await(f)
-      r shouldBe Left(InsertResult(0, 3, alerts = 0))
+      r mustBe Left(InsertResult(0, 3, alerts = 0))
 
-      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 3
-      await(queueRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 0
+      await(incorpRepo.collection.countDocuments().toFuture()) mustBe 3
+      await(queueRepo.collection.countDocuments().toFuture()) mustBe 0
 
-      await(timepointRepo.retrieveTimePoint) shouldBe Some(tp3)
+      await(timepointRepo.retrieveTimePoint) mustBe Some(tp3)
       verify(getRequestedFor(urlMatching("/incorporation-frontend-stubs/submissions.*")).
         withQueryParam("timepoint", equalTo(tp1)))
     }
@@ -259,17 +267,14 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       val (tx2, tp2) = ("23456", "23456")
       val (tx3, tp3) = ("34567", "34567")
 
-      Seq(
-        Json.parse(jsonItem(tx3, tp3, txFieldName = "_id")).as[JsObject]
-      ) map { item =>
-        await(incorpRepo.collection.insert(false).one(item))
-      }
 
-      await(subRepo.collection.insert(false).one(Subscription("23456", "ct", "scrs", "foo")))
+      await(incorpRepo.storeSingleIncorpUpdate(Json.parse(jsonItem(tx3, tp3, txFieldName = "_id")).as[IncorpUpdate](IncorpUpdate.mongoFormat)))
+
+      await(subRepo.insertSub(Subscription("23456", "ct", "scrs", "foo")))
       await(timepointRepo.updateTimepoint(tp1))
-      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 1
-      await(queueRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 0
-      await(subRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 1
+      await(incorpRepo.collection.countDocuments().toFuture()) mustBe 1
+      await(queueRepo.collection.countDocuments().toFuture()) mustBe 0
+      await(subRepo.collection.countDocuments().toFuture()) mustBe 1
 
       private val json1 = jsonItem(tx1, tp1)
       private val json2 = jsonItem(tx2, tp2)
@@ -282,18 +287,18 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult, LockResponse]])
       val r = await(f)
       val inserted = Seq(iu(json1), iu(json2))
-      r shouldBe Left(InsertResult(2, 1, alerts = 1, insertedItems = inserted))
+      r mustBe Left(InsertResult(2, 1, alerts = 1, insertedItems = inserted))
 
-      await(incorpRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 3
-      await(queueRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 2
+      await(incorpRepo.collection.countDocuments().toFuture()) mustBe 3
+      await(queueRepo.collection.countDocuments().toFuture()) mustBe 2
 
-      await(timepointRepo.retrieveTimePoint) shouldBe Some(tp3)
+      await(timepointRepo.retrieveTimePoint) mustBe Some(tp3)
       verify(getRequestedFor(urlMatching("/incorporation-frontend-stubs/submissions.*")).
         withQueryParam("timepoint", equalTo(tp1)))
     }
   }
 
-  "incorp update queue" should {
+  "incorp update queue" must {
     "not accept duplicate incorp update documents" in new Setup {
       setupFeatures(submissionCheck = false)
 
@@ -301,11 +306,12 @@ class IncorporationUpdateISpec extends IntegrationSpecBase {
       val qiu1 = QueuedIncorpUpdate(DateTime.now, iu)
 
       insert(qiu1)
-      await(queueRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 1
+      await(queueRepo.collection.countDocuments().toFuture()) mustBe 1
 
-      val result = await(queueRepo.bulkInsert(Seq(qiu1)))
-      result.writeErrors.head.code shouldBe 11000
-      await(queueRepo.collection.count(None, None, 0, None, ReadConcern.Available)) shouldBe 1
+      val result = intercept[MongoWriteException](insert(qiu1))
+
+      result.getError.getCode mustBe 11000
+      await(queueRepo.collection.countDocuments().toFuture()) mustBe 1
     }
   }
 }

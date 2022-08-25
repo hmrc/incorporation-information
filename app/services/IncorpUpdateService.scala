@@ -20,15 +20,16 @@ import config.MicroserviceConfig
 import connectors.IncorporationAPIConnector
 import jobs._
 import models.{IncorpUpdate, QueuedIncorpUpdate}
-import org.joda.time.{DateTime, Duration}
+import org.joda.time.DateTime
+import org.mongodb.scala.result.UpdateResult
 import play.api.Logging
-import reactivemongo.api.commands.UpdateWriteResult
-import repositories.{IncorpUpdateRepository, InsertResult, TimepointRepository, _}
+import repositories._
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.lock.LockKeeper
+import uk.gov.hmrc.mongo.lock.LockService
 import utils.{AlertLogging, DateCalculators, PagerDutyKeys}
 
 import javax.inject.{Inject, Provider}
+import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
@@ -52,11 +53,7 @@ class IncorpUpdateServiceImpl @Inject()(injConnector: IncorporationAPIConnector,
 
   lazy val lockoutTimeout = msConfig.getConfigInt("schedules.incorp-update-job.lockTimeout")
 
-  lazy val lockKeeper: LockKeeper = new LockKeeper() {
-    override val lockId = "incorp-update-job-lock"
-    override val forceLockReleaseAfter: Duration = Duration.standardSeconds(lockoutTimeout)
-    override lazy val repo = lockRepositoryProvider.repo
-  }
+  lazy val lockKeeper: LockService = LockService(lockRepositoryProvider.repo, "incorp-update-job-lock", lockoutTimeout.seconds)
 }
 
 trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResponse]] with AlertLogging with Logging {
@@ -69,7 +66,7 @@ trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResp
   val loggingDays: String
   val loggingTimes: String
   val dateCalculators: DateCalculators
-  val lockKeeper: LockKeeper
+  val lockKeeper: LockService
 
   private[services] def fetchIncorpUpdates(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[Seq[IncorpUpdate]] = {
     for {
@@ -100,7 +97,7 @@ trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResp
   }
 
   private[services] def storeSpecificIncorpUpdate(iUpdate: IncorpUpdate)
-                                                 (implicit ec: ExecutionContext): Future[UpdateWriteResult] = {
+                                                 (implicit ec: ExecutionContext): Future[UpdateResult] = {
     for {
       result <- incorpUpdateRepository.storeSingleIncorpUpdate(iUpdate)
     } yield {
@@ -157,7 +154,7 @@ trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResp
 
   def invoke(implicit ec: ExecutionContext): Future[Either[InsertResult, LockResponse]] = {
     implicit val hc = HeaderCarrier()
-    lockKeeper.tryLock(updateNextIncorpUpdateJobLot).map {
+    lockKeeper.withLock(updateNextIncorpUpdateJobLot).map {
       case Some(res) =>
         logger.info("IncorpUpdateService acquired lock and returned results")
         logger.info(s"Result: $res")
@@ -201,7 +198,7 @@ trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResp
           }
         }
         case ir@InsertResult(_, _, e, _, _) =>
-          logger.info(s"There was an error when inserting incorp updates, message: $e")
+          logger.info(s"There was an error when inserting incorp updates, message: ${e.map(_.getMessage)}")
           Future.successful(ir)
       }
     }
@@ -230,7 +227,7 @@ trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResp
         item <- fetchSpecificIncorpUpdates(Some(tp))
         result <- storeSpecificIncorpUpdate(item)
       } yield {
-        logger.info(s"${logPrefix} Result of updating Incorp Update: for " + item + " is: Store result: " + result.ok)
+        logger.info(s"${logPrefix} Result of updating Incorp Update: for " + item + " is: Store result: " + result.wasAcknowledged())
         item
       }
     }

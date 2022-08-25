@@ -16,29 +16,28 @@
 
 package repositories
 
+import com.mongodb.client.model.Updates.set
 import models.QueuedIncorpUpdate
 import org.joda.time.DateTime
-import play.api.libs.json.{Format, Json}
-import play.modules.reactivemongo.ReactiveMongoComponent
-import reactivemongo.api.indexes.{Index, IndexType}
-import reactivemongo.api.{Cursor, DB, ReadPreference}
-import reactivemongo.bson.{BSONDocument, BSONObjectID}
-import reactivemongo.core.errors.DatabaseException
-import reactivemongo.play.json.ImplicitBSONHandlers._
-import uk.gov.hmrc.mongo.ReactiveRepository
-import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
+import org.mongodb.scala.model.Filters.{equal, lte}
+import org.mongodb.scala.model.Indexes.ascending
+import org.mongodb.scala.model._
+import org.mongodb.scala.{MongoBulkWriteException, MongoWriteException}
+import play.api.libs.json.Format
+import uk.gov.hmrc.mongo.MongoComponent
+import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 
 import javax.inject.Inject
-import scala.collection.Seq
+import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
 
-class QueueMongoImpl @Inject()(val mongo: ReactiveMongoComponent)(implicit val ec: ExecutionContext) extends QueueMongo
+class QueueMongoImpl @Inject()(val mongo: MongoComponent)(implicit val ec: ExecutionContext) extends QueueMongo
 
-trait QueueMongo extends ReactiveMongoFormats {
+trait QueueMongo {
   implicit val ec: ExecutionContext
-  val mongo: ReactiveMongoComponent
-  lazy val repo = new QueueMongoRepository(mongo.mongoConnector.db, QueuedIncorpUpdate.format)
+  val mongo: MongoComponent
+  lazy val repo = new QueueMongoRepository(mongo, QueuedIncorpUpdate.format)
 }
 
 trait QueueRepository {
@@ -57,84 +56,68 @@ trait QueueRepository {
   def updateTimestamp(transactionId: String, newTS: DateTime): Future[Boolean]
 }
 
-class QueueMongoRepository(mongo: () => DB, format: Format[QueuedIncorpUpdate])(implicit val ec: ExecutionContext) extends ReactiveRepository[QueuedIncorpUpdate, BSONObjectID](
+class QueueMongoRepository(mongo: MongoComponent, format: Format[QueuedIncorpUpdate])(implicit val ec: ExecutionContext) extends PlayMongoRepository[QueuedIncorpUpdate](
+  mongoComponent = mongo,
   collectionName = "incorp-update-queue",
-  mongo = mongo,
-  domainFormat = format
+  domainFormat = format,
+  indexes = Seq(
+    IndexModel(
+      ascending("incorp_update.transaction_id", "timestamp"),
+      IndexOptions()
+        .name("QueuedIncorpIndex")
+        .unique(true)
+        .sparse(false)
+    ),
+    IndexModel(
+      ascending("timestamp"),
+      IndexOptions()
+        .name("QueueByTs")
+        .unique(false)
+    )
+  )
 ) with QueueRepository
   with MongoErrorCodes {
 
   implicit val fmt = format
 
-  private def txSelector(transactionId: String) = BSONDocument("incorp_update.transaction_id" -> transactionId)
-
-  override def indexes: Seq[Index] = Seq(
-    Index(
-      key = Seq("incorp_update.transaction_id" -> IndexType.Ascending, "timestamp" -> IndexType.Ascending),
-      name = Some("QueuedIncorpIndex"), unique = true, sparse = false
-    ),
-    Index(
-      key = Seq("timestamp" -> IndexType.Ascending), name = Some("QueueByTs"), unique = false
-    )
-  )
+  private def txSelector(transactionId: String) = equal("incorp_update.transaction_id", transactionId)
 
   override def storeIncorpUpdates(updates: Seq[QueuedIncorpUpdate]): Future[InsertResult] = {
-    bulkInsert(updates) map {
-      wr =>
-        val inserted = wr.n
-        val (duplicates, errors) = wr.writeErrors.partition(_.code == ERR_DUPLICATE)
-        InsertResult(inserted, duplicates.size, errors)
+    if(updates.nonEmpty) {
+      collection.bulkWrite(updates.map(InsertOneModel(_)), BulkWriteOptions().ordered(false)).toFuture().map { result =>
+        InsertResult(inserted = result.getInsertedCount, duplicate = 0)
+      } recover {
+        case ex: MongoBulkWriteException =>
+          val inserted = ex.getWriteResult.getInsertedCount
+          val (duplicates, errors) = ex.getWriteErrors.asScala.partition(_.getCode == ERR_DUPLICATE)
+          InsertResult(inserted, duplicates.size, errors)
+      }
+    } else {
+      Future.successful(InsertResult(0, 0, Seq()))
+    }
+  }
+
+  override def upsertIncorpUpdate(update: QueuedIncorpUpdate): Future[InsertResult] =
+    collection.replaceOne(txSelector(update.incorpUpdate.transactionId), update, ReplaceOptions().upsert(true)).toFuture() map { result =>
+      val wasInserted = Option(result.getUpsertedId).isDefined
+      InsertResult(1, if(wasInserted) 1 else 0, Seq())
     } recover {
-      case ex: DatabaseException =>
-        logger.info(s"Failed to store incorp update with transactionId: ${ex.originalDocument.get.get("incorp_update.transaction_id").get.toString} due to error: $ex")
-        throw new Exception
+      case ex: MongoWriteException => InsertResult(0, 0, Seq(ex.getError))
     }
-  }
 
-  override def upsertIncorpUpdate(update: QueuedIncorpUpdate): Future[InsertResult] = {
-    val selector = txSelector(update.incorpUpdate.transactionId)
-    implicit val formatter = QueuedIncorpUpdate.format
-    collection.update(false).one(selector, update, upsert = true) map (res => InsertResult(res.nModified, res.upserted.size, res.writeErrors))
-  }
+  override def getIncorpUpdate(transactionId: String): Future[Option[QueuedIncorpUpdate]] =
+    collection.find(txSelector(transactionId)).headOption()
 
-  override def getIncorpUpdate(transactionId: String): Future[Option[QueuedIncorpUpdate]] = {
-    collection.find(txSelector(transactionId), Option.empty)(BSONDocumentWrites, BSONDocumentWrites).one[QueuedIncorpUpdate]
-  }
-
-  override def getIncorpUpdates(fetchSize: Int): Future[Seq[QueuedIncorpUpdate]] = {
-    val selector = Json.obj("timestamp" -> Json.obj("$lte" -> DateTime.now.getMillis))
-    val rp = ReadPreference.primaryPreferred
-
+  override def getIncorpUpdates(fetchSize: Int): Future[Seq[QueuedIncorpUpdate]] =
     collection
-      .find(selector, Option.empty)(JsObjectDocumentWriter, JsObjectDocumentWriter)
-      .sort(Json.obj("timestamp" -> 1))
-      .cursor[QueuedIncorpUpdate](rp)
-      .collect[List](maxDocs = fetchSize, Cursor.FailOnError())
-  }
+      .find(lte("timestamp", DateTime.now.getMillis))
+      .sort(Sorts.ascending("timestamp"))
+      .limit(fetchSize)
+      .toFuture()
 
-  override def removeQueuedIncorpUpdate(transactionId: String): Future[Boolean] = {
-    collection.delete().one(txSelector(transactionId)).map(_.n > 0)
-  }
+  override def removeQueuedIncorpUpdate(transactionId: String): Future[Boolean] =
+    collection.deleteOne(txSelector(transactionId)).toFuture().map(_.getDeletedCount > 0)
 
-  override def updateTimestamp(transactionId: String, newTS: DateTime): Future[Boolean] = {
-    val ts = newTS.getMillis
-    val modifier = BSONDocument("$set" -> BSONDocument("timestamp" -> ts))
-    collection.findAndUpdate(txSelector(transactionId), modifier, true, false).map {
-      res =>
-        res.value.fold(false) {
-          _.value("timestamp").validate[Long]
-            .fold(_ => {
-              logger.error("updateTimestamp could not be converted to a long")
-              false
-            }, tsFromUpdate =>
-              if (tsFromUpdate == ts) {
-                true
-              } else {
-                logger.info(s"updateTimestamp did not return the correct timestamp that was inserted on doc: $tsFromUpdate inserted: $ts")
-                false
-              }
-            )
-        }
-    }
-  }
+  override def updateTimestamp(transactionId: String, newTS: DateTime): Future[Boolean] =
+    collection.updateOne(txSelector(transactionId), set("timestamp", newTS.getMillis)).toFuture().map(_.getModifiedCount > 0)
 }

@@ -75,36 +75,36 @@ class ManualTriggerControllerSpec extends SCRSSpec {
 
   "calling triggerJob" when {
 
-    "supplying the job name incorp-update" should {
+    "supplying the job name incorp-update" must {
 
       "execute the job and return a message" in new Setup {
         when(mockSM.service).thenReturn(mockIncorpUpdateService)
         when(mockIncorpUpdateService.invoke(any[ExecutionContext]())).thenReturn(Future.successful(Left(InsertResult(1, 1))))
         val result = controller.triggerJob(INCORP_UPDATE)(FakeRequest())
 
-        status(result) shouldBe 200
-        contentAsString(result) shouldBe Left(InsertResult(1, 1)).toString
+        status(result) mustBe 200
+        contentAsString(result) mustBe Left(InsertResult(1, 1)).toString
       }
     }
 
-    "supplying the job name fire-subs" should {
+    "supplying the job name fire-subs" must {
 
       "execute the job and return a message" in new Setup {
         when(mockSMSeq.service).thenReturn(mockSubFiringService)
         when(mockSubFiringService.invoke(any[ExecutionContext]())).thenReturn(Future.successful(Left(Seq(true))))
         val result = controller.triggerJob(FIRE_SUBS)(FakeRequest())
 
-        status(result) shouldBe 200
-        contentAsString(result) shouldBe "Left(List(true))"
+        status(result) mustBe 200
+        contentAsString(result) mustBe "Left(List(true))"
       }
     }
 
-    "supplying the job name xxxx" should {
+    "supplying the job name xxxx" must {
 
       "return a 404" in new Setup {
         val result = controller.triggerJob("xxxx")(FakeRequest())
 
-        status(result) shouldBe 404
+        status(result) mustBe 404
       }
     }
   }

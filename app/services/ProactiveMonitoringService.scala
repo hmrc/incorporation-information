@@ -22,10 +22,11 @@ import jobs._
 import org.joda.time.Duration
 import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.lock.LockKeeper
+import uk.gov.hmrc.mongo.lock.LockService
 import utils.Base64
 
 import javax.inject.Inject
+import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 
 class ProactiveMonitoringServiceImpl @Inject()(val transactionalConnector: IncorporationAPIConnector,
@@ -37,16 +38,12 @@ class ProactiveMonitoringServiceImpl @Inject()(val transactionalConnector: Incor
 
   lazy val lockoutTimeout = msConfig.getConfigInt("schedules.proactive-monitoring-job.lockTimeout")
 
-  lazy val lockKeeper: LockKeeper = new LockKeeper() {
-    override val lockId = "proactive-monitoring-job-lock"
-    override val forceLockReleaseAfter: Duration = Duration.standardSeconds(lockoutTimeout)
-    override lazy val repo = lockRepositoryProvider.repo
-  }
+  lazy val lockKeeper: LockService = LockService(lockRepositoryProvider.repo, "proactive-monitoring-job-lock", lockoutTimeout.seconds)
 }
 
 trait ProactiveMonitoringService extends ScheduledService[Either[(String, String), LockResponse]] with Logging {
 
-  val lockKeeper: LockKeeper
+  val lockKeeper: LockService
   protected val transactionalConnector: IncorporationAPIConnector
   protected val publicCohoConnector: PublicCohoApiConnectorImpl
 
@@ -58,7 +55,7 @@ trait ProactiveMonitoringService extends ScheduledService[Either[(String, String
 
   def invoke(implicit ec: ExecutionContext): Future[Either[(String, String), LockResponse]] = {
     implicit val hc: HeaderCarrier = HeaderCarrier()
-    lockKeeper.tryLock(pollAPIs).map {
+    lockKeeper.withLock(pollAPIs).map {
       case Some(res) =>
         logger.info("ProactiveMonitoringService acquired lock and returned results")
         logger.info(s"Result: $res")

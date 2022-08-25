@@ -17,13 +17,13 @@
 package repositories
 
 
-import play.api.libs.json.{JsValue, Json}
-import play.modules.reactivemongo.ReactiveMongoComponent
-import reactivemongo.api.DB
-import reactivemongo.bson.{BSONDocument, BSONObjectID}
-import reactivemongo.play.json.ImplicitBSONHandlers._
-import uk.gov.hmrc.mongo.ReactiveRepository
-import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
+import com.mongodb.client.model.Updates.set
+import org.mongodb.scala.model.Filters.equal
+import org.mongodb.scala.model.{FindOneAndUpdateOptions, ReturnDocument}
+import play.api.Logger
+import play.api.libs.json.Json
+import uk.gov.hmrc.mongo.MongoComponent
+import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext.global
@@ -38,9 +38,9 @@ object TimePoint {
   implicit val formats = Json.format[TimePoint]
 }
 
-class TimepointMongo @Inject()(mongo: ReactiveMongoComponent) extends ReactiveMongoFormats {
+class TimepointMongo @Inject()(mongo: MongoComponent) {
   implicit val ec: ExecutionContext = global
-  lazy val repo = new TimepointMongoRepository(mongo.mongoConnector.db)
+  lazy val repo = new TimepointMongoRepository(mongo)
 }
 
 trait TimepointRepository {
@@ -49,37 +49,36 @@ trait TimepointRepository {
   def updateTimepoint(s: String): Future[String]
 
   def retrieveTimePoint: Future[Option[String]]
-
-  def resetTimepointTo(timepoint: String): Future[Boolean]
 }
 
-class TimepointMongoRepository(mongo: () => DB)
+class TimepointMongoRepository(mongo: MongoComponent)
                               (implicit val ec: ExecutionContext)
-  extends ReactiveRepository[TimePoint, BSONObjectID]("time-points", mongo, TimePoint.formats, ReactiveMongoFormats.objectIdFormats)
-    with TimepointRepository {
+  extends PlayMongoRepository[TimePoint](
+    mongoComponent = mongo,
+    collectionName = "time-points",
+    domainFormat = TimePoint.formats,
+    indexes = Seq()
+  ) with TimepointRepository {
 
-  private val selector = BSONDocument("_id" -> "CH-INCORPSTATUS-TIMEPOINT")
+  val logger = Logger(getClass)
 
-  def updateTimepoint(timePoint: String): Future[String] = {
-    val modifier = BSONDocument("$set" -> BSONDocument("timepoint" -> timePoint))
+  private val selector = equal("_id", "CH-INCORPSTATUS-TIMEPOINT")
 
-    collection.findAndUpdate(selector, modifier, fetchNewObject = true, upsert = true) map { r =>
-      (r.result[JsValue].get \ "timepoint").as[String]
-    }
-  }
+  def updateTimepoint(timePoint: String): Future[String] =
+    collection.findOneAndUpdate(
+      selector,
+      set("timepoint", timePoint),
+      FindOneAndUpdateOptions()
+        .upsert(true)
+        .returnDocument(ReturnDocument.AFTER)
+    ).toFuture().map(_.timepoint)
 
   def retrieveTimePoint: Future[Option[String]] = {
-    collection.find(selector, Option.empty)(BSONDocumentWrites, BSONDocumentWrites)
-      .one[TimePoint] map {
+    collection.find(selector).headOption() map {
       case Some(res) => Some(res.timepoint)
       case _ =>
         logger.warn("Could not find an existing Timepoint - this is ok for first run of the system")
         None
     }
-  }
-
-  def resetTimepointTo(timepoint: String): Future[Boolean] = {
-    val update = BSONDocument("$set" -> BSONDocument("_id" -> "CH-INCORPSTATUS-TIMEPOINT", "timepoint" -> timepoint))
-    collection.update(false).one(Json.obj(), update, upsert = true).map(_.ok)
   }
 }

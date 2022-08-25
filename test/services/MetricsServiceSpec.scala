@@ -25,7 +25,7 @@ import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
 import play.api.test.Helpers._
 import repositories._
-import uk.gov.hmrc.lock.LockKeeper
+import uk.gov.hmrc.mongo.lock.LockService
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -41,7 +41,7 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
   val mockCounter = mock[Counter]
   val mockTimer = mock[Timer.Context]
   val mockTimerMetric = mock[Timer]
-  val mockLockKeeper: LockKeeper = mock[LockKeeper]
+  val mockLockService: LockService = mock[LockService]
 
 
   trait Setup {
@@ -55,12 +55,12 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
       override val transactionApiSuccessCounter: Counter = mockCounter
       override val publicAPITimer = mockTimerMetric
       override val internalAPITimer = mockTimerMetric
-      override val lockKeeper = mockLockKeeper
+      override val lockKeeper = mockLockService
     }
   }
 
   override def beforeEach() = {
-    Seq(mockMetrics, mockHisto1, mockHisto2, mockHisto3, mockSubRepo, mockRegistry, mockCounter, mockTimer, mockLockKeeper) foreach { reset(_) }
+    Seq(mockMetrics, mockHisto1, mockHisto2, mockHisto3, mockSubRepo, mockRegistry, mockCounter, mockTimer, mockLockService) foreach { reset(_) }
   }
 
   val transId = "transId123"
@@ -71,14 +71,14 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
   val sub = Subscription(transId, regime, subscriber, url)
 
 
-  "Metrics" should {
+  "Metrics" must {
 
     "update no metrics if no subscriptions" in new Setup {
       when(mockSubRepo.getSubscriptionStats()).thenReturn(Future.successful(Map[String, Int]()))
 
       val result = await(service.updateSubscriptionMetrics())
 
-      result shouldBe Map()
+      result mustBe Map()
 
       verifyNoMoreInteractions(mockRegistry)
       verifyNoMoreInteractions(mockHisto1)
@@ -90,7 +90,7 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
 
       val result = await(service.updateSubscriptionMetrics())
 
-      result shouldBe Map("wibble" -> 1)
+      result mustBe Map("wibble" -> 1)
 
       verify(mockRegistry).remove(ArgumentMatchers.contains("wibble"))
       verify(mockRegistry).register(ArgumentMatchers.contains("wibble"), ArgumentMatchers.any())
@@ -103,7 +103,7 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
 
       val result = await(service.updateSubscriptionMetrics())
 
-      result shouldBe Map("foo1" -> 1, "foo2" -> 2, "foo3" -> 3)
+      result mustBe Map("foo1" -> 1, "foo2" -> 2, "foo3" -> 3)
 
       verify(mockRegistry).remove(ArgumentMatchers.contains("foo1"))
       verify(mockRegistry).register(ArgumentMatchers.contains("foo1"), ArgumentMatchers.any())
@@ -115,29 +115,29 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
     }
   }
 
-  "calling processDataResponseWithMatrics" should {
+  "calling processDataResponseWithMatrics" must {
 
     "should return the resut of the input function if a timer and counters are passed through" in new Setup {
       val result = await(service.processDataResponseWithMetrics[Int](Some(mockCounter),
         Some(mockCounter),Some(mockTimer))(Future.successful(1 + 1)))
 
-      result shouldBe 2
+      result mustBe 2
     }
     "should return the result of the input function when called with a success and failure counter" in new Setup {
       val result = await(service.processDataResponseWithMetrics[Int](Some(mockCounter),
         Some(mockCounter))(Future.successful(1 + 1)))
 
-      result shouldBe 2
+      result mustBe 2
     }
     "should return the result of the input function when called with a success counter" in new Setup {
       val result = await(service.processDataResponseWithMetrics[Int](Some(mockCounter))(Future.successful(1 + 1)))
 
-      result shouldBe 2
+      result mustBe 2
     }
     "should return the result of the input function when called with no parameters" in new Setup {
       val result = await(service.processDataResponseWithMetrics[Int]()(Future.successful(1 + 1)))
 
-      result shouldBe 2
+      result mustBe 2
     }
   }
 }

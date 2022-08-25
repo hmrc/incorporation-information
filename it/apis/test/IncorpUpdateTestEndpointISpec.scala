@@ -16,23 +16,17 @@
 
 package apis.test
 
-import com.google.inject.AbstractModule
 import helpers.IntegrationSpecBase
-import models.{IncorpUpdate, QueuedIncorpUpdate}
-import org.joda.time.DateTime
+import models.IncorpUpdate
 import org.joda.time.format.ISODateTimeFormat
-import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.modules.reactivemongo.ReactiveMongoComponent
-import reactivemongo.play.json.collection.JSONCollection
-import repositories._
-import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
 import play.api.test.Helpers._
+import play.api.{Application, inject}
+import repositories._
+import uk.gov.hmrc.mongo.MongoComponent
+import uk.gov.hmrc.mongo.test.MongoSupport
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContext.Implicits.global
-
-class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase with MongoSpecSupport {
+class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase with MongoSupport {
 
   val mockUrl = s"http://$wiremockHost:$wiremockPort"
 
@@ -43,43 +37,13 @@ class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase with MongoSpecSu
     "Test.auditing.consumer.baseUri.port" -> s"$wiremockPort",
     "application.router" -> "testOnlyDoNotUseInAppConf.Routes"
   )
-  val mongoTest = mongo
-  val dbNameExtraForDbToBeUnique = ("iu" -> "qr")
 
-  def rmComp(dbNameExtra: String) = new ReactiveMongoComponent {
-    override def mongoConnector: MongoConnector = mongoConnectorForTest.copy(mongoUri + dbNameExtra)
-  }
-
-  lazy val incRepo = new IncorpUpdateMongoRepository(mongoTest, IncorpUpdate.mongoFormat) {
-    override lazy val collection: JSONCollection = mongoTest().collection[JSONCollection](databaseName + dbNameExtraForDbToBeUnique._1)
-  }
-  lazy val queueRepository = new QueueMongoRepository(mongoTest, QueuedIncorpUpdate.format) {
-
-    override lazy val collection: JSONCollection = mongoTest().collection[JSONCollection](databaseName + dbNameExtraForDbToBeUnique._2)
-  }
-
-  object m extends AbstractModule {
-    override def configure(): Unit = {
-      bind(classOf[QueueMongo]).toInstance(QueueMongoFake)
-      bind(classOf[IncorpUpdateMongo]).toInstance(IncorpUpdateMongoFake)
-    }
-  }
-
-  object IncorpUpdateMongoFake extends IncorpUpdateMongo {
-    override implicit val ec: ExecutionContext = global
-    override lazy val repo: IncorpUpdateMongoRepository = incRepo
-    override lazy val mongo: ReactiveMongoComponent = rmComp(dbNameExtraForDbToBeUnique._1)
-  }
-
-  object QueueMongoFake extends QueueMongo {
-    override implicit val ec: ExecutionContext = global
-    override lazy val repo: QueueMongoRepository = queueRepository
-    override lazy val mongo: ReactiveMongoComponent = rmComp(dbNameExtraForDbToBeUnique._2)
-  }
+  lazy val incRepo = app.injector.instanceOf[IncorpUpdateMongoImpl].repo
+  lazy val queueRepository = app.injector.instanceOf[QueueMongoImpl].repo
 
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
     .configure(fakeConfig(additionalConfiguration))
-    .overrides(m)
+    .overrides(inject.bind[MongoComponent].toInstance(mongoComponent))
     .build
 
   private def client(path: String) =
@@ -87,28 +51,18 @@ class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase with MongoSpecSu
       withFollowRedirects(false)
 
   class Setup {
-    val i = IncorpUpdate("foo", "bar", None, None, "", None)
-    await(incRepo.drop)
+    await(incRepo.collection.drop().toFuture())
     await(incRepo.ensureIndexes)
-    await(incRepo.insert(IncorpUpdate("foo", "bar", None, None, "", None)))
-    await(incRepo.remove("_id" -> "foo"))
-    await(incRepo.count) shouldBe 0
-    await(queueRepository.drop)
+    await(queueRepository.collection.drop.toFuture())
     await(queueRepository.ensureIndexes)
-    await(queueRepository.insert(QueuedIncorpUpdate(DateTime.now(), i)))
-    await(queueRepository.removeAll())
-    await(queueRepository.count) shouldBe 0
-
     def getIncorp(txid: String) = await(incRepo.getIncorpUpdate(txid))
   }
 
-  override def afterEach() = new Setup {
-    await(incRepo.drop)
-  }
+  override def afterEach() = new Setup { }
 
   val transactionId = "123abc"
 
-  "IncorpUpdate add test Endpoint" should {
+  "IncorpUpdate add test Endpoint" must {
 
     def setupSimpleAuthMocks() = {
       stubPost("/write/audit", 200, """{"x":2}""")
@@ -117,15 +71,15 @@ class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase with MongoSpecSu
     "Allow an IU with tx-id and defaults" in new Setup {
       setupSimpleAuthMocks()
 
-      await(incRepo.count) shouldBe 0
-      await(queueRepository.count) shouldBe 0
+      await(incRepo.collection.countDocuments().toFuture()) mustBe 0
+      await(queueRepository.collection.countDocuments().toFuture()) mustBe 0
 
       val response = client(s"test-only/add-incorp-update?txId=${transactionId}").get().futureValue
-      response.status shouldBe 200
+      response.status mustBe 200
 
-      await(incRepo.count) shouldBe 1
-      await(queueRepository.count) shouldBe 1
-      getIncorp(transactionId) shouldBe Some(IncorpUpdate("123abc", "rejected", None, None, "-1", None))
+      await(incRepo.collection.countDocuments().toFuture()) mustBe 1
+      await(queueRepository.collection.countDocuments().toFuture()) mustBe 1
+      getIncorp(transactionId) mustBe Some(IncorpUpdate("123abc", "rejected", None, None, "-1", None))
     }
 
     def toDateTime(d: String) = ISODateTimeFormat.dateParser().withOffsetParsed().parseDateTime(d)
@@ -135,15 +89,15 @@ class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase with MongoSpecSu
 
       setupSimpleAuthMocks()
 
-      await(incRepo.find()).size shouldBe 0
-      await(queueRepository.find()).size shouldBe 0
+      await(incRepo.collection.find().toFuture()).size mustBe 0
+      await(queueRepository.collection.find().toFuture()).size mustBe 0
 
       val response = client(s"test-only/add-incorp-update?txId=${transactionId}&date=${incorpDate}&success=true&crn=1234").get().futureValue
-      response.status shouldBe 200
+      response.status mustBe 200
 
-      await(incRepo.find()).size shouldBe 1
-      await(queueRepository.find()).size shouldBe 1
-      getIncorp(transactionId) shouldBe Some(IncorpUpdate("123abc", "accepted", Some("1234"), Some(toDateTime(incorpDate)), "-1", None))
+      await(incRepo.collection.find().toFuture()).size mustBe 1
+      await(queueRepository.collection.find().toFuture()).size mustBe 1
+      getIncorp(transactionId) mustBe Some(IncorpUpdate("123abc", "accepted", Some("1234"), Some(toDateTime(incorpDate)), "-1", None))
     }
   }
 }

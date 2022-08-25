@@ -17,31 +17,32 @@
 package services
 
 import helpers.IntegrationSpecBase
+import models.{IncorpUpdate, QueuedIncorpUpdate}
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json._
 import play.api.test.Helpers._
-import reactivemongo.play.json.ImplicitBSONHandlers._
 import repositories.{IncorpUpdateMongo, IncorpUpdateMongoRepository, QueueMongo, QueueMongoRepository}
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.mongo.MongoSpecSupport
+import uk.gov.hmrc.mongo.test.MongoSupport
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class IncorpUpdateServiceISpec extends IntegrationSpecBase with MongoSpecSupport {
+class IncorpUpdateServiceISpec extends IntegrationSpecBase with MongoSupport {
 
   override lazy val app: Application = new GuiceApplicationBuilder()
     .configure(fakeConfig())
     .build()
 
-  trait Setup {
-    val incorpInfoRepo: IncorpUpdateMongoRepository = app.injector.instanceOf[IncorpUpdateMongo].repo
-    val incorpQueueRepo: QueueMongoRepository = app.injector.instanceOf[QueueMongo].repo
+  lazy val incorpInfoRepo: IncorpUpdateMongoRepository = app.injector.instanceOf[IncorpUpdateMongo].repo
+  lazy val incorpQueueRepo: QueueMongoRepository = app.injector.instanceOf[QueueMongo].repo
 
-    await(incorpInfoRepo.drop)
+  trait Setup {
+
+    await(incorpInfoRepo.collection.drop().toFuture())
     await(incorpInfoRepo.ensureIndexes)
 
-    await(incorpQueueRepo.drop)
+    await(incorpQueueRepo.collection.drop().toFuture())
     await(incorpQueueRepo.ensureIndexes)
 
     val service: IncorpUpdateService = app.injector.instanceOf[IncorpUpdateService]
@@ -49,7 +50,7 @@ class IncorpUpdateServiceISpec extends IntegrationSpecBase with MongoSpecSupport
 
   implicit val hc: HeaderCarrier = HeaderCarrier()
 
-  "updateSpecificIncorpUpdateByTP" should {
+  "updateSpecificIncorpUpdateByTP" must {
 
     val transactionId = "trans-12345"
     val timepointToFetch = "123"
@@ -138,24 +139,24 @@ class IncorpUpdateServiceISpec extends IntegrationSpecBase with MongoSpecSupport
 
       stubGet(s"/incorporation-frontend-stubs/submissions\\?timepoint=$timepointToFetch&items_per_page=1", 200, incorpInfoResponse.toString())
 
-      await(incorpInfoRepo.collection.insert(false).one(existingIncorpInfoNoIncorpDate))
-      await(incorpInfoRepo.count) shouldBe 1
+      await(incorpInfoRepo.storeSingleIncorpUpdate(existingIncorpInfoNoIncorpDate.as[IncorpUpdate](IncorpUpdate.mongoFormat)))
+      await(incorpInfoRepo.collection.countDocuments().toFuture()) mustBe 1
 
-      await(incorpQueueRepo.collection.insert(false).one(existingQueueItemNoIncorpDate))
-      await(incorpQueueRepo.count) shouldBe 1
+      await(incorpQueueRepo.upsertIncorpUpdate(existingQueueItemNoIncorpDate.as[QueuedIncorpUpdate]))
+      await(incorpQueueRepo.collection.countDocuments().toFuture()) mustBe 1
 
       val result: Seq[Boolean] = await(service.updateSpecificIncorpUpdateByTP(timepointList))
 
-      result shouldBe List(true)
+      result mustBe List(true)
 
-      await(incorpInfoRepo.count) shouldBe 1
-      await(incorpQueueRepo.count) shouldBe 1
+      await(incorpInfoRepo.collection.countDocuments().toFuture()) mustBe 1
+      await(incorpQueueRepo.collection.countDocuments().toFuture()) mustBe 1
 
-      await(incorpInfoRepo.collection.find(Json.obj(), Option.empty)(JsObjectDocumentWriter, JsObjectDocumentWriter).one[JsObject]) shouldBe Some(newIncorpInfo)
+      await(incorpInfoRepo.collection.find.headOption()) mustBe Some(newIncorpInfo.as[IncorpUpdate](IncorpUpdate.mongoFormat))
 
-      val Some(queueItem) = await(incorpQueueRepo.collection.find(Json.obj(), Option.empty)(JsObjectDocumentWriter, JsObjectDocumentWriter).one[JsObject])
+      val queueItem = await(incorpQueueRepo.collection.find().head())
 
-      queueItem.withoutTimestamp.withoutOID shouldBe newQueueItem.withoutTimestamp.withoutOID
+      Json.toJson(queueItem).as[JsObject].withoutTimestamp.withoutOID mustBe newQueueItem.withoutTimestamp.withoutOID
     }
   }
 }

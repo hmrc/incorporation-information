@@ -40,7 +40,7 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
     .build
 
 
-  "fetchTransactionalData" should {
+  "fetchTransactionalData" must {
     val transactionId = "12345"
     val destinationUrl = s"/incorporation-frontend-stubs/fetch-data/$transactionId"
 
@@ -72,7 +72,7 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
       val connector = app.injector.instanceOf[IncorporationAPIConnector]
 
       val result = await(connector.checkForIncorpUpdate(None)(HeaderCarrier(authorization = Some(Authorization("foo")), extraHeaders = Seq("bar" -> "wizz"))))
-      result shouldBe Seq(item1)
+      result mustBe Seq(item1)
       verify(getRequestedFor(urlMatching("/incorporation-frontend-stubs/submissions.*"))
         .withHeader("Authorization", matching("foo"))
         .withHeader("bar", matching("wizz")))
@@ -86,7 +86,7 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
 
       val f = connector.checkForIncorpUpdate(None)(HeaderCarrier())
       val r = await(f)
-      r shouldBe Seq()
+      r mustBe Seq()
     }
 
     "Return no items if a 400 (bad request) result is returned" in {
@@ -95,7 +95,7 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
       val connector = app.injector.instanceOf[IncorporationAPIConnector]
       val f = connector.checkForIncorpUpdate(None)(HeaderCarrier())
       val failure = intercept[IncorpUpdateAPIFailure](await(f))
-      failure.ex shouldBe a[BadRequestException]
+      failure.ex mustBe a[BadRequestException]
     }
 
   }

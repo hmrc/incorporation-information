@@ -16,69 +16,56 @@
 
 package repositories
 
-import java.util.UUID
-
 import helpers.SCRSMongoSpec
-import play.api.libs.json.Json
 import play.api.test.Helpers._
-import reactivemongo.api.commands.WriteResult
-import reactivemongo.play.json.ImplicitBSONHandlers._
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import java.util.UUID
 
 class TimepointMongoRepositoryISpec extends SCRSMongoSpec {
 
+  lazy val repository: TimepointMongoRepository = app.injector.instanceOf[TimepointMongo].repo
+
   class Setup {
-    val repository: TimepointMongoRepository = new TimepointMongo(reactiveMongoComponent).repo
-    await(repository.removeAll())
+    await(repository.collection.drop().toFuture())
     await(repository.ensureIndexes)
-
-    def insertTimepoint(tp: String): WriteResult = {
-      await(repository.collection.insert(false).one(TimePoint("CH-INCORPSTATUS-TIMEPOINT", tp)))
-    }
-
-    def fetchTimepoint: Option[TimePoint] = await(repository.collection.find(Json.obj(), Option.empty)(JsObjectDocumentWriter, JsObjectDocumentWriter).one[TimePoint])
-  }
-
-  override def afterAll() = new Setup {
-    await(repository.removeAll())
   }
 
   def generateTimepoint: String = UUID.randomUUID().toString
 
-  "TimepointRepository update" should {
+  "TimepointRepository update" must {
 
     "be able to create a document when one doesn't exist" in new Setup {
       val timepoint = generateTimepoint
 
-      val beforeCount: Int = await(repository.count)
+      val beforeCount = await(repository.collection.countDocuments().toFuture())
 
       val oResult = await(repository.updateTimepoint(timepoint))
 
-      await(repository.count) shouldBe (beforeCount + 1)
+      await(repository.collection.countDocuments().toFuture()) mustBe (beforeCount + 1)
 
       val result = oResult
 
-      result shouldBe timepoint
+      result mustBe timepoint
     }
 
     "be able to update the document when it does exist" in new Setup {
+
       val timepoint = generateTimepoint
-      val oResult = await(repository.updateTimepoint(timepoint))
+      await(repository.updateTimepoint(timepoint))
 
       val newTimepoint = "123456"
       val result = await(repository.updateTimepoint(newTimepoint))
 
-      result shouldBe newTimepoint
+      result mustBe newTimepoint
     }
   }
 
-  "Retrieving the Time point" should {
+  "Retrieving the Time point" must {
 
     "return nothing when there is no stored timepoint" in new Setup {
       val result = await(repository.retrieveTimePoint)
 
-      result shouldBe None
+      result mustBe None
     }
 
     "return an optional Time point when there is one stored" in new Setup {
@@ -88,34 +75,7 @@ class TimepointMongoRepositoryISpec extends SCRSMongoSpec {
 
       val result = await(repository.retrieveTimePoint)
 
-      result shouldBe Some(timepoint)
-    }
-  }
-
-  "resetTimepointTo" should {
-
-    val currentTimepoint = generateTimepoint
-    val newTimepoint = generateTimepoint
-
-    "reset an existing timepoint to the one provided" in new Setup {
-
-      insertTimepoint(currentTimepoint)
-
-      val result: Boolean = await(repository.resetTimepointTo(newTimepoint))
-      result shouldBe true
-
-      fetchTimepoint.get.timepoint shouldBe newTimepoint
-    }
-
-
-    "set the timepoint to the one provided when an existing timestamp doesn't exist" in new Setup {
-
-      await(repository.count) shouldBe 0
-
-      val result: Boolean = await(repository.resetTimepointTo(newTimepoint))
-      result shouldBe true
-
-      fetchTimepoint.get.timepoint shouldBe newTimepoint
+      result mustBe Some(timepoint)
     }
   }
 }

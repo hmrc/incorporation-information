@@ -22,6 +22,7 @@ import ch.qos.logback.core.read.ListAppender
 import com.github.tomakehurst.wiremock.stubbing.StubMapping
 import org.scalatest._
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
+import org.scalatestplus.play.PlaySpec
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.{Application, LoggerLike}
 import play.api.libs.ws.WSClient
@@ -29,9 +30,9 @@ import utils.{FeatureSwitch, SCRSFeatureSwitches}
 
 import scala.collection.JavaConverters._
 
-trait IntegrationSpecBase extends WordSpec
+trait IntegrationSpecBase extends PlaySpec
   with GivenWhenThen
-  with GuiceOneServerPerSuite with ScalaFutures with IntegrationPatience with Matchers
+  with GuiceOneServerPerSuite with ScalaFutures with IntegrationPatience
   with WiremockHelper with BeforeAndAfterEach with BeforeAndAfterAll with FakeAppConfig {
 
   implicit def ws(implicit app: Application): WSClient = app.injector.instanceOf[WSClient]

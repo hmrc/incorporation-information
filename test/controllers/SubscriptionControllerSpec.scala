@@ -54,7 +54,7 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
   val sub: Subscription = Subscription(transactionId, regime, subscriber, "www.test.com")
   val testIncorpUpdate: IncorpUpdate = IncorpUpdate(transactionId, acceptedStatus, Some(crn), Some(incDate), "20170327093004787", None)
 
-  "check Subscription" should {
+  "check Subscription" must {
 
     val requestBody = Json.parse(
       s"""
@@ -96,8 +96,8 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
 
       val (generatedTS, jsonNoTS) = extractTimestamp(contentAsJson(result).as[JsObject])
 
-      status(result) shouldBe 200
-      jsonNoTS shouldBe json
+      status(result) mustBe 200
+      jsonNoTS mustBe json
     }
 
     "return a 202(Accepted) when a new subscription is created" in new Setup {
@@ -108,12 +108,12 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
 
       val result: Future[Result] = controller.checkSubscription(transactionId, regime, subscriber)(request)
 
-      status(result) shouldBe 202
+      status(result) mustBe 202
     }
   }
 
 
-  "Remove subscription" should {
+  "Remove subscription" must {
     "return a 200 when a subscription is deleted" in new Setup {
       when(mockService.deleteSubscription(ArgumentMatchers.eq(transactionId),ArgumentMatchers.eq(regime),ArgumentMatchers.eq(subscriber)))
         .thenReturn(Future.successful(DeletedSub))
@@ -121,7 +121,7 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
       val request: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
 
       val result: Future[Result] = controller.removeSubscription(transactionId,regime,subscriber)(request)
-      status(result) shouldBe 200
+      status(result) mustBe 200
     }
 
     "return a 404 when a subscription cannot be found" in new Setup {
@@ -131,7 +131,7 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
       val request: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
 
       val result: Future[Result] = controller.removeSubscription(transactionId,regime,subscriber)(request)
-      status(result) shouldBe 404
+      status(result) mustBe 404
     }
   }
 

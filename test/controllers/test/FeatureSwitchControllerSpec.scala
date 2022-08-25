@@ -47,7 +47,7 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
     }
   }
 
-  "calling switch" should {
+  "calling switch" must {
 
     def message(name: String, state: String) = s"[FeatureSwitch] Feature switch for $name is now $state"
 
@@ -58,8 +58,8 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
       when(mockQuartz.suspendJob(any())).thenReturn(false)
 
       val result = controller.switch(featureName, featureState)(FakeRequest())
-      status(result) shouldBe OK
-      contentAsString(result) shouldBe message(featureName, "false")
+      status(result) mustBe OK
+      contentAsString(result) mustBe message(featureName, "false")
     }
 
     "return an incorp update feature state set to true when we specify coho" in new Setup {
@@ -69,8 +69,8 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
       when(mockQuartz.resumeJob(any())).thenReturn(false)
 
       val result = controller.switch(featureName, featureState)(FakeRequest())
-      status(result) shouldBe OK
-      contentAsString(result) shouldBe message(featureName, "true")
+      status(result) mustBe OK
+      contentAsString(result) mustBe message(featureName, "true")
     }
 
     "return a transactional API feature state set to false when we specify stub" in new Setup {
@@ -78,8 +78,8 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
       val featureState = "stub"
 
       val result = controller.switch(featureName, featureState)(FakeRequest())
-      status(result) shouldBe OK
-      contentAsString(result) shouldBe message(featureName, "false")
+      status(result) mustBe OK
+      contentAsString(result) mustBe message(featureName, "false")
     }
 
     "return a transactional API feature state set to true when we specify coho" in new Setup {
@@ -87,8 +87,8 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
       val featureState = "coho"
 
       val result = controller.switch(featureName, featureState)(FakeRequest())
-      status(result) shouldBe OK
-      contentAsString(result) shouldBe message(featureName, "true")
+      status(result) mustBe OK
+      contentAsString(result) mustBe message(featureName, "true")
     }
 
     "return a transactional API feature state set to false as a default when we specify xxxx" in new Setup {
@@ -96,8 +96,8 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
       val featureState = "xxxx"
 
       val result = controller.switch(featureName, featureState)(FakeRequest())
-      status(result) shouldBe OK
-      contentAsString(result) shouldBe message(featureName, "false")
+      status(result) mustBe OK
+      contentAsString(result) mustBe message(featureName, "false")
 
     }
 
@@ -108,8 +108,8 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
       when(mockQuartz.resumeJob(any())).thenReturn(false)
 
       val result = controller.switch(featureName, featureState)(FakeRequest())
-      status(result) shouldBe OK
-      contentAsString(result) shouldBe message(featureName, "false")
+      status(result) mustBe OK
+      contentAsString(result) mustBe message(featureName, "false")
     }
   }
 }

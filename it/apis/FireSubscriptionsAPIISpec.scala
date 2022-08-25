@@ -22,13 +22,9 @@ import org.joda.time.DateTime
 import play.api._
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.test.Helpers._
-import play.modules.reactivemongo.ReactiveMongoComponent
-import repositories.{QueueMongo, SubscriptionsMongo}
+import repositories.{QueueMongoImpl, SubscriptionsMongo}
 import services.SubscriptionFiringService
 import uk.gov.hmrc.http.HeaderCarrier
-
-import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContext.Implicits.global
 @javax.inject.Singleton
 class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
 
@@ -45,38 +41,25 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
     .configure(fakeConfig(additionalConfiguration))
     .build
-  lazy val reactiveMongoComponent = app.injector.instanceOf[ReactiveMongoComponent]
+
+  lazy val subRepo = app.injector.instanceOf[SubscriptionsMongo].repo
+  lazy val queueRepo = app.injector.instanceOf[QueueMongoImpl].repo
+
   class Setup {
 
+    def insert(sub: Subscription) = await(subRepo.insertSub(sub))
+    def insert(queuedIncorpUpdate: QueuedIncorpUpdate) = await(queueRepo.upsertIncorpUpdate(queuedIncorpUpdate))
+    def subCount = await(subRepo.collection.countDocuments().toFuture())
+    def queueCount = await(queueRepo.collection.countDocuments().toFuture())
 
-    val subRepo = new SubscriptionsMongo(reactiveMongoComponent).repo
-    val queueRepo = new QueueMongo {
-      override implicit val ec: ExecutionContext = global
-      override val mongo: ReactiveMongoComponent = reactiveMongoComponent
-    }.repo
-
-    def insert(sub: Subscription) = await(subRepo.insert(sub))
-    def insert(queuedIncorpUpdate: QueuedIncorpUpdate) = await(queueRepo.insert(queuedIncorpUpdate))
-    def subCount = await(subRepo.count)
-    def queueCount = await(queueRepo.count)
+    await(subRepo.collection.drop().toFuture())
+    await(subRepo.ensureIndexes)
+    await(queueRepo.collection.drop().toFuture())
+    await(queueRepo.ensureIndexes)
 
     implicit val hc = HeaderCarrier()
   }
 
-  override def beforeEach() = new Setup {
-    await(subRepo.drop)
-    await(subRepo.ensureIndexes)
-    await(queueRepo.drop)
-    await(queueRepo.ensureIndexes)
-
-    subCount shouldBe 0
-    queueCount shouldBe 0
-  }
-
-  override def afterEach() = new Setup {
-    await(subRepo.drop)
-    await(queueRepo.drop)
-  }
   val incorpUpdate = IncorpUpdate("transId1", "awaiting", None, None, "timepoint", None)
   val incorpUpdate2 = IncorpUpdate("transId2", "awaiting", None, None, "timepoint", None)
   val incorpUpdate3 = IncorpUpdate("transId3", "awaiting", None, None, "timepoint", None)
@@ -93,40 +76,40 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
   // TODO - LJ - add scenario to test not picking up queue items in the future
   // TODO - LJ - add scenario for ensuring failed updates get moved into the future
 
-  "fireIncorpUpdateBatch" should {
+  "fireIncorpUpdateBatch" must {
 
     "return a Sequence of a true value when one queued incorp update has been successfully fired and both the " +
       "queued incorp update and the subscription have been deleted" in new Setup {
 
       insert(sub1c)
-      subCount shouldBe 1
+      subCount mustBe 1
 
       insert(queuedIncorpUpdate)
-      queueCount shouldBe 1
+      queueCount mustBe 1
 
       val service = app.injector.instanceOf[SubscriptionFiringService]
       stubPost("/mockUri", 200, "")
 
       val fResult = service.fireIncorpUpdateBatch
       val result = await(fResult)
-      result shouldBe Seq(true)
+      result mustBe Seq(true)
     }
 
     "return a sequence of true when two subscriptions with the same transId have successfully returned 200 HTTP responses and then deleted" +
      "and therefore the queued incorp update is then deleted" in new Setup {
       insert(sub1c)
       insert(sub1p)
-      subCount shouldBe 2
+      subCount mustBe 2
 
       insert(queuedIncorpUpdate)
-      queueCount shouldBe 1
+      queueCount mustBe 1
 
       val service = app.injector.instanceOf[SubscriptionFiringService]
       stubPost("/mockUri", 200, "")
 
       val fResult = service.fireIncorpUpdateBatch
       val result = await(fResult)
-      result shouldBe Seq(true)
+      result mustBe Seq(true)
     }
 
     "return a sequence of two true values when two updates have been successfully fired, the first queued incorp update connected to two subscriptions with " +
@@ -134,18 +117,18 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
       insert(sub1c)
       insert(sub1p)
       insert(sub2)
-      subCount shouldBe 3
+      subCount mustBe 3
 
       insert(queuedIncorpUpdate)
       insert(queuedIncorpUpdate2)
-      queueCount shouldBe 2
+      queueCount mustBe 2
 
       val service = app.injector.instanceOf[SubscriptionFiringService]
       stubPost("/mockUri", 200, "")
 
       val fResult = service.fireIncorpUpdateBatch
       val result = await(fResult)
-      result shouldBe Seq(true, true)
+      result mustBe Seq(true, true)
     }
 
     "return a sequence of two true values and NOT three when three updates have been successfully fired but the fetch size is 2" in new Setup {
@@ -153,99 +136,99 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
       insert(sub1p)
       insert(sub2)
       insert(sub3)
-      subCount shouldBe 4
+      subCount mustBe 4
 
       insert(queuedIncorpUpdate)
       insert(queuedIncorpUpdate2)
       insert(queuedIncorpUpdate3)
-      queueCount shouldBe 3
+      queueCount mustBe 3
 
       val service = app.injector.instanceOf[SubscriptionFiringService]
       stubPost("/mockUri", 200, "")
 
       val fResult = service.fireIncorpUpdateBatch
       val result = await(fResult)
-      result shouldBe Seq(true, true)
+      result mustBe Seq(true, true)
     }
 
 
     "return a true value when an update has been fired that matches the transId of one of the two Subscriptions in the database" in new Setup {
       insert(sub2)
       insert(sub1c)
-      subCount shouldBe 2
+      subCount mustBe 2
 
       insert(queuedIncorpUpdate)
-      queueCount shouldBe 1
+      queueCount mustBe 1
 
       val service = app.injector.instanceOf[SubscriptionFiringService]
       stubPost("/mockUri", 200, "")
 
       val fResult = service.fireIncorpUpdateBatch
       val result = await(fResult)
-      result shouldBe Seq(true)
-      subCount shouldBe 1
+      result mustBe Seq(true)
+      subCount mustBe 1
     }
 
     "return an empty when the timestamp of the only queued incorp update is in the future" in new Setup {
       insert(sub1c)
-      subCount shouldBe 1
+      subCount mustBe 1
 
       val futureQIU = QueuedIncorpUpdate(DateTime.now.plusMinutes(10), incorpUpdate)
       insert(futureQIU)
-      queueCount shouldBe 1
+      queueCount mustBe 1
 
       val service = app.injector.instanceOf[SubscriptionFiringService]
       stubPost("/mockUri", 200, "")
 
       val fResult = service.fireIncorpUpdateBatch
       val result = await(fResult)
-      result shouldBe Seq()
+      result mustBe Seq()
     }
 
     "return a sequence of false when the subscriptions for a queued incorp update did not return a 200 response" in new Setup {
       insert(sub1c)
       insert(sub1p)
-      subCount shouldBe 2
+      subCount mustBe 2
 
       insert(queuedIncorpUpdate)
-      queueCount shouldBe 1
+      queueCount mustBe 1
 
       val service = app.injector.instanceOf[SubscriptionFiringService]
       stubPost("/mockUri", 400, "")
 
       val fResult = service.fireIncorpUpdateBatch
       val result = await(fResult)
-      result shouldBe Seq(false)
+      result mustBe Seq(false)
     }
 
     "return a sequence of false when the subscriptions for a queued incorp update returned a 202 response" in new Setup {
       insert(sub1c)
       insert(sub1p)
-      subCount shouldBe 2
+      subCount mustBe 2
 
       insert(queuedIncorpUpdate)
-      queueCount shouldBe 1
+      queueCount mustBe 1
 
       val service = app.injector.instanceOf[SubscriptionFiringService]
       stubPost("/mockUri", 202, "")
 
       val fResult = service.fireIncorpUpdateBatch
       val result = await(fResult)
-      result shouldBe Seq(false)
+      result mustBe Seq(false)
     }
 
     "return a sequence of false when the subscriptions for a queued incorp update has a malformed url" in new Setup {
       insert(sub1c.copy(callbackUrl = "/test"))
-      subCount shouldBe 1
+      subCount mustBe 1
 
       insert(queuedIncorpUpdate)
-      queueCount shouldBe 1
+      queueCount mustBe 1
 
       val service = app.injector.instanceOf[SubscriptionFiringService]
 
       val fResult = service.fireIncorpUpdateBatch
       val result = await(fResult)
-      result shouldBe Seq(false)
+      result mustBe Seq(false)
     }
   }
 }

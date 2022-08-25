@@ -56,8 +56,6 @@ trait IncorpUpdateController extends BackendBaseController {
     for {
       _ <- repo.storeIncorpUpdates(Seq(incorpUpdate))
       _ <- queueRepository.storeIncorpUpdates(Seq(QueuedIncorpUpdate(DateTime.now(), IncorpUpdate(txId, status, crn, incorpDate, "-1"))))
-    } yield true
-
-    Future.successful(Ok)
+    } yield Ok
   }
 }

@@ -17,24 +17,25 @@
 package helpers
 
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Matchers, WordSpec}
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
+import org.scalatestplus.play.PlaySpec
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
-import play.api.inject.DefaultApplicationLifecycle
+import play.api.Application
+import play.api.inject.{DefaultApplicationLifecycle, bind}
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json._
-import play.api.{Application, Environment}
-import play.modules.reactivemongo.ReactiveMongoComponentImpl
-import uk.gov.hmrc.mongo.MongoSpecSupport
+import uk.gov.hmrc.mongo.MongoComponent
+import uk.gov.hmrc.mongo.test.MongoSupport
 
-trait SCRSMongoSpec extends WordSpec with Matchers with MongoSpecSupport with BeforeAndAfterEach with BeforeAndAfterAll
+trait SCRSMongoSpec extends PlaySpec with MongoSupport with BeforeAndAfterEach with BeforeAndAfterAll
   with ScalaFutures with Eventually with GuiceOneAppPerSuite with FakeAppConfig {
 
   override lazy val fakeApplication: Application = new GuiceApplicationBuilder()
     .configure(fakeConfig())
+    .overrides(bind(classOf[MongoComponent]).toInstance(mongoComponent))
     .build()
 
   lazy val applicationLifeCycle = new DefaultApplicationLifecycle
-  lazy val reactiveMongoComponent = new ReactiveMongoComponentImpl(fakeApplication.configuration, fakeApplication.injector.instanceOf[Environment], applicationLifeCycle)
 
   implicit def formatToOFormat[T](implicit format: Format[T]): OFormat[T] = new OFormat[T] {
     override def writes(o: T): JsObject = format.writes(o).as[JsObject]

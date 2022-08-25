@@ -18,14 +18,14 @@ package mocks
 
 import com.codahale.metrics.{Counter, Timer}
 import com.kenshoo.play.metrics.Metrics
-import org.scalatest.mock.MockitoSugar
+import org.scalatestplus.mockito.MockitoSugar
 import repositories.SubscriptionsMongoRepository
 import services.MetricsService
-import uk.gov.hmrc.lock.LockKeeper
+import uk.gov.hmrc.mongo.lock.LockService
 
 
-class MockMetrics extends MetricsService with MockitoSugar{
-  override val lockKeeper: LockKeeper = mock[LockKeeper]
+class MockMetrics extends MetricsService with MockitoSugar {
+  override val lockKeeper: LockService = mock[LockService]
   val mockCounter = new Counter
 
   val mockMetrics = mock[Metrics]

@@ -14,17 +14,24 @@
  * limitations under the License.
  */
 
-package Helpers
+package repositories
 
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
-import org.scalatestplus.mockito.MockitoSugar
-import org.scalatestplus.play.PlaySpec
-import uk.gov.hmrc.http.HeaderCarrier
+import org.mongodb.scala.Document
+import org.mongodb.scala.bson.BsonDocument
+import uk.gov.hmrc.mongo.test.MongoSupport
 
-trait SCRSSpec extends PlaySpec with MockitoSugar {
+import scala.concurrent.Future
 
-  implicit val defaultHc: HeaderCarrier = HeaderCarrier()
-  implicit val system: ActorSystem = ActorSystem("II")
-  implicit val materializer: ActorMaterializer = ActorMaterializer()
+trait DocValidator extends MongoSupport {
+
+  def validateCRN(regex: String = "^bar[1-7]$"): Future[Document] = {
+
+    val commandDoc = BsonDocument(
+      "collMod" -> "incorporation-information",
+      "validator" -> BsonDocument("company_number" -> BsonDocument("$regex" -> regex))
+    )
+
+    mongoComponent.database.listCollections().map(println)
+    mongoComponent.database.runCommand(commandDoc).toFuture()
+  }
 }
