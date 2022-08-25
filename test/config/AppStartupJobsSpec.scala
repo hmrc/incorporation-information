@@ -17,17 +17,18 @@
 package config
 
 import Helpers.{LogCapturing, SCRSSpec}
+import com.mongodb.client.result.DeleteResult
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
 import org.joda.time.DateTime
 import org.mockito.ArgumentMatchers.{any, eq => eqTo}
 import org.mockito.Mockito._
 import org.scalatest.concurrent.Eventually
+import play.api.test.DefaultAwaitTimeout
 import play.api.{Configuration, Logger}
 import repositories._
 import services.{IncorpUpdateService, SubscriptionService}
 import uk.gov.hmrc.http.HeaderCarrier
-import play.api.test.DefaultAwaitTimeout
-import reactivemongo.api.commands.DefaultWriteResult
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -71,7 +72,7 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually with
 
   }
 
-  "logRemainingSubscriptionIdentifiers" should {
+  "logRemainingSubscriptionIdentifiers" must {
 
     "log information about subscriptions with default values as nothing exists in config" in new Setup {
       val subscription1 = Subscription("transId", "testRegime", "testSubscriber", "testCallbackUrl")
@@ -91,7 +92,7 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually with
       withCaptureOfLoggingFrom(Logger(appStartupJobs(Configuration()).getClass)) { logEvents =>
         appStartupJobs(Configuration())
         eventually {
-          logEvents.map(_.getMessage).count(r => expectedLogOfSubscriptions.contains(r)) shouldBe 6
+          logEvents.map(_.getMessage).count(r => expectedLogOfSubscriptions.contains(r)) mustBe 6
         }
       }
     }
@@ -113,13 +114,13 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually with
           val expectedLogs = List(
             "Logging existing subscriptions for ct regime, found 0 subscriptions"
           )
-          logEvents.map(_.getMessage).count(r => expectedLogs.contains(r)) shouldBe 1
+          logEvents.map(_.getMessage).count(r => expectedLogs.contains(r)) mustBe 1
         }
       }
     }
   }
 
-  "logIncorpInfo" should {
+  "logIncorpInfo" must {
 
     val dateTime = DateTime.parse("2010-06-30T01:20+00:00")
 
@@ -161,7 +162,7 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually with
 
         appStartupJobs(Configuration.from(Map("transactionIdList" -> "dHJhbnMtMSx0cmFucy0y")))
         eventually {
-          logEvents.map(_.getMessage).count(expectedLogs.contains(_)) shouldBe 2
+          logEvents.map(_.getMessage).count(expectedLogs.contains(_)) mustBe 2
         }
       }
     }
@@ -175,31 +176,20 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually with
       withCaptureOfLoggingFrom(Logger(appStartupJobs(Configuration()).getClass)) { logEvents =>
         appStartupJobs(Configuration())
         eventually {
-          logEvents.map(_.getMessage).filter(_.contains("[HeldDocs]")) shouldBe empty
+          logEvents.map(_.getMessage).filter(_.contains("[HeldDocs]")) mustBe empty
         }
       }
     }
   }
 
-  "removeBrokenSubmissions" should {
+  "removeBrokenSubmissions" must {
 
     val encodedTransIds = "dHJhbnMtMSx0cmFucy0y"
-
-    val dateTime = DateTime.parse("2010-06-30T01:20+00:00")
 
     val transId1 = "trans-1"
     val transId2 = "trans-2"
 
-    val subscription1 = Subscription(transId1, "ctax", "scrs", "testCallbackUrl1")
-    val subscription2 = Subscription(transId1, "ctax", "scrs", "testCallbackUrl1")
-
-    val incorpUpdate1 = IncorpUpdate(transId1, "accepted", Some("crn-1"), Some(dateTime), "12345", None)
-    val incorpUpdate2 = IncorpUpdate(transId1, "accepted", Some("crn-2"), Some(dateTime), "12345", None)
-
-    val queuedUpdate1 = QueuedIncorpUpdate(dateTime, incorpUpdate1)
-    val queuedUpdate2 = QueuedIncorpUpdate(dateTime, incorpUpdate2)
-
-    val writeResult = DefaultWriteResult(true, 1, Seq(), None, None, None).flatten
+    val deleteResult = DeleteResult.acknowledged(1)
 
     "log when broken submissions are removed" in new Setup {
       when(mockSubsMongo.repo).thenReturn(mockSubsRepo)
@@ -210,9 +200,9 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually with
 
 
       when(mockSubsRepo.deleteSub(eqTo(transId1),eqTo("ctax"),eqTo("scrs")))
-        .thenReturn(Future.successful(writeResult))
+        .thenReturn(Future.successful(deleteResult))
       when(mockSubsRepo.deleteSub(eqTo(transId2),eqTo("ctax"),eqTo("scrs")))
-        .thenReturn(Future.successful(writeResult))
+        .thenReturn(Future.successful(deleteResult))
 
 
       when(mockQueueRepo.removeQueuedIncorpUpdate(eqTo(transId1)))
@@ -226,10 +216,10 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually with
 
         eventually {
           val expectedLogs = List(
-              "[Start Up] Removed broken submission with txId: trans-1 - delete sub: DefaultWriteResult(true,1,List(),None,None,None) queue result: true",
-              "[Start Up] Removed broken submission with txId: trans-2 - delete sub: DefaultWriteResult(true,1,List(),None,None,None) queue result: true"
+              "[Start Up] Removed broken submission with txId: trans-1 - delete sub: AcknowledgedDeleteResult{deletedCount=1} queue result: true",
+              "[Start Up] Removed broken submission with txId: trans-2 - delete sub: AcknowledgedDeleteResult{deletedCount=1} queue result: true"
           )
-          logEvents.map(_.getMessage).count(expectedLogs.contains(_)) shouldBe 2
+          logEvents.map(_.getMessage).count(expectedLogs.contains(_)) mustBe 2
         }
       }
     }
@@ -248,7 +238,7 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually with
           val expectedLogs = List(
             "[Start Up] No broken submissions in config"
           )
-          logEvents.map(_.getMessage).count(expectedLogs.contains(_)) shouldBe 1
+          logEvents.map(_.getMessage).count(expectedLogs.contains(_)) mustBe 1
         }
       }
     }

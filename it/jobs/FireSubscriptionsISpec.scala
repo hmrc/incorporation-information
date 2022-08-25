@@ -23,9 +23,8 @@ import org.joda.time.DateTime
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.inject.{BindingKey, QualifierInstance}
-import reactivemongo.api.ReadConcern
-import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo, TimepointMongo}
 import play.api.test.Helpers._
+import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo, TimepointMongo}
 
 import scala.concurrent.ExecutionContext.Implicits._
 
@@ -57,13 +56,11 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
     val subRepo = app.injector.instanceOf[SubscriptionsMongo].repo
     val lockRepo = app.injector.instanceOf[LockRepositoryProvider].repo
 
-    def insert(u: QueuedIncorpUpdate) = await(queueRepo.collection.insert(u)(QueuedIncorpUpdate.format, global))
-    def insert(s: Subscription) = await(subRepo.collection.insert(s)(Subscription.format, global))
-  }
+    def insert(u: QueuedIncorpUpdate) = await(queueRepo.upsertIncorpUpdate(u))
+    def insert(s: Subscription) = await(subRepo.insertSub(s))
 
-  override def beforeEach() = new Setup {
-    Seq(incorpRepo, timepointRepo, queueRepo, subRepo,lockRepo) map { r =>
-      await(r.drop)
+    Seq(incorpRepo, timepointRepo, queueRepo, subRepo) map { r =>
+      await(r.collection.drop.toFuture())
       await(r.ensureIndexes)
     }
   }
@@ -81,7 +78,7 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
     app.injector.instanceOf[ScheduledJob](key)
   }
 
-  "fire subscriptions check with no data" should {
+  "fire subscriptions check with no data" must {
 
     "Should process successfully when enabled" in new Setup {
       setupAuditMocks()
@@ -89,48 +86,48 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
 
       stubPost("/mockUri", 200, "")
 
-      await(incorpRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
+      await(incorpRepo.collection.countDocuments().toFuture()) mustBe 0
 
       val job = lookupJob("fire-subs-job")
 
       val f = job.schedule
-      f shouldBe true
+      f mustBe true
       await(job.scheduledMessage.service.invoke)
 
-      await(incorpRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
+      await(incorpRepo.collection.countDocuments().toFuture()) mustBe 0
     }
   }
 
-  "fire subscriptions check with data" should {
+  "fire subscriptions check with data" must {
     "Both submission and queue repos should be empty after job has been fired" in new Setup {
       setupAuditMocks()
       setupFeatures(fireSubscriptions = true)
 
       stubPost("/mockUri", 200, "")
 
-      await(queueRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
-      await(timepointRepo.retrieveTimePoint) shouldBe None
+      await(queueRepo.collection.countDocuments().toFuture()) mustBe 0
+      await(timepointRepo.retrieveTimePoint) mustBe None
 
       val incorpUpdate = IncorpUpdate("transId1", "awaiting", None, None, "timepoint", None)
       val QIU = QueuedIncorpUpdate(DateTime.now, incorpUpdate)
       insert(QIU)
-      await(queueRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 1
+      await(queueRepo.collection.countDocuments().toFuture()) mustBe 1
 
-      await(subRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
+      await(subRepo.collection.countDocuments().toFuture()) mustBe 0
       val sub = Subscription("transId1", "CT", "subscriber", s"$mockUrl/mockUri")
       val sub2 = Subscription("transId1", "PAYE", "subscriber", s"$mockUrl/mockUri")
       insert(sub)
-      await(subRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 1
+      await(subRepo.collection.countDocuments().toFuture()) mustBe 1
       insert(sub2)
-      await(subRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 2
+      await(subRepo.collection.countDocuments().toFuture()) mustBe 2
 
       val job = lookupJob("fire-subs-job")
 
       val res = await(job.scheduledMessage.service.invoke.map(_.asInstanceOf[Either[Seq[Boolean], LockResponse]]))
 
-      res.left.get shouldBe Seq(true)
-      await(subRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
-      await(queueRepo.collection.count(None,None,0,None,ReadConcern.Available)) shouldBe 0
+      res.left.get mustBe Seq(true)
+      await(subRepo.collection.countDocuments().toFuture()) mustBe 0
+      await(queueRepo.collection.countDocuments().toFuture()) mustBe 0
     }
   }
 }

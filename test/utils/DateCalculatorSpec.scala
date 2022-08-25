@@ -31,10 +31,10 @@ class DateCalculatorSpec extends SCRSSpec with BeforeAndAfterEach {
 
   def time(h: Int, m: Int, s: Int) = LocalTime.parse(f"$h%02d" + ":" + f"$m%02d" + ":" + f"$s%02d", DateTimeFormatter.ofPattern("HH:mm:ss"))
 
-  "getTheDay" should {
+  "getTheDay" must {
     "return todays day" in new StandardSetup {
       val testDate = DateTime.parse("2017-07-11T00:00:00.000Z")
-      dCalc.getTheDay(testDate) shouldBe "TUE"
+      dCalc.getTheDay(testDate) mustBe "TUE"
     }
   }
 
@@ -43,13 +43,13 @@ class DateCalculatorSpec extends SCRSSpec with BeforeAndAfterEach {
       override def getDateNowUkZonedTime = now
     }
   }
-  "epochToDateTime" should {
+  "epochToDateTime" must {
     "convert coho timestamp to the correct datetime" in new StandardSetup {
       val res = dCalc.cohoStringToDateTime("20190107171206152")
-      res shouldBe new DateTime("2019-01-07T17:12:06.152")
-      res.getMillis shouldBe 1546881126152L
+      res mustBe new DateTime("2019-01-07T17:12:06.152")
+      res.getMillis mustBe 1546881126152L
       val date = new DateTime("2019-01-07T17:12:06.152")
-      date.getMillis shouldBe res.getMillis
+      date.getMillis mustBe res.getMillis
     }
     "coho timestamp will throw exception if incorrect format (not long enough)" in new StandardSetup {
       intercept[Exception](dCalc.cohoStringToDateTime("2019010717120615"))
@@ -59,63 +59,63 @@ class DateCalculatorSpec extends SCRSSpec with BeforeAndAfterEach {
     }
 
   }
-  "dateGreaterThanNow" should {
+  "dateGreaterThanNow" must {
     val date = new DateTime("2017-07-11T00:00:00.005")
     val cohoString = 20170711000000005L
     val cohoStringPlus1 = 20170711000000006L
     val cohoStringMinus1 = 20170711000000004L
     "return true for coho string greater than now" in new SetupWithDateTimeOverrides(now = date) {
-      nDCalc.dateGreaterThanNow(cohoStringPlus1.toString) shouldBe true
+      nDCalc.dateGreaterThanNow(cohoStringPlus1.toString) mustBe true
     }
     "return false for coho string equal to now" in new SetupWithDateTimeOverrides(now = date) {
-      nDCalc.dateGreaterThanNow(cohoString.toString) shouldBe false
+      nDCalc.dateGreaterThanNow(cohoString.toString) mustBe false
     }
     "return false for epoch less than now" in new SetupWithDateTimeOverrides(now = date) {
-      nDCalc.dateGreaterThanNow(cohoStringMinus1.toString) shouldBe false
+      nDCalc.dateGreaterThanNow(cohoStringMinus1.toString) mustBe false
     }
   }
 
-  "loggingDate" should {
+  "loggingDate" must {
 
     "return true if today is a logging day" in new StandardSetup {
       val testDate = "TUE"
       val loggingDays = "MON,TUE,WED,THU,FRI"
-      dCalc.loggingDay(loggingDays, testDate) shouldBe true
+      dCalc.loggingDay(loggingDays, testDate) mustBe true
     }
     "return false if today is not logging day" in new StandardSetup {
       val testDate = "SAT"
       val loggingDays = "MON,TUE,WED,THU,FRI"
-      dCalc.loggingDay(loggingDays, testDate) shouldBe false
+      dCalc.loggingDay(loggingDays, testDate) mustBe false
     }
     "return true if time now is in range" in new StandardSetup {
       val blockageLoggingTime = "07:00:00_16:00:00"
       val theTimeNow = time(9, 0, 0)
-      dCalc.loggingTime(blockageLoggingTime, theTimeNow) shouldBe true
+      dCalc.loggingTime(blockageLoggingTime, theTimeNow) mustBe true
     }
     "return true if time now is a second within top range" in new StandardSetup {
       val blockageLoggingTime = "07:00:00_16:00:00"
       val theTimeNow = time(15, 59, 59)
-      dCalc.loggingTime(blockageLoggingTime, theTimeNow) shouldBe true
+      dCalc.loggingTime(blockageLoggingTime, theTimeNow) mustBe true
     }
     "return true if time now is a second within bottom range" in new StandardSetup {
       val blockageLoggingTime = "07:00:00_16:00:00"
       val theTimeNow = time(7, 0, 1)
-      dCalc.loggingTime(blockageLoggingTime, theTimeNow) shouldBe true
+      dCalc.loggingTime(blockageLoggingTime, theTimeNow) mustBe true
     }
     "return false if time now is outside the range" in new StandardSetup {
       val blockageLoggingTime = "07:00:00_16:00:00"
       val theTimeNow = time(6, 0, 0)
-      dCalc.loggingTime(blockageLoggingTime, theTimeNow) shouldBe false
+      dCalc.loggingTime(blockageLoggingTime, theTimeNow) mustBe false
     }
     "return false if time now is on the bottom range" in new StandardSetup {
       val blockageLoggingTime = "07:00:00_16:00:00"
       val theTimeNow = time(7, 0, 0)
-      dCalc.loggingTime(blockageLoggingTime, theTimeNow) shouldBe false
+      dCalc.loggingTime(blockageLoggingTime, theTimeNow) mustBe false
     }
     "return false if time now is on the top range" in new StandardSetup {
       val blockageLoggingTime = "07:00:00_16:00:00"
       val theTimeNow = time(16, 0, 0)
-      dCalc.loggingTime(blockageLoggingTime, theTimeNow) shouldBe false
+      dCalc.loggingTime(blockageLoggingTime, theTimeNow) mustBe false
     }
   }
 }

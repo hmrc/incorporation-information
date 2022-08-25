@@ -17,10 +17,10 @@
 package repositories
 
 import Helpers.SCRSSpec
+import com.mongodb.client.result.DeleteResult
 import models.Subscription
 import org.mockito.Mockito._
 import play.api.test.Helpers._
-import reactivemongo.api.commands.{DefaultWriteResult, WriteError}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -35,16 +35,14 @@ class SubscriptionsRepositorySpec extends SCRSSpec {
   val regime = "CT"
   val subscriber = "test"
   val sub = Subscription("transID", "CT", "test", "url")
-  val success = UpsertResult(1, 0, Seq())
-  val failed = UpsertResult(0, 0, Seq(WriteError(0, 11000, "Error the subscription has not been saved")))
 
-  "insertSub" should {
+  "insertSub" must {
     "return an upsert result with a 1 value for upserted, when a subscription has been successfully inserted" in new Setup {
       val upsertResult = UpsertResult(0, 1, Seq())
       when(mockRepo.insertSub(sub)).thenReturn(Future.successful(upsertResult))
 
       val result = await(mockRepo.insertSub(sub))
-      result shouldBe upsertResult
+      result mustBe upsertResult
     }
 
     "return an upsert result with a 0 value for upserted, when a subscription has not been successfully inserted" in new Setup {
@@ -52,42 +50,42 @@ class SubscriptionsRepositorySpec extends SCRSSpec {
       when(mockRepo.insertSub(sub)).thenReturn(Future.successful(upsertResult))
 
       val result = await(mockRepo.insertSub(sub))
-      result shouldBe upsertResult
+      result mustBe upsertResult
     }
   }
 
 
-  "deleteSub" should {
+  "deleteSub" must {
     "return a DeletedSub when a subscription has been deleted" in new Setup {
-      val writeResult = DefaultWriteResult(true, 1, Seq(), None, None, None).flatten
-      when(mockRepo.deleteSub(transId, regime, subscriber)).thenReturn(Future(writeResult))
+      val deleteResult = DeleteResult.acknowledged(1)
+      when(mockRepo.deleteSub(transId, regime, subscriber)).thenReturn(Future(deleteResult))
 
       val result = await(mockRepo.deleteSub(transId, regime, subscriber))
-      result shouldBe writeResult
+      result mustBe deleteResult
     }
 
     "return a FailedSub when a subscription has not been successfully deleted" in new Setup {
-      val writeResult = DefaultWriteResult(false, 1, Seq(), None, None, None).flatten
-      when(mockRepo.deleteSub(transId, regime, subscriber)).thenReturn(Future(writeResult))
+      val deleteResult = DeleteResult.acknowledged(0)
+      when(mockRepo.deleteSub(transId, regime, subscriber)).thenReturn(Future(deleteResult))
 
       val result = await(mockRepo.deleteSub(transId, regime, subscriber))
-      result shouldBe writeResult
+      result mustBe deleteResult
     }
   }
 
-  "getSubscription" should {
+  "getSubscription" must {
     "return a Subscription when a subscription exists" in new Setup {
       when(mockRepo.getSubscription(transId, regime, subscriber)).thenReturn(Future(Some(sub)))
 
       val result = await(mockRepo.getSubscription(transId, regime, subscriber))
-      result.get shouldBe sub
+      result.get mustBe sub
     }
 
     "return None when a subscription does not exist" in new Setup {
       when(mockRepo.getSubscription(transId, regime, subscriber)).thenReturn(Future(None))
 
       val result = await(mockRepo.getSubscription(transId, regime, subscriber))
-      result shouldBe None
+      result mustBe None
     }
   }
 }

@@ -19,7 +19,6 @@ package services
 import config.MicroserviceConfig
 import models.{IncorpUpdate, Subscription}
 import play.api.Logging
-import reactivemongo.api.commands.DefaultWriteResult
 import repositories._
 
 import javax.inject.Inject
@@ -99,7 +98,7 @@ trait SubscriptionService extends Logging {
                          subscriber: String
                         ): Future[UnsubscribeStatus] =
     subRepo.deleteSub(transactionId, regime, subscriber) map {
-      case DefaultWriteResult(true, 1, _, _, _, _) => logger.info(s"[SubscriptionService] [deleteSubscription] Subscription with transactionId: $transactionId, " +
+      case deleted if deleted.getDeletedCount > 0 => logger.info(s"[SubscriptionService] [deleteSubscription] Subscription with transactionId: $transactionId, " +
         s"and regime: $regime, and subscriber: $subscriber was deleted")
         DeletedSub
       case e@_ =>

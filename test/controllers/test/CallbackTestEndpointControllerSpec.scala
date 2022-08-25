@@ -23,7 +23,7 @@ import play.api.test.Helpers._
 
 class CallbackTestEndpointControllerSpec extends SCRSSpec {
 
-  "post" should {
+  "post" must {
 
     "return a 200" in {
       val controller = new CallbackTestEndpointController {
@@ -31,7 +31,7 @@ class CallbackTestEndpointControllerSpec extends SCRSSpec {
       }
       val request = FakeRequest().withBody[JsObject](Json.parse("""{"test":"tesste"}""").as[JsObject])
       val res = controller.post(request)
-      status(res) shouldBe 200
+      status(res) mustBe 200
     }
   }
 

@@ -23,11 +23,8 @@ import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsObject, Json, __}
 import play.api.test.Helpers._
-import play.modules.reactivemongo.ReactiveMongoComponent
-import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo}
-
-import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContext.Implicits.global
+import repositories.{IncorpUpdateMongoImpl, QueueMongoImpl, SubscriptionsMongo}
+import uk.gov.hmrc.mongo.MongoComponent
 
 class SubscriptionAPIISpec extends IntegrationSpecBase {
 
@@ -48,40 +45,26 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
     ws.url(s"http://localhost:$port/incorporation-information/$path").
       withFollowRedirects(false)
 
-  lazy val reactiveMongoComponent = app.injector.instanceOf[ReactiveMongoComponent]
+  lazy val incRepo = app.injector.instanceOf[IncorpUpdateMongoImpl].repo
+  lazy val repository = app.injector.instanceOf[SubscriptionsMongo].repo
+  lazy val queueRepo = app.injector.instanceOf[QueueMongoImpl].repo
 
   class Setup {
-    val incRepo = new IncorpUpdateMongo {
-      override implicit val ec: ExecutionContext = global
-      override val mongo: ReactiveMongoComponent = reactiveMongoComponent
-    }.repo
-    val repository = new SubscriptionsMongo(reactiveMongoComponent).repo
-    val queueRepo = new QueueMongo {
-      override implicit val ec: ExecutionContext = global
-      override val mongo: ReactiveMongoComponent = reactiveMongoComponent
-    }.repo
 
-    def insert(sub: Subscription) = await(repository.insert(sub))
-    def insert(update: IncorpUpdate) = await(incRepo.insert(update))
-    def insert(queuedIncorpUpdate: QueuedIncorpUpdate) = await(queueRepo.insert(queuedIncorpUpdate))
-    def subCount = await(repository.count)
-    def incCount = await(incRepo.count)
-    def queueCount = await(queueRepo.count)
+    def insert(sub: Subscription) = await(repository.insertSub(sub))
+    def insert(update: IncorpUpdate) = await(incRepo.storeSingleIncorpUpdate(update))
+    def insert(queuedIncorpUpdate: QueuedIncorpUpdate) = await(queueRepo.upsertIncorpUpdate(queuedIncorpUpdate))
+    def subCount = await(repository.collection.countDocuments().toFuture())
+    def incCount = await(incRepo.collection.countDocuments().toFuture())
+    def queueCount = await(queueRepo.collection.countDocuments().toFuture())
     def getQueuedIncorp(txid: String) = await(queueRepo.getIncorpUpdate(txid))
-  }
 
-  override def beforeEach() = new Setup {
-    await(repository.drop)
+    await(repository.collection.drop().toFuture())
     await(repository.ensureIndexes)
-    await(incRepo.drop)
+    await(incRepo.collection.drop().toFuture())
     await(incRepo.ensureIndexes)
-    await(queueRepo.drop)
+    await(queueRepo.collection.drop().toFuture())
     await(queueRepo.ensureIndexes)
-  }
-
-  override def afterEach() = new Setup {
-    await(repository.drop)
-    await(incRepo.drop)
   }
 
   def extractTimestamp(json: JsObject): (Long, JsObject) = {
@@ -143,7 +126,7 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
       |}
     """.stripMargin)
 
-  "setupSubscription" should {
+  "setupSubscription" must {
 
     def setupSimpleAuthMocks() = {
       stubPost("/write/audit", 200, """{"x":2}""")
@@ -155,39 +138,39 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
       setupSimpleAuthMocks()
 
       val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").post(json).futureValue
-      response.status shouldBe 202
+      response.status mustBe 202
     }
 
     "return a 200 HTTP response when an existing IncorpUpdate is fetched" in new Setup {
       setupSimpleAuthMocks()
       insert(incorpUpdate)
-      incCount shouldBe 1
+      incCount mustBe 1
 
       val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber").post(subscription).futureValue
-      response.status shouldBe 200
+      response.status mustBe 200
 
       val (_, jsonNoTs) = extractTimestamp(response.json.as[JsObject])
-      jsonNoTs shouldBe jsonIncorpUpdate
+      jsonNoTs mustBe jsonIncorpUpdate
 
     }
 
   }
 
-  "forceSubscription" should {
+  "forceSubscription" must {
 
     "force a subscription into II even if the corresponding incorp update exists and insert an incorp update into the queue" in new Setup {
       insert(acceptedIncorpUpdate)
-      incCount shouldBe 1
-      subCount shouldBe 0
-      queueCount shouldBe 0
+      incCount mustBe 1
+      subCount mustBe 0
+      queueCount mustBe 0
 
       val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber?force=true").post(subscription).futureValue
 
-      subCount shouldBe 1
-      queueCount shouldBe 1
+      subCount mustBe 1
+      queueCount mustBe 1
 
-      response.status shouldBe 202
-      response.json shouldBe Json.parse("""{"forced":true}""")
+      response.status mustBe 202
+      response.json mustBe Json.parse("""{"forced":true}""")
     }
 
     "force a subscription even if the corresponding incorp update and queued update exist" in new Setup {
@@ -195,29 +178,29 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
       insert(acceptedIncorpUpdate)
       insert(queuedIncorp)
 
-      incCount shouldBe 1
-      queueCount shouldBe 1
-      subCount shouldBe 0
+      incCount mustBe 1
+      queueCount mustBe 1
+      subCount mustBe 0
 
       val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber?force=true").post(subscription).futureValue
 
-      subCount shouldBe 1
+      subCount mustBe 1
 
-      response.status shouldBe 202
-      response.json shouldBe Json.parse("""{"forced":true}""")
+      response.status mustBe 202
+      response.json mustBe Json.parse("""{"forced":true}""")
     }
 
     "still insert a subscription when an incorp update does not exist yet" in new Setup {
 
-      incCount shouldBe 0
-      queueCount shouldBe 0
-      subCount shouldBe 0
+      incCount mustBe 0
+      queueCount mustBe 0
+      subCount mustBe 0
 
       val response = client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber?force=true").post(subscription).futureValue
 
-      subCount shouldBe 1
+      subCount mustBe 1
 
-      response.status shouldBe 202
+      response.status mustBe 202
     }
 
     "force a subscription that will be processed 5 minutes in the future if an incorp update exists but no queued incorp" in new Setup {
@@ -228,11 +211,11 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
 
       client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber?force=true").post(subscription).futureValue
 
-      queueCount shouldBe 1
+      queueCount mustBe 1
 
       val queuedIncorpTimestamp = getQueuedIncorp(transactionId).get.timestamp
 
-      Minutes.minutesBetween(now, queuedIncorpTimestamp).getMinutes shouldBe 5
+      Minutes.minutesBetween(now, queuedIncorpTimestamp).getMinutes mustBe 5
 
     }
 
@@ -241,18 +224,18 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
       insert(acceptedIncorpUpdate)
       insert(acceptedQueuedIncorp)
 
-      incCount shouldBe 1
-      queueCount shouldBe 1
+      incCount mustBe 1
+      queueCount mustBe 1
 
       val oldQueuedIncorpTimestamp = queuedIncorp.timestamp
 
       client(s"subscribe/$transactionId/regime/$regime/subscriber/$subscriber?force=true").post(subscription).futureValue
 
-      queueCount shouldBe 1
+      queueCount mustBe 1
 
       val updatedQueuedIncorpTimestamp = getQueuedIncorp(transactionId).get.timestamp
 
-      Minutes.minutesBetween(oldQueuedIncorpTimestamp, updatedQueuedIncorpTimestamp).getMinutes shouldBe 5
+      Minutes.minutesBetween(oldQueuedIncorpTimestamp, updatedQueuedIncorpTimestamp).getMinutes mustBe 5
 
     }
   }

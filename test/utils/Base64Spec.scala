@@ -23,16 +23,16 @@ class Base64Spec extends SCRSSpec {
   val decodedString = "testString"
   val bas64String = "dGVzdFN0cmluZw=="
 
-  "decode" should {
+  "decode" must {
 
     "decode the Base64 string into a readable string" in {
-      Base64.decode(bas64String) shouldBe decodedString
+      Base64.decode(bas64String) mustBe decodedString
     }
 
     "decode a value that as encoded by this util" in {
       val someString = "someString"
       val encoded = Base64.encode(someString)
-      Base64.decode(encoded) shouldBe someString
+      Base64.decode(encoded) mustBe someString
     }
 
     "throw an exception when the supplied string is not Base64 encoded" in {
@@ -40,14 +40,14 @@ class Base64Spec extends SCRSSpec {
 
       val ex = intercept[RuntimeException](Base64.decode(nonEncodedString))
 
-      ex.getMessage shouldBe s"$nonEncodedString was not base64 encoded correctly or at all"
+      ex.getMessage mustBe s"$nonEncodedString was not base64 encoded correctly or at all"
     }
   }
 
-  "encode" should {
+  "encode" must {
 
     "encode the string to a Base64 string" in {
-      Base64.encode(decodedString) shouldBe bas64String
+      Base64.encode(decodedString) mustBe bas64String
     }
   }
 

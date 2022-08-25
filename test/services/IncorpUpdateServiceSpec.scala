@@ -17,19 +17,20 @@
 package services
 
 import Helpers.{JSONhelpers, LogCapturing, SCRSSpec}
+import com.mongodb.client.result.UpdateResult
 import connectors.IncorporationAPIConnector
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
 import org.joda.time.DateTime
 import org.mockito.ArgumentMatchers.{any, eq => eqTo}
 import org.mockito.Mockito._
 import org.mockito.{ArgumentCaptor, ArgumentMatchers}
+import org.mongodb.scala.WriteError
+import org.mongodb.scala.bson.{BsonDocument, BsonString}
 import play.api.Logger
 import play.api.test.Helpers._
-import reactivemongo.api.commands.{UpdateWriteResult, Upserted, WriteError}
-import reactivemongo.bson.BSONString
 import repositories._
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.lock.LockKeeper
+import uk.gov.hmrc.mongo.lock.LockService
 import utils.{DateCalculators, PagerDutyKeys}
 
 import java.time.LocalTime
@@ -43,7 +44,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
   val mockTimepointRepository = mock[TimepointRepository]
   val mockQueueRepository = mock[QueueRepository]
   val mockSubscriptionService = mock[SubscriptionService]
-  val mockLockKeeper: LockKeeper = mock[LockKeeper]
+  val mockLockService: LockService = mock[LockService]
   val mockSubRepo = mock[SubscriptionsMongoRepository]
 
   implicit val hc = HeaderCarrier()
@@ -56,7 +57,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
       mockTimepointRepository,
       mockQueueRepository,
       mockSubRepo,
-      mockLockKeeper
+      mockLockService
     )
   }
 
@@ -68,7 +69,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
       val timepointRepository = mockTimepointRepository
       val queueRepository = mockQueueRepository
       val subscriptionService = mockSubscriptionService
-      override val lockKeeper: LockKeeper = mockLockKeeper
+      override val lockKeeper: LockService = mockLockService
       val loggingDays = days
       val loggingTimes = "08:00:00_17:00:00"
     }
@@ -99,7 +100,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
   val subCT = Subscription(transId, regimeCT, subscriber, url)
   val subCTAX = Subscription(transId2, regimeCTAX, subscriber, url)
 
-  "fetchIncorpUpdates" should {
+  "fetchIncorpUpdates" must {
     "return some updates" in new Setup {
       when(mockSubscriptionService.getSubscription(ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), ArgumentMatchers.anyString()))
         .thenReturn(Future(Some(subCT)))
@@ -107,7 +108,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
       when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(incorpUpdates))
 
       val response = await(service.fetchIncorpUpdates)
-      response.size shouldBe 2
+      response.size mustBe 2
     }
 
     "return no updates when they are no updates available" in new Setup {
@@ -115,21 +116,21 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
       when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
 
       val response = await(service.fetchIncorpUpdates)
-      response.size shouldBe 0
+      response.size mustBe 0
     }
   }
 
-  "fetchSpecificIncorpUpdates" should {
+  "fetchSpecificIncorpUpdates" must {
     "return a single update" in new Setup {
       when(mockIncorporationCheckAPIConnector.checkForIndividualIncorpUpdate(Some(timepointOld))).thenReturn(Future.successful(Seq(incorpUpdate)))
 
       val response = await(service.fetchSpecificIncorpUpdates(Some(timepointOld)))
-      response shouldBe incorpUpdate
+      response mustBe incorpUpdate
     }
   }
 
 
-  "storeIncorpUpdates" should {
+  "storeIncorpUpdates" must {
 
     "return InsertResult(2, 0, Seq(), 0) when one update with 2 incorps has been inserted with CT subscriptions" in new Setup {
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
@@ -139,7 +140,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
         .thenReturn(Future(Some(subCT)))
 
       val response = await(service.storeIncorpUpdates(incorpUpdates))
-      response shouldBe InsertResult(2, 0, Seq(), 0, incorpUpdates)
+      response mustBe InsertResult(2, 0, Seq(), 0, incorpUpdates)
     }
 
     "return InsertResult(2, 0, Seq(), 2) when one update with 2 incorps has been inserted without CT subscriptions" in new Setup {
@@ -150,7 +151,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
         .thenReturn(Future(None))
 
       val response = await(service.storeIncorpUpdates(incorpUpdates))
-      response shouldBe InsertResult(2, 0, Seq(), 2, incorpUpdates)
+      response mustBe InsertResult(2, 0, Seq(), 2, incorpUpdates)
     }
 
     "return InsertResult(2, 0, Seq(), 1) when one update with 2 incorps has been inserted one with one without CT subscriptions" in new Setup {
@@ -161,7 +162,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
         .thenReturn(Future(Some(subCT)), Future.successful(None), Future.successful(None))
 
       val response = await(service.storeIncorpUpdates(incorpUpdates))
-      response shouldBe InsertResult(2, 0, Seq(), 1, incorpUpdates)
+      response mustBe InsertResult(2, 0, Seq(), 1, incorpUpdates)
     }
 
     "return InsertResult(0, 0, Seq()) when there are no updates to store" in new Setup {
@@ -170,31 +171,31 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
       when(mockIncorpUpdateRepository.storeIncorpUpdates(emptyUpdates)).thenReturn(Future.successful(InsertResult(0, 0, Seq())))
 
       val response = await(service.storeIncorpUpdates(emptyUpdates))
-      response shouldBe InsertResult(0, 0, Seq(), 0)
+      response mustBe InsertResult(0, 0, Seq(), 0)
     }
 
     "return an InsertResult containing errors, when a failure occurred whilst adding incorp updates to the main collection" in new Setup {
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
       when(mockIncorporationCheckAPIConnector.checkForIncorpUpdate(Some(timepoint.toString))).thenReturn(Future.successful(emptyUpdates))
-      val writeError = WriteError(0, 121, "Invalid Incorp Update could not be stored")
+      val writeError = new WriteError(121, "Invalid Incorp Update could not be stored", BsonDocument())
       when(mockIncorpUpdateRepository.storeIncorpUpdates(emptyUpdates)).thenReturn(Future.successful(InsertResult(0, 0, Seq(writeError))))
 
       val response = await(service.storeIncorpUpdates(emptyUpdates))
-      response shouldBe InsertResult(0, 0, Seq(writeError))
+      response mustBe InsertResult(0, 0, Seq(writeError))
     }
   }
 
-  "storeSpecificIncorpUpdate" should {
+  "storeSpecificIncorpUpdate" must {
     "return an UpdateWriteResult when a single IncorpUpdate is input" in new Setup {
-      val upserted = Seq(Upserted(1, BSONString("")))
-      val UWR = UpdateWriteResult(true, 1, 1, upserted, Seq(WriteError(1, 1, "")), None, None, None)
+
+      val UWR = UpdateResult.acknowledged(1, 1, BsonString("newUpsertedId"))
       when(mockIncorpUpdateRepository.storeSingleIncorpUpdate(incorpUpdate)).thenReturn(Future.successful(UWR))
 
       val response = await(service.storeSpecificIncorpUpdate(incorpUpdate))
-      response shouldBe UpdateWriteResult(true, 1, 1, upserted, Seq(WriteError(1, 1, "")), None, None, None)
+      response mustBe UWR
     }
   }
-  "timepointValidator" should {
+  "timepointValidator" must {
     val todaysDate = new DateTime("2019-01-07T00:00:00.005")
     val cohoString = 20190107000000005L
     val todaysDateCoho = cohoString.toString
@@ -206,22 +207,22 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
     }
 
     "return false if timepoint < now" in new Setup(nDCalc(todaysDate)) {
-      service.timepointValidator(todaysDateToCohoMinus1.toString) shouldBe false
+      service.timepointValidator(todaysDateToCohoMinus1.toString) mustBe false
     }
     "return false if timepoint = now" in new Setup(nDCalc(todaysDate)) {
-      service.timepointValidator(todaysDateCoho) shouldBe false
+      service.timepointValidator(todaysDateCoho) mustBe false
     }
     "return true if timepoint > now" in new Setup(nDCalc(todaysDate)) {
 
-      service.timepointValidator(todaysDateToCohoPlus1.toString) shouldBe true
+      service.timepointValidator(todaysDateToCohoPlus1.toString) mustBe true
     }
 
     "return true if timepoint cannot be parsed" in new Setup {
-      service.timepointValidator("foo") shouldBe true
+      service.timepointValidator("foo") mustBe true
     }
   }
 
-  "latestTimepoint" should {
+  "latestTimepoint" must {
     val mondayWorking = new DateTime("2019-01-07T00:00:00.005")
     val goodTimePoint = 20190104000000005L
     val previousGoodTimePoint = goodTimePoint - 1
@@ -251,43 +252,43 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
 
     "throw a PAGER DUTY log message if working day true and timepoint > now" in new Setup(nDCalc(time(8, 0, 1), mondayWorking)) {
       withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
-        service.latestTimepoint(incorpUpdatesGoodAndBad) shouldBe badDateTimePointWorkingDay.toString
-        loggingEvents.head.getMessage shouldBe s"${PagerDutyKeys.TIMEPOINT_INVALID} - last timepoint received from coho invalid: $badDateTimePointWorkingDay"
+        service.latestTimepoint(incorpUpdatesGoodAndBad) mustBe badDateTimePointWorkingDay.toString
+        loggingEvents.head.getMessage mustBe s"${PagerDutyKeys.TIMEPOINT_INVALID} - last timepoint received from coho invalid: $badDateTimePointWorkingDay"
       }
     }
     "throw a PAGER DUTY log message at level ERROR if working day true and timepoint cannot be parsed" in new Setup(nDCalc(time(8, 0, 1), mondayWorking)) {
       withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
-        service.latestTimepoint(incorpUpdatesNonParsable) shouldBe badNonParsableTimePoint.toString
-        loggingEvents.head.getMessage shouldBe "couldn't parse Foobar"
-        loggingEvents.tail.head.getMessage shouldBe s"${PagerDutyKeys.TIMEPOINT_INVALID} - last timepoint received from coho invalid: ${inu4BADNonParsable.timepoint}"
+        service.latestTimepoint(incorpUpdatesNonParsable) mustBe badNonParsableTimePoint.toString
+        loggingEvents.head.getMessage mustBe "couldn't parse Foobar"
+        loggingEvents.tail.head.getMessage mustBe s"${PagerDutyKeys.TIMEPOINT_INVALID} - last timepoint received from coho invalid: ${inu4BADNonParsable.timepoint}"
       }
     }
 
     "throw a PAGER DUTY log message if working day false, timepoint > now" in new Setup(nDCalc(time(7, 0, 1), mondayWorking.plusDays(1))) {
       withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
-        service.latestTimepoint(incorpUpdatesGoodAndBad) shouldBe badDateTimePointWorkingDay.toString
-        loggingEvents.head.getMessage shouldBe s"${PagerDutyKeys.TIMEPOINT_INVALID} - last timepoint received from coho invalid: $badDateTimePointWorkingDay"
+        service.latestTimepoint(incorpUpdatesGoodAndBad) mustBe badDateTimePointWorkingDay.toString
+        loggingEvents.head.getMessage mustBe s"${PagerDutyKeys.TIMEPOINT_INVALID} - last timepoint received from coho invalid: $badDateTimePointWorkingDay"
       }
     }
     "don't throw a log message if working day true, timepoint < now" in new Setup(nDCalc(time(8, 0, 1), mondayWorking)) {
       withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
-        service.latestTimepoint(incorpUpdatesGoodOnlyRealTimepoints) shouldBe previousGoodTimePoint.toString
-        loggingEvents.size shouldBe 0
+        service.latestTimepoint(incorpUpdatesGoodOnlyRealTimepoints) mustBe previousGoodTimePoint.toString
+        loggingEvents.size mustBe 0
       }
     }
     "don't throw a log message if working day true, timepoint = now" in new Setup(nDCalc(time(8, 0, 1), mondayWorking)) {
       withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
-        service.latestTimepoint(incorpUpdatesGoodOnlyRealTimepoints) shouldBe previousGoodTimePoint.toString
-        loggingEvents.size shouldBe 0
+        service.latestTimepoint(incorpUpdatesGoodOnlyRealTimepoints) mustBe previousGoodTimePoint.toString
+        loggingEvents.size mustBe 0
       }
     }
     "return the latest timepoint when two have been given" in new Setup {
       val response = service.latestTimepoint(incorpUpdatesGoodOnlyRealTimepoints)
-      response shouldBe previousGoodTimePoint.toString
+      response mustBe previousGoodTimePoint.toString
     }
   }
 
-  "updateNextIncorpUpdateJobLot" should {
+  "updateNextIncorpUpdateJobLot" must {
 
     "return a string stating that states 'No Incorporation updates were fetched'" in new Setup {
       when(mockTimepointRepository.retrieveTimePoint).thenReturn(Future.successful(Some(timepoint.toString)))
@@ -295,7 +296,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
       when(mockIncorpUpdateRepository.storeIncorpUpdates(emptyUpdates)).thenReturn(Future(InsertResult(0, 0, Seq())))
 
       val response = await(service.updateNextIncorpUpdateJobLot)
-      response shouldBe InsertResult(0, 0, Seq())
+      response mustBe InsertResult(0, 0, Seq())
 
     }
 
@@ -316,8 +317,8 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
 
       val response = await(service.updateNextIncorpUpdateJobLot)
       verify(mockTimepointRepository).updateTimepoint(captor.capture())
-      captor.getValue shouldBe newTimepoint
-      response shouldBe InsertResult(2, 0, Seq(), 0, incorpUpdates)
+      captor.getValue.toString mustBe newTimepoint
+      response mustBe InsertResult(2, 0, Seq(), 0, incorpUpdates)
     }
     "return a string stating that the timepoint has been updated to '2016010101000'" in new Setup {
       val iup1 = IncorpUpdate("transIdNew", "accepted", None, None, "2016010101000", None)
@@ -338,19 +339,16 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
 
       val response = await(service.updateNextIncorpUpdateJobLot)
       verify(mockTimepointRepository).updateTimepoint(captor.capture())
-      captor.getValue shouldBe "2016010101000"
-      response shouldBe InsertResult(2, 0, Seq(), 0, incorpUpdatesvalidTP)
+      captor.getValue.toString mustBe "2016010101000"
+      response mustBe InsertResult(2, 0, Seq(), 0, incorpUpdatesvalidTP)
     }
   }
 
-  "updateSpecificIncorpUpdateByTP" should {
+  "updateSpecificIncorpUpdateByTP" must {
 
     "return a Sequence of trues when a sequence of TPs is input and there is a queue entry for each" in new Setup {
 
-      val upserted = Seq(Upserted(1, BSONString("")))
-      val UWR = UpdateWriteResult(ok = true, 1, 1, upserted, Seq(WriteError(1, 1, "")), None, None, None)
-
-      val seqOfQueuedIncorpUpdates = Seq(queuedIncorpUpdate, queuedIncorpUpdate2)
+      val UWR = UpdateResult.acknowledged(1, 1, BsonString("newUpsertedId"))
 
       when(mockQueueRepository.removeQueuedIncorpUpdate(ArgumentMatchers.any()))
         .thenReturn(Future.successful(true))
@@ -367,15 +365,12 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
         .thenReturn(Future.successful(InsertResult(1, 0, Nil)))
 
       val response = await(service.updateSpecificIncorpUpdateByTP(timepointSeq))
-      response shouldBe Seq(true, true)
+      response mustBe Seq(true, true)
 
     }
     "return a Sequence of false when a sequence of TPs is input and queue entries don't exist" in new Setup {
 
-      val upserted = Seq(Upserted(1, BSONString("")))
-      val UWR = UpdateWriteResult(ok = true, 1, 1, upserted, Seq(WriteError(1, 1, "")), None, None, None)
-
-      val seqOfQueuedIncorpUpdates = Seq(queuedIncorpUpdate, queuedIncorpUpdate2)
+      val UWR = UpdateResult.acknowledged(1, 1, BsonString("newUpsertedId"))
 
       when(mockQueueRepository.removeQueuedIncorpUpdate(ArgumentMatchers.any()))
         .thenReturn(Future.successful(true))
@@ -392,16 +387,13 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
         .thenReturn(Future.successful(InsertResult(1, 0, Nil)))
 
       val response = await(service.updateSpecificIncorpUpdateByTP(timepointSeq))
-      response shouldBe Seq(false, false)
+      response mustBe Seq(false, false)
 
     }
 
     "return a Sequence of trues when a sequence of TPs is input and queue entries don't exist but the for no queue switch is set" in new Setup {
 
-      val upserted = Seq(Upserted(1, BSONString("")))
-      val UWR = UpdateWriteResult(ok = true, 1, 1, upserted, Seq(WriteError(1, 1, "")), None, None, None)
-
-      val seqOfQueuedIncorpUpdates = Seq(queuedIncorpUpdate, queuedIncorpUpdate2)
+      val UWR = UpdateResult.acknowledged(1, 1, BsonString("newUpsertedId"))
 
       when(mockQueueRepository.removeQueuedIncorpUpdate(ArgumentMatchers.any()))
         .thenReturn(Future.successful(true))
@@ -418,39 +410,39 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
         .thenReturn(Future.successful(InsertResult(1, 0, Nil)))
 
       val response = await(service.updateSpecificIncorpUpdateByTP(timepointSeq, true))
-      response shouldBe Seq(true, true)
+      response mustBe Seq(true, true)
 
     }
 
   }
 
-  "createQueuedIncorpUpdate" should {
+  "createQueuedIncorpUpdate" must {
     "return a correctly formatted QueuedIncorpUpdate when given an IncorpUpdate" in new Setup {
 
       val result = service.createQueuedIncorpUpdates(Seq(incorpUpdate))
 
-      result.head.copy(timestamp = queuedIncorpUpdate.timestamp) shouldBe queuedIncorpUpdate
-      result.head.timestamp.getMillis shouldBe (queuedIncorpUpdate.timestamp.getMillis +- 1500)
+      result.head.copy(timestamp = queuedIncorpUpdate.timestamp) mustBe queuedIncorpUpdate
+      result.head.timestamp.getMillis mustBe (queuedIncorpUpdate.timestamp.getMillis +- 1500)
     }
   }
 
-  "copyToQueue" should {
+  "copyToQueue" must {
     "return true if a Seq of QueuedIncorpUpdates have been copied to the queue" in new Setup {
       when(mockQueueRepository.storeIncorpUpdates(Seq(queuedIncorpUpdate))).thenReturn(Future(InsertResult(1, 0, Seq())))
 
       val result = await(service.copyToQueue(Seq(queuedIncorpUpdate)))
-      result shouldBe true
+      result mustBe true
     }
 
     "return false if a Seq of QueuedIncorpUpdates have not been copied to the queue" in new Setup {
       when(mockQueueRepository.storeIncorpUpdates(Seq(queuedIncorpUpdate))).thenReturn(Future(InsertResult(0, 1, Seq())))
 
       val result = await(service.copyToQueue(Seq(queuedIncorpUpdate)))
-      result shouldBe false
+      result mustBe false
     }
   }
 
-  "alertOnNoCTInterest" should {
+  "alertOnNoCTInterest" must {
 
     "return 0 and not raise an alert when there's an interest registered" in new Setup {
       when(mockSubscriptionService.getSubscription(any(), eqTo(regimeCT), eqTo(subscriber)))
@@ -458,9 +450,9 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
 
       withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         val result = await(service.alertOnNoCTInterest(seqOfIncorpUpdates))
-        result shouldBe 0
+        result mustBe 0
 
-        loggingEvents.isEmpty shouldBe true
+        loggingEvents.isEmpty mustBe true
       }
     }
 
@@ -473,9 +465,9 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
 
       withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         val result = await(service.alertOnNoCTInterest(incorpUpdates))
-        result shouldBe 2
+        result mustBe 2
 
-        loggingEvents.size shouldBe 2
+        loggingEvents.size mustBe 2
       }
     }
 
@@ -488,9 +480,9 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
 
       withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         val result = await(service.alertOnNoCTInterest(seqOfIncorpUpdates))
-        result shouldBe 1
+        result mustBe 1
 
-        loggingEvents.size shouldBe 1
+        loggingEvents.size mustBe 1
       }
     }
 
@@ -503,9 +495,9 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
 
       withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         val result = await(service.alertOnNoCTInterest(Seq(incorpUpdate)))
-        result shouldBe 0
+        result mustBe 0
 
-        loggingEvents.size shouldBe 0
+        loggingEvents.size mustBe 0
       }
     }
 
@@ -515,9 +507,9 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
 
       withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         val result = await(service.alertOnNoCTInterest(Seq(incorpUpdate, incorpUpdate2)))
-        result shouldBe 0
+        result mustBe 0
 
-        loggingEvents.size shouldBe 0
+        loggingEvents.size mustBe 0
 
         verify(mockSubscriptionService, times(1)).getSubscription(eqTo(transId), eqTo(regimeCT), eqTo(subscriber))
         verify(mockSubscriptionService, times(1)).getSubscription(eqTo(transId2), eqTo(regimeCTAX), eqTo(subscriber))
@@ -526,7 +518,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
 
     "return 0 alerts if no incorps are processed" in new Setup {
       val result = await(service.alertOnNoCTInterest(emptyUpdates))
-      result shouldBe 0
+      result mustBe 0
     }
   }
 }

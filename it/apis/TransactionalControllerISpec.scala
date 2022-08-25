@@ -45,7 +45,7 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
 
   val crn = "CRN-12345"
 
-  "fetchIncorporatedCompanyProfile" should {
+  "fetchIncorporatedCompanyProfile" must {
     val json = """{"foo":"bar"}"""
 
     val scrsToken = "U0NSU3NlcnZpY2U="
@@ -69,8 +69,8 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
         stubbedWithToken(scrsToken)
         val allowlistedResponse = client(s"$crn/incorporated-company-profile").withHeaders("User-Agent" -> "TestService").get().futureValue
 
-        allowlistedResponse.status shouldBe 200
-        allowlistedResponse.body shouldBe json
+        allowlistedResponse.status mustBe 200
+        allowlistedResponse.body mustBe json
       }
       "when called by an un-allowlisted service" in {
         client("test-only/feature-switch/transactionalAPI/on").get().futureValue
@@ -78,13 +78,13 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
         stubbedWithToken(mdtpToken)
         val allowlistedResponse = client(s"$crn/incorporated-company-profile").withHeaders("User-Agent" -> "Not allowlisted").get().futureValue
 
-        allowlistedResponse.status shouldBe 200
-        allowlistedResponse.body shouldBe json
+        allowlistedResponse.status mustBe 200
+        allowlistedResponse.body mustBe json
       }
     }
   }
 
-  "fetchSicCodes" should {
+  "fetchSicCodes" must {
     val txid = "transid"
 
     "return no sic codes while using public API with a CRN if the API is down" in {
@@ -95,7 +95,7 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
         )
       )
       val result = client(s"sic-codes/crn/$crn").get().futureValue
-      result.status shouldBe 204
+      result.status mustBe 204
     }
 
     "return sic codes while using public API with a CRN" in {
@@ -107,8 +107,8 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
         )
       )
       val result = client(s"sic-codes/crn/$crn").get().futureValue
-      result.status shouldBe 200
-      result.body shouldBe """{"sic_codes":["12345","54321"]}"""
+      result.status mustBe 200
+      result.body mustBe """{"sic_codes":["12345","54321"]}"""
     }
     "return no sic codes while using public API with a CRN" in {
       stubFor(get(urlMatching(s"/company/$crn"))
@@ -119,7 +119,7 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
         )
       )
       val result = client(s"sic-codes/crn/$crn").get().futureValue
-      result.status shouldBe 204
+      result.status mustBe 204
     }
 
     "return sic codes while using transactional API with a transaction ID" in {
@@ -146,8 +146,8 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
         )
       )
       val result = client(s"sic-codes/transaction/$txid").get().futureValue
-      result.status shouldBe 200
-      result.body shouldBe
+      result.status mustBe 200
+      result.body mustBe
         """{"sic_codes":["12345","54321"]}""".stripMargin
     }
 
@@ -175,7 +175,7 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
         )
       )
       val result = client(s"sic-codes/transaction/$txid").get().futureValue
-      result.status shouldBe 204
+      result.status mustBe 204
     }
     "return no sic codes while using transactional API with a transaction ID" in {
       stubFor(get(urlMatching(s"/submissionData/$txid"))
@@ -186,8 +186,8 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
         )
       )
       val result = client(s"sic-codes/transaction/$txid").get().futureValue
-      result.status shouldBe 200
-      result.body shouldBe """{"sic_codes":[]}"""
+      result.status mustBe 200
+      result.body mustBe """{"sic_codes":[]}"""
     }
     "return no sic codes while using transactional API with a transaction ID when the API is down" in {
       stubFor(get(urlMatching(s"/submissionData/$txid"))
@@ -198,10 +198,10 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
         )
       )
       val result = client(s"sic-codes/transaction/$txid").get().futureValue
-      result.status shouldBe 204
+      result.status mustBe 204
     }
   }
-  "fetchShareholders" should {
+  "fetchShareholders" must {
     val txid = "transid"
 
     "return 200 with a list of shareholders" in {
@@ -244,8 +244,8 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
               """.stripMargin)))
 
       val result = client(s"shareholders/$txid").get().futureValue
-      result.status shouldBe 200
-      result.json.as[JsArray] shouldBe Json.parse(
+      result.status mustBe 200
+      result.json.as[JsArray] mustBe Json.parse(
         """
           |[
           |  {

@@ -53,24 +53,24 @@ val jobNameTest = "fooBarAndWizzWithABang"
   }
 
   "expression should read from string correctly with underscores" in new Setup ("0_0/10_0-23_?_*_*_*") {
-    job.expression shouldBe "0 0/10 0-23 ? * * *"
+    job.expression mustBe "0 0/10 0-23 ? * * *"
   }
   "expression should read from string correctly with underscores with a different value we will also be using" in new Setup ("0/59_0_0-23_?_*_*_*") {
-    job.expression shouldBe "0/59 0 0-23 ? * * *"
+    job.expression mustBe "0/59 0 0-23 ? * * *"
   }
   "isValid should return true if valid cron config returned" in new Setup("0_0/2_0-23_?_*_*_*") {
-    job.expressionValid shouldBe true
+    job.expressionValid mustBe true
   }
   "isValid should return false if foo is returned as cron config" in new Setup("foo") {
-    job.expressionValid shouldBe false
+    job.expressionValid mustBe false
   }
   "isValid should return false if empty string is returned" in new Setup("") {
-    job.expressionValid shouldBe false
+    job.expressionValid mustBe false
   }
   "expression once converted should convert to a cron expression success" in new Setup("0/10_0_0-23_?_*_*_*") {
     val parsed = new CronExpression(job.expression)
-    parsed.getCronExpression shouldBe "0/10 0 0-23 ? * * *"
-    parsed.getExpressionSummary shouldBe """seconds: 0,10,20,30,40,50
+    parsed.getCronExpression mustBe "0/10 0 0-23 ? * * *"
+    parsed.getExpressionSummary mustBe """seconds: 0,10,20,30,40,50
                                            |minutes: 0
                                            |hours: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23
                                            |daysOfMonth: ?
@@ -84,13 +84,13 @@ val jobNameTest = "fooBarAndWizzWithABang"
                                            |""".stripMargin
   }
   "scheduler called if enabled and valid cron config" in new Setup ("0/10_0_0-23_?_*_*_*", true) {
-    job.schedule shouldBe true
+    job.schedule mustBe true
   }
   "scheduler NOT called if not enabled and cron config invalid" in new Setup ("fudge*", false) {
-    job.schedule shouldBe false
+    job.schedule mustBe false
 
   }
   "scheduler NOT called if enabled and cron config invalid" in new Setup ("0/10_0_0-FOO23_?_*_*_*", true) {
-    job.schedule shouldBe false
+    job.schedule mustBe false
   }
 }

@@ -18,20 +18,21 @@ package repositories
 
 import Helpers.{LogCapturing, SCRSSpec}
 import ch.qos.logback.classic.Level
+import com.mongodb.bulk.BulkWriteError
 import models.IncorpUpdate
+import org.mongodb.scala.bson.BsonDocument
 import play.api.Logger
-import reactivemongo.api.commands.WriteError
-import uk.gov.hmrc.mongo.MongoSpecSupport
+import uk.gov.hmrc.mongo.test.MongoSupport
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSpecSupport with LogCapturing {
+class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSupport with LogCapturing {
 
   class Setup extends MongoErrorCodes {
-    val repo = new IncorpUpdateMongoRepository(mongo, IncorpUpdate.mongoFormat)
+    val repo = new IncorpUpdateMongoRepository(mongoComponent, IncorpUpdate.mongoFormat)
   }
 
-  "logUniqueIncorporations" should {
+  "logUniqueIncorporations" must {
 
     def duplicateErrorMessage(transId: String) =
       s"""E11000 duplicate key error index: incorporation-information.incorporation-information.$$_id_ dup key: { : "$transId" }"""
@@ -46,17 +47,17 @@ class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSpecSupport with Log
         val incorps = incorpUpdates("trans1", "trans2", "trans3")
 
         val errors = Seq(
-          WriteError(0, ERR_DUPLICATE, duplicateErrorMessage("trans1")),
-          WriteError(1, ERR_DUPLICATE, duplicateErrorMessage("trans3"))
+          new BulkWriteError(ERR_DUPLICATE, duplicateErrorMessage("trans1"), BsonDocument(), 0),
+          new BulkWriteError(ERR_DUPLICATE, duplicateErrorMessage("trans3"), BsonDocument(), 1)
         )
 
         val result = repo.nonDuplicateIncorporations(incorps, errors)
 
-        result shouldBe incorpUpdates("trans2")
+        result mustBe incorpUpdates("trans2")
 
-        logEvents.size shouldBe 1
-        logEvents.head.getLevel shouldBe Level.INFO
-        logEvents.head.getMessage shouldBe "[UniqueIncorp] transactionId : trans2"
+        logEvents.size mustBe 1
+        logEvents.head.getLevel mustBe Level.INFO
+        logEvents.head.getMessage mustBe "[UniqueIncorp] transactionId : trans2"
       }
     }
 
@@ -67,18 +68,18 @@ class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSpecSupport with Log
         val incorps = incorpUpdates("trans1", "trans2", "trans3")
 
         val errors = Seq(
-          WriteError(0, ERR_DUPLICATE, duplicateErrorMessage("trans1")),
-          WriteError(1, ERR_INVALID, "invalid"),
-          WriteError(2, ERR_DUPLICATE, duplicateErrorMessage("trans3"))
+          new BulkWriteError(ERR_DUPLICATE, duplicateErrorMessage("trans1"), BsonDocument(), 0),
+          new BulkWriteError(ERR_INVALID, "invalid", BsonDocument(), 1),
+          new BulkWriteError(ERR_DUPLICATE, duplicateErrorMessage("trans3"), BsonDocument(), 2)
         )
 
         val result = repo.nonDuplicateIncorporations(incorps, errors)
 
-        result shouldBe incorpUpdates("trans2")
+        result mustBe incorpUpdates("trans2")
 
-        logEvents.size shouldBe 1
-        logEvents.head.getLevel shouldBe Level.INFO
-        logEvents.head.getMessage shouldBe "[UniqueIncorp] transactionId : trans2"
+        logEvents.size mustBe 1
+        logEvents.head.getLevel mustBe Level.INFO
+        logEvents.head.getMessage mustBe "[UniqueIncorp] transactionId : trans2"
       }
     }
 
@@ -88,15 +89,15 @@ class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSpecSupport with Log
         val incorps = incorpUpdates("trans1", "trans2", "trans3")
 
         val errors = Seq(
-          WriteError(0, ERR_DUPLICATE, duplicateErrorMessage("trans1")),
-          WriteError(0, ERR_DUPLICATE, duplicateErrorMessage("trans2")),
-          WriteError(1, ERR_DUPLICATE, duplicateErrorMessage("trans3"))
+          new BulkWriteError(ERR_DUPLICATE, duplicateErrorMessage("trans1"), BsonDocument(), 0),
+          new BulkWriteError(ERR_DUPLICATE, duplicateErrorMessage("trans2"), BsonDocument(), 1),
+          new BulkWriteError(ERR_DUPLICATE, duplicateErrorMessage("trans3"), BsonDocument(), 2)
         )
 
         val result = repo.nonDuplicateIncorporations(incorps, errors)
-        result shouldBe incorpUpdates()
+        result mustBe incorpUpdates()
 
-        logEvents.size shouldBe 0
+        logEvents.size mustBe 0
       }
     }
 
@@ -105,15 +106,15 @@ class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSpecSupport with Log
         val incorps = incorpUpdates("trans1", "trans2", "trans3")
 
         val result = repo.nonDuplicateIncorporations(incorps, Seq.empty)
-        result shouldBe incorps
+        result mustBe incorps
 
-        logEvents.size shouldBe 3
-        logEvents.head.getLevel shouldBe Level.INFO
-        logEvents.head.getMessage shouldBe "[UniqueIncorp] transactionId : trans1"
-        logEvents.apply(1).getLevel shouldBe Level.INFO
-        logEvents.apply(1).getMessage shouldBe "[UniqueIncorp] transactionId : trans2"
-        logEvents.apply(2).getLevel shouldBe Level.INFO
-        logEvents.apply(2).getMessage shouldBe "[UniqueIncorp] transactionId : trans3"
+        logEvents.size mustBe 3
+        logEvents.head.getLevel mustBe Level.INFO
+        logEvents.head.getMessage mustBe "[UniqueIncorp] transactionId : trans1"
+        logEvents.apply(1).getLevel mustBe Level.INFO
+        logEvents.apply(1).getMessage mustBe "[UniqueIncorp] transactionId : trans2"
+        logEvents.apply(2).getLevel mustBe Level.INFO
+        logEvents.apply(2).getMessage mustBe "[UniqueIncorp] transactionId : trans3"
       }
     }
   }

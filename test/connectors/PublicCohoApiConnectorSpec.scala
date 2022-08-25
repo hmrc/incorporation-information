@@ -109,7 +109,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
   val testCrn = "1234567890"
 
-  "getCompanyProfile" should {
+  "getCompanyProfile" must {
     val url = "stubbed/company-profile/1234567890"
 
     "return some valid JSON when a valid CRN is provided and stop the timer metric" in new Setup {
@@ -118,7 +118,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(connector.getCompanyProfile(testCrn))
-      result shouldBe Some(validCompanyProfileResourceJson)
+      result mustBe Some(validCompanyProfileResourceJson)
 
       verify(mockTimerContext, times(1)).stop()
     }
@@ -128,9 +128,9 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
         .thenReturn(Future.failed(new NotFoundException("404")))
 
       withCaptureOfLoggingFrom(Logger(connector.getClass)) { logEvents =>
-        await(connector.getCompanyProfile(testCrn, isScrs = true)) shouldBe None
-        logEvents.map(_.getMessage) shouldBe List("COHO_PUBLIC_API_NOT_FOUND - Could not find company data for CRN - 1234567890")
-        logEvents.size shouldBe 1
+        await(connector.getCompanyProfile(testCrn, isScrs = true)) mustBe None
+        logEvents.map(_.getMessage) mustBe List("COHO_PUBLIC_API_NOT_FOUND - Could not find company data for CRN - 1234567890")
+        logEvents.size mustBe 1
       }
     }
 
@@ -139,9 +139,9 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
         .thenReturn(Future.failed(new NotFoundException("404")))
 
       withCaptureOfLoggingFrom(Logger(connector.getClass)) { logEvents =>
-        await(connector.getCompanyProfile(testCrn, isScrs = false)) shouldBe None
-        logEvents.map(_.getMessage) shouldBe List("Could not find company data for CRN - 1234567890")
-        logEvents.size shouldBe 1
+        await(connector.getCompanyProfile(testCrn, isScrs = false)) mustBe None
+        logEvents.map(_.getMessage) mustBe List("Could not find company data for CRN - 1234567890")
+        logEvents.size mustBe 1
       }
     }
 
@@ -151,7 +151,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
       val result = await(connector.getCompanyProfile(testCrn))
 
-      result shouldBe None
+      result mustBe None
 
       verify(mockTimerContext, times(1)).stop()
     }
@@ -163,7 +163,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
       val result = await(connector.getCompanyProfile(testCrn))
 
-      result shouldBe None
+      result mustBe None
     }
   }
 
@@ -198,7 +198,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       |   ]
       |}""".stripMargin)
 
-  "getOfficerList" should {
+  "getOfficerList" must {
     val url = "stubbed/company/1234567890/officers"
 
     "return some valid JSON when a valid CRN is provided and stop the timer metric" in new Setup {
@@ -207,7 +207,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(connector.getOfficerList(testCrn))
-      result shouldBe Some(validOfficerListResourceJson)
+      result mustBe Some(validOfficerListResourceJson)
 
       verify(mockTimerContext, times(1)).stop()
     }
@@ -218,7 +218,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
       val result = await(connector.getOfficerList(testCrn))
 
-      result shouldBe None
+      result mustBe None
     }
 
     "report an error when receiving a 400" in new Setup {
@@ -227,7 +227,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
       val result = await(connector.getOfficerList(testCrn))
 
-      result shouldBe None
+      result mustBe None
     }
 
     "report an error when receiving a Throwable exception and stop the timer metric" in new Setup {
@@ -237,7 +237,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
       val result = await(connector.getOfficerList(testCrn))
 
-      result shouldBe None
+      result mustBe None
 
       verify(mockTimerContext, times(1)).stop()
     }
@@ -261,7 +261,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
   val testOfficerId = "123456"
   val testOfficerUrl = "/officers/_Sdjhshdsnnsi-StreatMand-greattsfh/appointments"
 
-  "getOfficerAppointmentList" should {
+  "getOfficerAppointmentList" must {
     val url = "stubbed/get-officer-appointment?fn=testFirstName&sn=testSurname"
 
 
@@ -271,7 +271,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(connector.getOfficerAppointment(testOfficerId))
-      result shouldBe validOfficerAppointmentsResourceJson
+      result mustBe validOfficerAppointmentsResourceJson
 
       verify(mockTimerContext, times(1)).stop()
     }
@@ -284,7 +284,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
 
       val result = await(connector.getOfficerAppointment(testOfficerUrl))
-      result shouldBe validOfficerAppointmentsResourceJson
+      result mustBe validOfficerAppointmentsResourceJson
     }
 
     "report an error when receiving a 404" in new Setup {
@@ -300,7 +300,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
       val ex = intercept[HttpException](await(connector.getOfficerAppointment(testOfficerId)))
 
-      ex.responseCode shouldBe 400
+      ex.responseCode mustBe 400
     }
 
     "report an error when receiving a Throwable exception and stop the timer metric" in new Setup {
@@ -314,27 +314,27 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
     }
   }
 
-  "getStubbedFirstAndLastName" should {
+  "getStubbedFirstAndLastName" must {
     "return testFirstName and testSurname if string is less than 15 characters" in new Setup {
       val (firstname, lastname) = connector.getStubbedFirstAndLastName(testOfficerId)
-      firstname shouldBe "testFirstName"
-      lastname shouldBe "testSurname"
+      firstname mustBe "testFirstName"
+      lastname mustBe "testSurname"
     }
 
     "return a dynamic name if string is less than 15 characters" in new Setup {
       val (firstname, lastname) = connector.getStubbedFirstAndLastName(testOfficerUrl)
-      firstname shouldBe "tMand-greattsfh"
-      lastname shouldBe "officersSdjhshd"
+      firstname mustBe "tMand-greattsfh"
+      lastname mustBe "officersSdjhshd"
     }
   }
 
-  "createAPIAuthHeader" should {
+  "createAPIAuthHeader" must {
     "return a Header with the correct Basic auth token" when {
       "a request is made by an allowListed service" in new Setup {
-        connector.createAPIAuthHeader() shouldBe Seq("Authorization" -> "Basic Q29ob1B1YmxpY1Rva2Vu")
+        connector.createAPIAuthHeader() mustBe Seq("Authorization" -> "Basic Q29ob1B1YmxpY1Rva2Vu")
       }
       "a request is made by an un-allowlisted service" in new Setup {
-        connector.createAPIAuthHeader(isScrs = false) shouldBe Seq("Authorization" -> "Basic Tm9uU0NSU0NvaG9QdWJsaWNUb2tlbg==")
+        connector.createAPIAuthHeader(isScrs = false) mustBe Seq("Authorization" -> "Basic Tm9uU0NSU0NvaG9QdWJsaWNUb2tlbg==")
       }
     }
   }

@@ -46,14 +46,14 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
 
   class Setup {
     val incRepo = app.injector.instanceOf[IncorpUpdateMongo].repo
-    await(incRepo.drop)
+    await(incRepo.collection.drop.toFuture())
     await(incRepo.ensureIndexes)
-    def insert(update: IncorpUpdate) = await(incRepo.insert(update))
+    def insert(update: IncorpUpdate) = await(incRepo.storeSingleIncorpUpdate(update))
   }
 
   val incorpDate = DateTime.parse("2018-05-01", DateTimeFormat.forPattern(datePattern))
 
-  "fetchTransactionalData" should {
+  "fetchTransactionalData" must {
 
     val transactionId = "12345"
 
@@ -135,8 +135,8 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
       val clientUrl = s"/incorporation-information/$transactionId/company-profile"
 
       val response = buildClient(clientUrl).get().futureValue
-      response.status shouldBe 200
-      response.body shouldBe (Json.parse(body).as[JsObject] - "officers").toString()
+      response.status mustBe 200
+      response.body mustBe (Json.parse(body).as[JsObject] - "officers").toString()
     }
 
     "return a 404 if a Json body cannot be returned for the given transaction Id" in new Setup {
@@ -145,7 +145,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
       val clientUrl = s"/incorporation-information/$transactionId/company-profile"
 
       val response = buildClient(clientUrl).get().futureValue
-      response.status shouldBe 404
+      response.status mustBe 404
     }
 
     val input =
@@ -247,11 +247,11 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
       stubGet(cohoDestinationUrl, 200, input)
 
       val response = buildClient(clientUrl).get().futureValue
-      response.status shouldBe 200
+      response.status mustBe 200
 
       val res = Json.parse(response.body).as[JsObject]
 
-      res shouldBe Json.parse(expected).as[JsObject]
+      res mustBe Json.parse(expected).as[JsObject]
     }
 
     "return 404 if a company is incorporated but cannot be found in Public API or Transactional API" in new Setup {
@@ -261,7 +261,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
       val cohoDestinationUrl = s"/cohoFrontEndStubs/company-profile/$crn"
       stubGet(cohoDestinationUrl, 404, "")
       val response = buildClient(clientUrl).get().futureValue
-      response.status shouldBe 404
+      response.status mustBe 404
     }
 
     "return information from transactional API if a company is incorporated but cannot be found in Public API" in new Setup {
@@ -370,15 +370,15 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
         val cohoDestinationUrl = s"/cohoFrontEndStubs/company-profile/$crn"
         stubGet(cohoDestinationUrl, 404, "")
         val response = buildClient(clientUrl).get().futureValue
-        response.status shouldBe 200
+        response.status mustBe 200
 
       val res = Json.parse(response.body).as[JsObject]
 
-      res shouldBe Json.parse(expectedTXBody).as[JsObject]
+      res mustBe Json.parse(expectedTXBody).as[JsObject]
       }
 
     }
-  "getOfficerList" should {
+  "getOfficerList" must {
     val crn = "crn5"
     val input =
       s"""
@@ -554,7 +554,6 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
     "return 404 if no officer list exists but company is incorporated  no data in tx api /public api" in new Setup {
       val transactionId = "12345"
 
-      await(incRepo.drop)
       // insert into incorp info db -> company is registered so dont go to tx api
       val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), Some(incorpDate), "tp", Some("description"))
       insert(incorpUpdate)
@@ -563,12 +562,13 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
       //nothing is in tx api. so overall we will get 404
       val clientUrl = s"/incorporation-information/$transactionId/officer-list"
       val response = buildClient(clientUrl).get().futureValue
-      response.status shouldBe 404
+      response.status mustBe 404
     }
 
     "return 200 if company incorporated, officer list exists in public api with natural director" in new Setup {
+
       val transactionId = "12345"
-      await(incRepo.drop)
+
       // insert into incorp info db -> company is registered so dont go to tx api
       val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), Some(incorpDate), "tp", Some("description"))
       insert(incorpUpdate)
@@ -577,13 +577,14 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
       stubGet("/cohoFrontEndStubs/get-officer-appointment?.*", 200,appointments(appointment1(naturalName, "director")))
       val clientUrl = s"/incorporation-information/$transactionId/officer-list"
       val response = buildClient(clientUrl).get().futureValue
-      response.status shouldBe 200
+      response.status mustBe 200
       // TODO - Add assertions for response
     }
 
     "return 200 if company incorporated, officer list exists in public api with corporate director" in new Setup {
+
       val transactionId = "12345"
-      await(incRepo.drop)
+
       // insert into incorp info db -> company is registered so dont go to tx api
       val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), Some(incorpDate), "tp", Some("description"))
       insert(incorpUpdate)
@@ -592,7 +593,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
       stubGet("/cohoFrontEndStubs/get-officer-appointment?.*", 200,appointments(appointment1(corporateName, "corporate-director")))
       val clientUrl = s"/incorporation-information/$transactionId/officer-list"
       val response = buildClient(clientUrl).get().futureValue
-      response.status shouldBe 200
+      response.status mustBe 200
       // TODO - Add assertions for response
     }
   }

@@ -16,27 +16,30 @@
 
 package repositories
 
+import com.mongodb.WriteError
+import com.mongodb.bulk.BulkWriteError
 import models.IncorpUpdate
 import org.apache.commons.lang3.StringUtils
+import org.mongodb.scala.MongoBulkWriteException
+import org.mongodb.scala.model.Filters.equal
+import org.mongodb.scala.model.{BulkWriteOptions, InsertOneModel, ReplaceOptions}
+import org.mongodb.scala.result.UpdateResult
+import play.api.Logger
 import play.api.libs.json.Format
-import play.modules.reactivemongo.ReactiveMongoComponent
-import reactivemongo.api.DB
-import reactivemongo.api.commands.{UpdateWriteResult, WriteError}
-import reactivemongo.bson.{BSONDocument, BSONObjectID}
-import reactivemongo.play.json.ImplicitBSONHandlers._
-import uk.gov.hmrc.mongo.ReactiveRepository
-import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
+import uk.gov.hmrc.mongo.MongoComponent
+import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 
 import javax.inject.Inject
+import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
 
-class IncorpUpdateMongoImpl @Inject()(val mongo: ReactiveMongoComponent)(implicit val ec: ExecutionContext) extends IncorpUpdateMongo
+class IncorpUpdateMongoImpl @Inject()(val mongo: MongoComponent)(implicit val ec: ExecutionContext) extends IncorpUpdateMongo
 
-trait IncorpUpdateMongo extends ReactiveMongoFormats {
+trait IncorpUpdateMongo {
   implicit val ec: ExecutionContext
-  val mongo: ReactiveMongoComponent
-  lazy val repo = new IncorpUpdateMongoRepository(mongo.mongoConnector.db, IncorpUpdate.mongoFormat)
+  val mongo: MongoComponent
+  lazy val repo = new IncorpUpdateMongoRepository(mongo, IncorpUpdate.mongoFormat)
 }
 
 trait IncorpUpdateRepository {
@@ -44,40 +47,54 @@ trait IncorpUpdateRepository {
 
   def storeIncorpUpdates(updates: Seq[IncorpUpdate]): Future[InsertResult]
 
-  def storeSingleIncorpUpdate(updates: IncorpUpdate): Future[UpdateWriteResult]
+  def storeSingleIncorpUpdate(updates: IncorpUpdate): Future[UpdateResult]
 
   def getIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]]
 }
 
-class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])(implicit val ec: ExecutionContext) extends ReactiveRepository[IncorpUpdate, BSONObjectID](
+class IncorpUpdateMongoRepository(val mongo: MongoComponent, format: Format[IncorpUpdate])
+                                 (implicit val ec: ExecutionContext) extends PlayMongoRepository[IncorpUpdate](
+  mongoComponent = mongo,
   collectionName = "incorporation-information",
-  mongo = mongo,
-  domainFormat = format
-) with IncorpUpdateRepository
-  with MongoErrorCodes {
+  domainFormat = format,
+  indexes = Seq()
+) with IncorpUpdateRepository with MongoErrorCodes {
 
   implicit val fmt = format
 
-  private def selector(transactionId: String) = BSONDocument("_id" -> transactionId)
+  private def selector(transactionId: String) = equal("_id", transactionId)
+
+  val logger = Logger(getClass)
 
   def storeIncorpUpdates(updates: Seq[IncorpUpdate]): Future[InsertResult] = {
-    bulkInsert(updates) map {
-      wr =>
-        val nonDupIU = nonDuplicateIncorporations(updates, wr.writeErrors)
-        val inserted = wr.n
-        val (duplicates, errors) = wr.writeErrors.partition(_.code == ERR_DUPLICATE)
-        InsertResult(inserted, duplicates.size, errors, insertedItems = nonDupIU)
+    if(updates.nonEmpty) {
+      collection.bulkWrite(updates.map(InsertOneModel(_)), BulkWriteOptions().ordered(false)).toFuture.map { result =>
+        InsertResult(inserted = result.getInsertedCount, duplicate = 0, insertedItems = updates)
+      } recover {
+        case ex: MongoBulkWriteException =>
+          val nonDupIU = nonDuplicateIncorporations(updates, ex.getWriteErrors.asScala)
+          val inserted = ex.getWriteResult.getInsertedCount
+          val (duplicates, errors) = ex.getWriteErrors.asScala.partition(_.getCode == ERR_DUPLICATE)
+          InsertResult(inserted, duplicates.size, errors, insertedItems = nonDupIU)
+      }
+    } else {
+      Future.successful(InsertResult(0, 0, Seq()))
     }
   }
 
-  def storeSingleIncorpUpdate(iUpdate: IncorpUpdate): Future[UpdateWriteResult] = {
-    implicit val mongoFormat = IncorpUpdate.mongoFormat
-    collection.update(false).one(selector(iUpdate.transactionId), iUpdate, upsert = true)
-  }
+  def storeSingleIncorpUpdate(iUpdate: IncorpUpdate): Future[UpdateResult] =
+    collection.replaceOne(
+      filter = selector(iUpdate.transactionId),
+      replacement = iUpdate,
+      options = ReplaceOptions().upsert(true)
+    ).toFuture()
 
-  private[repositories] def nonDuplicateIncorporations(updates: Seq[IncorpUpdate], errs: Seq[WriteError]): Seq[IncorpUpdate] = {
+  def getIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]] =
+    collection.find(selector(transactionId)).headOption()
+
+  private[repositories] def nonDuplicateIncorporations(updates: Seq[IncorpUpdate], errs: Seq[BulkWriteError]): Seq[IncorpUpdate] = {
     val duplicates = errs collect {
-      case WriteError(_, ERR_DUPLICATE, msg) => StringUtils.substringBetween(msg, "\"", "\"")
+      case err: WriteError if err.getCode == ERR_DUPLICATE => StringUtils.substringBetween(err.getMessage, "\"", "\"")
     }
 
     val uniques = (updates.map(_.transactionId) diff duplicates).toSet
@@ -85,15 +102,10 @@ class IncorpUpdateMongoRepository(mongo: () => DB, format: Format[IncorpUpdate])
 
     updates.filter(i => uniques.contains(i.transactionId))
   }
-
-  def getIncorpUpdate(transactionId: String): Future[Option[IncorpUpdate]] = {
-    collection.find(selector(transactionId), Option.empty)(BSONDocumentWrites, BSONDocumentWrites).one[IncorpUpdate]
-  }
 }
 
 case class InsertResult(inserted: Int,
                         duplicate: Int,
                         errors: Seq[WriteError] = Seq(),
                         alerts: Int = 0,
-                        insertedItems: Seq[IncorpUpdate] = Seq()
-                       )
+                        insertedItems: Seq[IncorpUpdate] = Seq())

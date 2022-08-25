@@ -17,23 +17,23 @@
 package repositories
 
 
-import javax.inject.Inject
 import models.{IncorpUpdate, Subscription}
-import play.api.libs.json.{JsObject, JsString, Json}
-import play.modules.reactivemongo.ReactiveMongoComponent
-import reactivemongo.api.commands._
-import reactivemongo.api.indexes.{Index, IndexType}
-import reactivemongo.api.{Cursor, DB}
-import reactivemongo.bson.{BSONDocument, BSONObjectID}
-import reactivemongo.play.json.ImplicitBSONHandlers._
-import uk.gov.hmrc.mongo.ReactiveRepository
-import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
+import org.mongodb.scala.bson.BsonDocument
+import org.mongodb.scala.bson.conversions.Bson
+import org.mongodb.scala.model.Filters.equal
+import org.mongodb.scala.model.Indexes.ascending
+import org.mongodb.scala.model._
+import org.mongodb.scala.result.DeleteResult
+import org.mongodb.scala.{MongoWriteException, WriteError}
+import play.api.libs.json.{Format, JsObject}
+import uk.gov.hmrc.mongo.MongoComponent
+import uk.gov.hmrc.mongo.play.json.{Codecs, PlayMongoRepository}
 
-import scala.collection.Seq
+import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
-class SubscriptionsMongo @Inject()(mongo: ReactiveMongoComponent)(implicit val ec: ExecutionContext) extends ReactiveMongoFormats {
-  lazy val repo = new SubscriptionsMongoRepository(mongo.mongoConnector.db)
+class SubscriptionsMongo @Inject()(mongo: MongoComponent)(implicit val ec: ExecutionContext) {
+  lazy val repo = new SubscriptionsMongoRepository(mongo)
 }
 
 trait SubscriptionsRepository {
@@ -41,7 +41,7 @@ trait SubscriptionsRepository {
 
   def insertSub(sub: Subscription): Future[UpsertResult]
 
-  def deleteSub(transactionId: String, regime: String, subscriber: String): Future[WriteResult]
+  def deleteSub(transactionId: String, regime: String, subscriber: String): Future[DeleteResult]
 
   def getSubscription(transactionId: String, regime: String, subscriber: String) : Future[Option[Subscription]]
 
@@ -50,8 +50,6 @@ trait SubscriptionsRepository {
   def getSubscriptionsByRegime(regime: String, max: Int = 20): Future[Seq[Subscription]]
 
   def getSubscriptionStats(): Future[Map[String, Int]]
-
-  def wipeTestData(): Future[WriteResult]
 }
 
 sealed trait SubscriptionStatus
@@ -66,79 +64,69 @@ case object NotDeletedSub extends UnsubscribeStatus
 
 case class UpsertResult(modified: Int, inserted: Int, errors: Seq[WriteError])
 
-class SubscriptionsMongoRepository(mongo: () => DB)(implicit val ec: ExecutionContext) extends ReactiveRepository[Subscription, BSONObjectID](
-    collectionName = "subscriptions",
-    mongo = mongo,
-    domainFormat = Subscription.format)
-    with SubscriptionsRepository
-{
-
-  override def indexes: Seq[Index] = {
-    import IndexType.{Ascending => Asc}
-    Seq(
-      Index(
-        key = Seq("transactionId" -> Asc, "regime" -> Asc, "subscriber" -> Asc),
-        name = Some("SubscriptionIdIndex"), unique = true, sparse = false
-      ),
-      Index(
-        key = Seq("regime" -> Asc), name = Some("regime"), unique = false
-      )
+class SubscriptionsMongoRepository(mongo: MongoComponent)(implicit val ec: ExecutionContext) extends PlayMongoRepository[Subscription](
+  mongoComponent = mongo,
+  collectionName = "subscriptions",
+  domainFormat = Subscription.format,
+  indexes = Seq(
+    IndexModel(
+      ascending("transactionId", "regime", "subscriber"),
+      IndexOptions()
+        .name("SubscriptionIdIndex")
+        .unique(true)
+        .sparse(false)
+    ),
+    IndexModel(
+      ascending("regime"),
+      IndexOptions()
+        .name("regime")
+        .unique(false)
     )
-  }
+  ),
+  extraCodecs = Seq(Codecs.playFormatCodec[JsObject](implicitly[Format[JsObject]]))
+) with SubscriptionsRepository {
 
-  def insertSub(sub: Subscription) : Future[UpsertResult] = {
-    val selector = BSONDocument("transactionId" -> sub.transactionId, "regime" -> sub.regime, "subscriber" -> sub.subscriber)
-    collection.update(false).one(selector, sub, upsert = true) map {
+  def selector(transactionId: String, regime: String, subscriber: String) =
+    Filters.and(equal("transactionId", transactionId), equal("regime", regime), equal("subscriber", subscriber))
+
+  def insertSub(sub: Subscription) : Future[UpsertResult] =
+    collection.replaceOne(selector(sub.transactionId, sub.regime, sub.subscriber), sub, ReplaceOptions().upsert(true)).toFuture() map {
       res =>
-        UpsertResult(res.nModified, res.upserted.size, res.writeErrors)
+        val wasInserted = Option(res.getUpsertedId).isDefined
+        UpsertResult(if(wasInserted) 0 else 1, if(wasInserted) 1 else 0, Seq())
+    } recover {
+      case ex: MongoWriteException =>
+        UpsertResult(0, 0, Seq(ex.getError))
     }
-  }
 
-  def deleteSub(transactionId: String, regime: String, subscriber: String): Future[WriteResult] = {
-    val selector = BSONDocument("transactionId" -> transactionId, "regime" -> regime, "subscriber" -> subscriber)
-     collection.delete().one(selector)
-  }
+  def deleteSub(transactionId: String, regime: String, subscriber: String): Future[DeleteResult] =
+    collection.deleteOne(selector(transactionId, regime, subscriber)).toFuture()
 
-  def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] = {
-    val query = BSONDocument("transactionId" -> transactionId, "regime" -> regime, "subscriber" -> subscriber)
-    collection.find(query, Option.empty)(BSONDocumentWrites, BSONDocumentWrites).one[Subscription]
-  }
+  def getSubscription(transactionId: String, regime: String, subscriber: String): Future[Option[Subscription]] =
+    collection.find(selector(transactionId, regime, subscriber)).headOption()
 
-  def getSubscriptions(transactionId: String): Future[Seq[Subscription]] = {
-    val query = BSONDocument("transactionId" -> transactionId)
-    collection
-      .find(query, Option.empty)(BSONDocumentWrites, BSONDocumentWrites)
-      .cursor[Subscription]()
-      .collect[Seq](-1, Cursor.DoneOnError())
-  }
+  def getSubscriptions(transactionId: String): Future[Seq[Subscription]] =
+    collection.find(equal("transactionId", transactionId)).toFuture()
 
-  def getSubscriptionsByRegime(regime: String, max: Int): Future[Seq[Subscription]] = {
-    val query = BSONDocument("regime" -> regime)
-    collection
-      .find(query, Option.empty)(BSONDocumentWrites, BSONDocumentWrites)
-      .cursor[Subscription]().collect[Seq](maxDocs = max,Cursor.DoneOnError())
-  }
+  def getSubscriptionsByRegime(regime: String, max: Int): Future[Seq[Subscription]] =
+    collection.find(equal("regime", regime)).limit(max).toFuture()
+
   def getSubscriptionStats(): Future[Map[String, Int]] = {
 
     // needed to make it pick up the index
-        val matchQuery: collection.PipelineOperator = collection.BatchCommands.AggregationFramework.Match(Json.obj("regime" -> Json.obj("$ne" -> "")))
-    val project = collection.BatchCommands.AggregationFramework.Project(Json.obj("regime" -> 1, "_id" -> 0))
+    val matchQuery: Bson = Aggregates.`match`(Filters.ne("regime", ""))
+    val project = Aggregates.project(BsonDocument("regime" -> 1, "_id" -> 0))
     // calculate the regime counts
-    val group = collection.BatchCommands.AggregationFramework.Group(JsString("$regime"))("count" -> collection.BatchCommands.AggregationFramework.SumValue(1))
+    val group = Aggregates.group("$regime", BsonField("count", BsonDocument("$sum" -> 1)))
 
-    val query = collection.aggregateWith[JsObject]()(_ => (matchQuery, List(project, group)))
-    val fList =  query.collect(Int.MaxValue, Cursor.FailOnError[List[JsObject]]())
+    val fList = collection.aggregate[JsObject](Seq(matchQuery, project, group)).toFuture()
     fList.map{ _.map {
-            documentWithRegimeAndCount =>{
-              val regime = (documentWithRegimeAndCount \ "_id").as[String]
-              val count = (documentWithRegimeAndCount \ "count").as[Int]
-              regime -> count
-            }
-          }.toMap
-        }
-  }
-
-  def wipeTestData(): Future[WriteResult] = {
-    removeAll(reactivemongo.api.WriteConcern.Acknowledged)
+      documentWithRegimeAndCount =>{
+        val regime = (documentWithRegimeAndCount \ "_id").as[String]
+        val count = (documentWithRegimeAndCount \ "count").as[Int]
+        regime -> count
+      }
+    }.toMap
+    }
   }
 }

@@ -20,27 +20,25 @@ import helpers.SCRSMongoSpec
 import models.{IncorpUpdate, QueuedIncorpUpdate}
 import org.joda.time.DateTime
 import play.api.test.Helpers._
-import play.modules.reactivemongo.ReactiveMongoComponent
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 
 class QueueRepositoryISpec extends SCRSMongoSpec {
 
+  lazy val repo = app.injector.instanceOf[QueueMongoImpl].repo
+
   class Setup extends MongoErrorCodes {
-    val repo = new QueueMongo {
-      override implicit val ec: ExecutionContext = global
-      override val mongo: ReactiveMongoComponent = reactiveMongoComponent
-    }.repo
-    await(repo.drop)
+
+    await(repo.collection.drop.toFuture())
     await(repo.ensureIndexes)
 
-    def count = await(repo.count)
+    def count = await(repo.collection.countDocuments().toFuture())
 
     def insert(u: QueuedIncorpUpdate) = await(fInsert(u))
 
-    def fInsert(u: QueuedIncorpUpdate) = repo.insert(u)
+    def fInsert(u: QueuedIncorpUpdate) = repo.collection.insertOne(u).toFuture()
   }
 
   val now = DateTime.now
@@ -62,27 +60,27 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
       )
     ))
 
-  "removeQueuedIncorpUpdate" should {
+  "removeQueuedIncorpUpdate" must {
 
     "remove the selected document and return true" in new Setup {
       insert(queuedUpdate)
-      count shouldBe 1
+      count mustBe 1
 
       val result = await(repo.removeQueuedIncorpUpdate(transactionId))
-      count shouldBe 0
+      count mustBe 0
 
-      result shouldBe true
+      result mustBe true
     }
 
     "return false if no document was deleted" in new Setup {
-      count shouldBe 0
+      count mustBe 0
 
       val result = await(repo.removeQueuedIncorpUpdate(transactionId))
-      result shouldBe false
+      result mustBe false
     }
   }
 
-  "getIncorpUpdates" should {
+  "getIncorpUpdates" must {
 
     "return the updates in the correct order #1" in new Setup {
       val baseTs = now
@@ -95,7 +93,7 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
 
       val result = await(repo.getIncorpUpdates(10))
 
-      result shouldBe Seq(q1, q2)
+      result mustBe Seq(q1, q2)
     }
 
     "return the updates in the correct order #2" in new Setup {
@@ -109,7 +107,7 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
 
       val result = await(repo.getIncorpUpdates(10))
 
-      result shouldBe Seq(q2, q1)
+      result mustBe Seq(q2, q1)
     }
 
     "return the updates in the correct order, eliding the ones in the future" in new Setup {
@@ -126,7 +124,7 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
 
       val result = await(repo.getIncorpUpdates(10))
 
-      result shouldBe Seq(q3, q1, q6, q5)
+      result mustBe Seq(q3, q1, q6, q5)
     }
   }
 
@@ -144,101 +142,102 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
 
     val result = await(repo.getIncorpUpdates(2))
 
-    result shouldBe Seq(q3, q1)
+    result mustBe Seq(q3, q1)
   }
 
-  "getIncorpUpdate" should {
+  "getIncorpUpdate" must {
 
     "return an incorp update if one is found" in new Setup {
       insert(queuedUpdate)
-      count shouldBe 1
+      count mustBe 1
 
       val result = await(repo.getIncorpUpdate(transactionId))
-      result shouldBe Some(queuedUpdate)
+      result mustBe Some(queuedUpdate)
     }
 
     "return a None if an update is not found" in new Setup {
-      count shouldBe 0
+      count mustBe 0
 
       val result = await(repo.getIncorpUpdate(transactionId))
-      result shouldBe None
+      result mustBe None
     }
   }
 
-  "BulkInserting documents" should {
+  "BulkInserting documents" must {
 
     "insert a single document" in new Setup {
-      count shouldBe 0
+      count mustBe 0
 
       val fResponse = repo.storeIncorpUpdates(docs(1))
 
       val response = await(fResponse)
-      response.inserted shouldBe 1
-      response.duplicate shouldBe 0
-      response.errors.size shouldBe 0
-      count shouldBe 1
+      response.inserted mustBe 1
+      response.duplicate mustBe 0
+      response.errors.size mustBe 0
+      count mustBe 1
     }
 
     "insert duplicate documents" in new Setup {
-      count shouldBe 0
+      count mustBe 0
 
       await(repo.storeIncorpUpdates(docs(1)))
-      count shouldBe 1
+      count mustBe 1
 
       val response = await(repo.storeIncorpUpdates(docs(1)))
-      response.inserted shouldBe 0
-      response.duplicate shouldBe 1
-      response.errors.size shouldBe 0
-      count shouldBe 1
+      response.inserted mustBe 0
+      response.duplicate mustBe 1
+      response.errors.size mustBe 0
+      count mustBe 1
     }
 
     "insert 6 docs" in new Setup {
-      count shouldBe 0
+      count mustBe 0
       val num = 6
 
       val fResponse = repo.storeIncorpUpdates(docs(num))
 
       val response = await(fResponse)
-      response.inserted shouldBe num
-      response.duplicate shouldBe 0
-      response.errors.size shouldBe 0
-      count shouldBe num
+      response.inserted mustBe num
+      response.duplicate mustBe 0
+      response.errors.size mustBe 0
+      count mustBe num
     }
 
     "insert some, then insert them again with more" in new Setup {
-      count shouldBe 0
+      count mustBe 0
       val numPart = 4
 
       await(repo.storeIncorpUpdates(docs(numPart)))
-      count shouldBe 4
+      count mustBe 4
 
       val num = 10
       val fResponse = repo.storeIncorpUpdates(docs(num))
 
       val response = await(fResponse)
-      response.inserted shouldBe num - numPart
-      response.duplicate shouldBe numPart
-      response.errors.size shouldBe 0
-      count shouldBe num
+
+      response.inserted mustBe num - numPart
+      response.duplicate mustBe numPart
+      response.errors.size mustBe 0
+      count mustBe num
     }
   }
 
-  "updateTimestamp" should {
+  "updateTimestamp" must {
     "update a Timestamp of an existing queued incorp update" in new Setup {
-      count shouldBe 0
+      count mustBe 0
       val numPart = 1
       await(repo.storeIncorpUpdates(docs(1)))
-      count shouldBe 1
+      count mustBe 1
 
       val result = await(repo.getIncorpUpdate("foo1"))
-      result.get.timestamp shouldBe now
+      result.get.timestamp mustBe now
 
       val newTS = DateTime.now.plusSeconds(10)
       await(repo.updateTimestamp("foo1", newTS))
       val updateResult = await(repo.getIncorpUpdate("foo1"))
       val updatedTimestamp = now.plusMinutes(10)
 
-      updateResult.get.timestamp.getMillis shouldBe newTS.getMillis
+      updateResult.get.timestamp.getMillis mustBe newTS.getMillis
     }
   }
 

@@ -56,7 +56,7 @@ class ProactiveMonitoringISpec extends IntegrationSpecBase with FakeAppConfig
     stubGet(s"/company/$crn", status, Json.obj("test" -> "json").toString())
   }
 
-  "pollAPIs" should {
+  "pollAPIs" must {
 
     "poll both the transaction API and public API and both return success" in {
       setupFeatures(transactionalAPI = true)
@@ -65,8 +65,8 @@ class ProactiveMonitoringISpec extends IntegrationSpecBase with FakeAppConfig
       stubFetchCompanyProfilePublicAPI(200)
 
       val (txApiResponse, publicApiResponse) = await(service.pollAPIs)
-      txApiResponse shouldBe "polling transactional API - success"
-      publicApiResponse shouldBe "polling public API - success"
+      txApiResponse mustBe "polling transactional API - success"
+      publicApiResponse mustBe "polling public API - success"
     }
 
     "poll both the transaction API and public API, return failures and alert log on 5xx" in {
@@ -78,12 +78,12 @@ class ProactiveMonitoringISpec extends IntegrationSpecBase with FakeAppConfig
       withCaptureOfLoggingFrom(Logger("connectors.IncorporationAPIConnectorImpl")) { incorpApiConnectorLogs =>
         withCaptureOfLoggingFrom(Logger("connectors.PublicCohoApiConnectorImpl")) { publicCohoApiConnectorLogs =>
           val (txApiResponse, publicApiResponse) = await(service.pollAPIs)
-          txApiResponse shouldBe "polling transactional API - failed"
-          publicApiResponse shouldBe "polling public API - failed"
+          txApiResponse mustBe "polling transactional API - failed"
+          publicApiResponse mustBe "polling public API - failed"
 
           eventually {
-            incorpApiConnectorLogs.exists(_.getMessage.contains("COHO_TX_API_5XX")) shouldBe true
-            publicCohoApiConnectorLogs.exists(_.getMessage.contains("COHO_PUBLIC_API_5XX")) shouldBe true
+            incorpApiConnectorLogs.exists(_.getMessage.contains("COHO_TX_API_5XX")) mustBe true
+            publicCohoApiConnectorLogs.exists(_.getMessage.contains("COHO_PUBLIC_API_5XX")) mustBe true
           }
         }
       }

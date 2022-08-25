@@ -22,12 +22,12 @@ import jobs._
 import models.{IncorpUpdateResponse, QueuedIncorpUpdate}
 import org.joda.time.{DateTime, Duration}
 import play.api.{Environment, Logging}
-import reactivemongo.api.commands.DefaultWriteResult
 import repositories._
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.lock.LockKeeper
+import uk.gov.hmrc.mongo.lock.{LockService, MongoLockRepository}
 
 import javax.inject.Inject
+import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 
 
@@ -47,18 +47,14 @@ class SubscriptionFiringServiceImpl @Inject()(fsConnector: FiringSubscriptionsCo
   override lazy val useHttpsFireSubs = msConfig.useHttpsFireSubs
   lazy val lockoutTimeout = msConfig.getConfigInt("schedules.fire-subs-job.lockTimeout")
 
-  lazy val lockKeeper: LockKeeper = new LockKeeper() {
-    override val lockId = "fire-subs-job-lock"
-    override val forceLockReleaseAfter: Duration = Duration.standardSeconds(lockoutTimeout)
-    override lazy val repo = lockRepository.repo
-  }
+  lazy val lockKeeper: LockService = LockService(lockRepository.repo, "fire-subs-job-lock", lockoutTimeout.seconds)
   implicit val hc = HeaderCarrier()
 }
 
 trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], LockResponse]] with Logging {
   implicit val ec: ExecutionContext
   val firingSubsConnector: FiringSubscriptionsConnector
-  val lockKeeper: LockKeeper
+  val lockKeeper: LockService
   val queueRepository: QueueRepository
   val subscriptionsRepository: SubscriptionsRepository
   val queueFailureDelay: Int
@@ -69,7 +65,7 @@ trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], Lo
   implicit val hc: HeaderCarrier
 
   def invoke(implicit ec: ExecutionContext): Future[Either[Seq[Boolean], LockResponse]] = {
-    lockKeeper.tryLock(fireIncorpUpdateBatch).map {
+    lockKeeper.withLock(fireIncorpUpdateBatch).map {
       case Some(res) =>
         logger.info("SubscriptionFiringService acquired lock and returned results")
         logger.info(s"Result: $res")
@@ -110,10 +106,10 @@ trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], Lo
 
   private def deleteSub(transId: String, regime: String, subscriber: String): Future[Boolean] = {
     subscriptionsRepository.deleteSub(transId, regime, subscriber) map {
-      case DefaultWriteResult(true, 1, _, _, _, _) =>
-        logger.info(s"[SubscriptionFiringService][deleteSub] Subscription with transactionId: ${transId} deleted sub for $regime")
+      case deleted if deleted.getDeletedCount > 0 =>
+        logger.info(s"[SubscriptionFiringService][deleteSub] Subscription with transactionId: $transId deleted sub for $regime")
         true
-      case _ => logger.info(s"[SubscriptionFiringService][deleteSub] Subscription with transactionId: ${transId} failed to delete")
+      case _ => logger.info(s"[SubscriptionFiringService][deleteSub] Subscription with transactionId: $transId failed to delete")
         false
     }
   }

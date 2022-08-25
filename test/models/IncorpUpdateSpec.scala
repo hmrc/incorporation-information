@@ -23,7 +23,7 @@ import play.api.libs.json._
 
 class IncorpUpdateSpec extends SCRSSpec with JSONhelpers {
 
-  "writes" should {
+  "writes" must {
 
     val transactionId = "trans12345"
     val subscriber = "SCRS"
@@ -64,8 +64,8 @@ class IncorpUpdateSpec extends SCRSSpec with JSONhelpers {
 
       // TODO - should be an ISO formatted timestamp
       // check it's within a second
-      generatedTS shouldBe time.toDate.getTime +- 1000
-      jsonNoTS shouldBe json
+      generatedTS mustBe time.toDate.getTime +- 1000
+      jsonNoTS mustBe json
     }
 
 
@@ -92,8 +92,8 @@ class IncorpUpdateSpec extends SCRSSpec with JSONhelpers {
 
       val (generatedTS, jsonNoTS) = extractTimestamp(response)
 
-      generatedTS shouldBe time.toDate.getTime +- 1000
-      jsonNoTS shouldBe json
+      generatedTS mustBe time.toDate.getTime +- 1000
+      jsonNoTS mustBe json
     }
 
     "return json including a valid timestamp" in {
@@ -104,11 +104,11 @@ class IncorpUpdateSpec extends SCRSSpec with JSONhelpers {
       val timestamp = (json \ "SCRSIncorpStatus" \ "IncorpStatusEvent" \ "timestamp").as[Long]
       val after = DateTime.now(DateTimeZone.UTC).getMillis
 
-      (before <= timestamp && after >= timestamp) shouldBe true
+      (before <= timestamp && after >= timestamp) mustBe true
     }
   }
 
-  "mongoFormat" should {
+  "mongoFormat" must {
     def j(ts: String) = Json.parse(
       s"""
          |{
@@ -128,13 +128,13 @@ class IncorpUpdateSpec extends SCRSSpec with JSONhelpers {
 
       val result = json.validate[IncorpUpdate](IncorpUpdate.mongoFormat)
 
-      result shouldBe JsSuccess(incorpUpdate)
+      result mustBe JsSuccess(incorpUpdate)
 
-      Json.toJson[IncorpUpdate](result.get)(IncorpUpdate.mongoFormat) shouldBe json
+      Json.toJson[IncorpUpdate](result.get)(IncorpUpdate.mongoFormat) mustBe json
     }
   }
 
-  "cohoFormat (and queueFormat)" should {
+  "cohoFormat (and queueFormat)" must {
     def j(ts: String) = Json.parse(
       s"""
          |{
@@ -154,14 +154,14 @@ class IncorpUpdateSpec extends SCRSSpec with JSONhelpers {
 
       val result = json.validate[IncorpUpdate](IncorpUpdate.cohoFormat)
 
-      result shouldBe JsSuccess(incorpUpdate)
+      result mustBe JsSuccess(incorpUpdate)
 
-      Json.toJson[IncorpUpdate](result.get)(IncorpUpdate.cohoFormat) shouldBe json
+      Json.toJson[IncorpUpdate](result.get)(IncorpUpdate.cohoFormat) mustBe json
     }
   }
 
 
-  "responseFormat" should {
+  "responseFormat" must {
     def j(ts: String) = Json.parse(
       s"""
          |{
@@ -181,9 +181,9 @@ class IncorpUpdateSpec extends SCRSSpec with JSONhelpers {
 
       val result = json.validate[IncorpUpdate](IncorpUpdate.responseFormat)
 
-      result shouldBe JsSuccess(incorpUpdate)
+      result mustBe JsSuccess(incorpUpdate)
 
-      Json.toJson[IncorpUpdate](result.get)(IncorpUpdate.responseFormat) shouldBe json
+      Json.toJson[IncorpUpdate](result.get)(IncorpUpdate.responseFormat) mustBe json
     }
   }
 }

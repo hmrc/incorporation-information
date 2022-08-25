@@ -59,90 +59,90 @@ class AlertLoggingSpec extends SCRSSpec with LogCapturing with Eventually {
   class SetupInWorkingHours extends Setup(monday, _2pm)
   class SetupNotInWorkingHours extends Setup(saturday, _9pm)
 
-  "isLoggingDay" should {
+  "isLoggingDay" must {
 
     "return true when today is the logging day" in new SetupInWorkingHours {
-      alertLogging.isLoggingDay shouldBe true
+      alertLogging.isLoggingDay mustBe true
     }
 
     "return false when today is not the logging day" in new Setup(saturday, _2pm) {
-      alertLogging.isLoggingDay shouldBe false
+      alertLogging.isLoggingDay mustBe false
     }
   }
 
-  "isBetweenLoggingTimes" should {
+  "isBetweenLoggingTimes" must {
 
     "return true when now is between the logging times" in new SetupInWorkingHours {
-      alertLogging.isBetweenLoggingTimes shouldBe true
+      alertLogging.isBetweenLoggingTimes mustBe true
     }
 
     "return false when now is not between the logging times" in new Setup(monday, _9pm) {
-      alertLogging.isBetweenLoggingTimes shouldBe false
+      alertLogging.isBetweenLoggingTimes mustBe false
     }
   }
 
-  "inWorkingHours" should {
+  "inWorkingHours" must {
 
     "return true" when {
 
       "the current time is 14:00 on a Monday" in new SetupInWorkingHours {
-        alertLogging.inWorkingHours shouldBe true
+        alertLogging.inWorkingHours mustBe true
       }
 
       "the current time is 08:00 on a Monday" in new Setup(monday, _8am) {
-        alertLogging.inWorkingHours shouldBe true
+        alertLogging.inWorkingHours mustBe true
       }
 
       "the current time is 08:01 on a Monday" in new Setup(monday, _8_01am) {
-        alertLogging.inWorkingHours shouldBe true
+        alertLogging.inWorkingHours mustBe true
       }
 
       "the current time is 16:59 on a Friday" in new Setup(friday, _4_59pm) {
-        alertLogging.inWorkingHours shouldBe true
+        alertLogging.inWorkingHours mustBe true
       }
     }
 
     "return false" when {
 
       "the current time is 07:59:59 on a Monday" in new Setup(monday, _7_59am) {
-        alertLogging.inWorkingHours shouldBe false
+        alertLogging.inWorkingHours mustBe false
       }
 
       "the current time is 17:00 on a Monday" in new Setup(monday, _5pm) {
-        alertLogging.inWorkingHours shouldBe false
+        alertLogging.inWorkingHours mustBe false
       }
 
       "the current time is 21:00 on a Monday" in new Setup(monday, _9pm) {
-        alertLogging.inWorkingHours shouldBe false
+        alertLogging.inWorkingHours mustBe false
       }
 
       "the current time is 14:00 on a Saturday" in new Setup(saturday, _2pm) {
-        alertLogging.inWorkingHours shouldBe false
+        alertLogging.inWorkingHours mustBe false
       }
 
       "the current time is 14:00 on a Sunday" in new Setup(sunday, _2pm) {
-        alertLogging.inWorkingHours shouldBe false
+        alertLogging.inWorkingHours mustBe false
       }
 
     }
   }
 
-   "pager duty" should {
+   "pager duty" must {
      val validKeys = List(
        PagerDutyKeys.COHO_TX_API_NOT_FOUND,
        PagerDutyKeys.COHO_TX_API_4XX
      )
 
      def found(logs: List[ILoggingEvent])(count: Int, msg: String, level: Level) = {
-       logs.size shouldBe count
-       logs.head.getMessage shouldBe msg
-       logs.head.getLevel shouldBe level
+       logs.size mustBe count
+       logs.head.getMessage mustBe msg
+       logs.head.getLevel mustBe level
      }
      "accept any Pager Duty key" in new Setup(monday, _8am){
        validKeys foreach { key =>
          withCaptureOfLoggingFrom(Logger(alertLogging.getClass)) { logs =>
            alertLogging.pagerduty(key)
-           logs.head.getMessage shouldBe key.toString
+           logs.head.getMessage mustBe key.toString
          }
        }
      }

@@ -123,7 +123,7 @@ class StartUpJobs @Inject()(val configuration: Configuration,
     } {
       timepoint =>
         logger.info(s"[ResetTimepoint] Found timepoint from config - $timepoint")
-        timepointMongo.repo.resetTimepointTo(timepoint)
+        timepointMongo.repo.updateTimepoint(timepoint).map(_ => true)
     }
   }
 

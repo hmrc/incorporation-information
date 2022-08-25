@@ -50,7 +50,7 @@ class FiringSubscriptionsConnectorISpec extends IntegrationSpecBase {
   val incorpUpdateResponse = IncorpUpdateResponse("CT", "test", "www.test.com", incorpUpdate)
 
 
-  "fireIncorpUpdate" should {
+  "fireIncorpUpdate" must {
 
     "return a 200 HTTP response from a given callbackUrl" in {
       val firingSubscriptionsConnector = new FiringSubscriptionsConnector {
@@ -66,7 +66,7 @@ class FiringSubscriptionsConnectorISpec extends IntegrationSpecBase {
             .withStatus(200)
         )
       )
-      await(connectToAnyURL).status shouldBe 200
+      await(connectToAnyURL).status mustBe 200
     }
   }
 }

@@ -18,6 +18,7 @@ package repositories
 
 import helpers.SCRSMongoSpec
 import models.Subscription
+import org.mongodb.scala.bson.BsonDocument
 import play.api.test.Helpers._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -69,35 +70,32 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
     "newUrl"
   )
 
+  lazy val repository = app.injector.instanceOf[SubscriptionsMongo].repo
 
   class Setup {
-    val repository = new SubscriptionsMongoRepository(reactiveMongoComponent.mongoConnector.db)
-    await(repository.drop)
+
+    def insert(sub: Subscription) = await(repository.insertSub(sub))
+    def count = await(repository.collection.countDocuments().toFuture())
+    def drop = await(repository.collection.drop().toFuture())
+
+    drop
     await(repository.ensureIndexes)
-
-    def insert(sub: Subscription) = await(repository.insert(sub))
-
-    def count = await(repository.count)
-  }
-
-  override def afterAll() = new Setup {
-    await(repository.drop)
   }
 
   val testKey = "testKey"
 
-  "getSubscriptionStats" should {
+  "getSubscriptionStats" must {
     "return an empty Map if the collection is empty" in new Setup {
-      await(repository.count) shouldBe 0
+      count mustBe 0
 
-      await(repository.getSubscriptionStats()) shouldBe Map()
+      await(repository.getSubscriptionStats()) mustBe Map()
     }
 
     "return an single metric for a single subscription" in new Setup {
-      await(repository.insertSub(testValid))
-      await(repository.count) shouldBe 1
+      insert(testValid)
+      await(repository.collection.countDocuments().toFuture()) mustBe 1
 
-      await(repository.getSubscriptionStats()) shouldBe Map(testValid.regime -> 1)
+      await(repository.getSubscriptionStats()) mustBe Map(testValid.regime -> 1)
     }
 
     "return an metrics for multiple subscriptions" in new Setup {
@@ -108,39 +106,39 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
       await(repository.insertSub(Subscription("tx4", "r3", "s1", "url4")))
       await(repository.insertSub(Subscription("tx5", "r3", "s2", "url5")))
       await(repository.insertSub(Subscription("tx6", "r3", "s3", "url6")))
-      await(repository.count) shouldBe 6
+      await(repository.collection.countDocuments().toFuture()) mustBe 6
 
-      await(repository.getSubscriptionStats()) shouldBe Map("r1" -> 1, "r2" -> 2, "r3" -> 3)
+      await(repository.getSubscriptionStats()) mustBe Map("r1" -> 1, "r2" -> 2, "r3" -> 3)
     }
 
   }
 
-  "getSubscriptions" should {
+  "getSubscriptions" must {
     "return a submissions" in new Setup {
-      await(repository.count) shouldBe 0
-      await(repository.insertSub(testValid))
-      await(repository.count) shouldBe 1
+      count mustBe 0
+      insert(testValid)
+      await(repository.collection.countDocuments().toFuture()) mustBe 1
       val result = await(repository.getSubscription("transId1", "test", "CT"))
-      result.head.subscriber shouldBe "CT"
+      result.head.subscriber mustBe "CT"
     }
   }
 
-  "insertSub" should {
+  "insertSub" must {
 
     "return an Upsert Result" in new Setup {
-      val result = await(repository.insertSub(testValid))
+      val result = insert(testValid)
       val expected = UpsertResult(0, 1, Seq())
-      result shouldBe expected
+      result mustBe expected
 
     }
 
     "update an existing sub that matches the selector" in new Setup {
       insert(sub)
-      count shouldBe 1
+      count mustBe 1
 
       val result = await(repository.insertSub(sub))
-      count shouldBe 1
-      result shouldBe UpsertResult(1, 0, Seq())
+      count mustBe 1
+      result mustBe UpsertResult(1, 0, Seq())
     }
 
 
@@ -148,85 +146,75 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
       val firstResponse = await(repository.insertSub(sub))
       val secondResponse = await(repository.insertSub(subUpdate()))
 
-      firstResponse shouldBe UpsertResult(0, 1, Seq())
-      secondResponse shouldBe UpsertResult(1, 0, Seq())
+      firstResponse mustBe UpsertResult(0, 1, Seq())
+      secondResponse mustBe UpsertResult(1, 0, Seq())
 
     }
 
   }
 
-  "deletesub" should {
+  "deletesub" must {
     "only delete a single subscription" in new Setup {
-      await(repository.count) shouldBe 0
+      count mustBe 0
       await(repository.insertSub(sub))
       await(repository.insertSub(secondSub))
-      await(repository.count) shouldBe 2
+      count mustBe 2
       await(repository.deleteSub("transId1", "test", "CT"))
-      await(repository.count) shouldBe 1
+      await(repository.collection.countDocuments().toFuture()) mustBe 1
 
       val result = await(repository.getSubscription("transId1", "test", "PAYE"))
-      result.head.subscriber shouldBe "PAYE"
+      result.head.subscriber mustBe "PAYE"
     }
 
     "not delete a subscription when the subscription does not exist" in new Setup {
-      await(repository.count) shouldBe 0
+      count mustBe 0
       await(repository.insertSub(sub))
       await(repository.insertSub(secondSub))
-      await(repository.count) shouldBe 2
+      count mustBe 2
       await(repository.deleteSub("transId1", "test", "CTabc"))
-      await(repository.count) shouldBe 2
+      count mustBe 2
     }
 
     "try to delete a subscription from an empty collection" in new Setup {
-      await(repository.drop)
-      await(repository.count) shouldBe 0
+      count mustBe 0
       val res = await(repository.deleteSub("transId1", "test", "CTabc"))
-      (res.ok, res.n) shouldBe(true, 0)
+      res.getDeletedCount mustBe 0
     }
   }
 
-  "getSubscription" should {
+  "getSubscription" must {
     "return a subscription if one exists with the given information" in new Setup {
       await(repository.insertSub(sub))
 
       val result = await(repository.getSubscription(sub.transactionId, sub.regime, sub.subscriber))
-      result.head.transactionId shouldBe sub.transactionId
-      result.head.regime shouldBe sub.regime
-      result.head.subscriber shouldBe sub.subscriber
+      result.head.transactionId mustBe sub.transactionId
+      result.head.regime mustBe sub.regime
+      result.head.subscriber mustBe sub.subscriber
     }
 
     "return None if no subscription exists with the given information" in new Setup {
-      await(repository.count) shouldBe 0
+      count mustBe 0
 
       val result = await(repository.getSubscription(sub.transactionId, sub.regime, sub.subscriber))
-      result shouldBe None
+      result mustBe None
     }
   }
 
-
-  "wipeTestData" should {
-    "remove all test data from submissions status" in new Setup {
-      val result = await(repository.wipeTestData())
-      result.writeErrors.isEmpty shouldBe true
-      result.writeConcernError.isEmpty shouldBe true
-    }
-  }
-
-  "getSubscriptionsByRegime" should {
+  "getSubscriptionsByRegime" must {
 
     val testRegime = "archy"
     val limit = 10
 
     "an empty list if no documents exist for a regime" in new Setup {
       val result = await(repository.getSubscriptionsByRegime(testRegime, limit))
-      result shouldBe Seq()
+      result mustBe Seq()
     }
     "a list containing one document if there is only one in the database, even if the max is higher" in new Setup {
       val subscription = subRegime(testRegime, 1)
       await(repository.insertSub(subscription))
 
       val result = await(repository.getSubscriptionsByRegime(testRegime, limit))
-      result shouldBe List(subscription)
+      result mustBe List(subscription)
     }
     "a list containing subscriptions up to the desired limit, even if the more were returned" in new Setup {
       val subscriptions = ((1 to 15) map (num => subRegime(testRegime, num))).toList
@@ -235,7 +223,7 @@ class SubscriptionRepositoryISpec extends SCRSMongoSpec {
       val expected = subscriptions.take(limit)
 
       val result = await(repository.getSubscriptionsByRegime(testRegime, limit))
-      result shouldBe expected
+      result mustBe expected
     }
   }
 }

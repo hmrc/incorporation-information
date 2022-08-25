@@ -108,7 +108,7 @@ object IncorpUpdateResponse {
 case class QueuedIncorpUpdate(timestamp: DateTime, incorpUpdate: IncorpUpdate)
 
 object QueuedIncorpUpdate {
-  val format: OFormat[QueuedIncorpUpdate] = (
+  implicit val format: OFormat[QueuedIncorpUpdate] = (
     (__ \ "timestamp").format[DateTime] and
       (__ \ "incorp_update").format[IncorpUpdate](IncorpUpdate.cohoFormat)
     ) (QueuedIncorpUpdate.apply, unlift(QueuedIncorpUpdate.unapply))
