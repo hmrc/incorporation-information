@@ -20,14 +20,12 @@ import play.api.libs.json._
 
 import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
 import java.time.temporal.ChronoField
-import java.time.{Instant, LocalDate, LocalDateTime, ZoneOffset}
+import java.time.{Instant, LocalDateTime, ZoneOffset}
 
 object TimestampFormats {
 
-  private def formatBuilder = new DateTimeFormatterBuilder()
-
   val ldtFormatter: DateTimeFormatter =
-    formatBuilder
+    new DateTimeFormatterBuilder()
       .appendPattern("uuuu-MM-dd['T'HH:mm:ss]")
       .optionalStart()
       .appendFraction(ChronoField.MICRO_OF_SECOND, 1, 5, true)

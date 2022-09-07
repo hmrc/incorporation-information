@@ -59,17 +59,19 @@ class DateCalculatorSpec extends SCRSSpec with BeforeAndAfterEach {
   }
   "dateGreaterThanNow" must {
     val date = LocalDateTime.parse("2017-07-11T00:00:00.005")
-    val cohoString = 20170711000000005L
-    val cohoStringPlus1 = 20170711000000006L
-    val cohoStringMinus1 = 20170711000000004L
+
+    val cohoString = "20170711000000005"
+    val cohoStringPlus1 = "20170711000000006"
+    val cohoStringMinus1 = "20170711000000004"
+
     "return true for coho string greater than now" in new SetupWithDateTimeOverrides(now = date) {
-      nDCalc.dateGreaterThanNow(cohoStringPlus1.toString) mustBe true
+      nDCalc.dateGreaterThanNow(cohoStringPlus1) mustBe true
     }
     "return false for coho string equal to now" in new SetupWithDateTimeOverrides(now = date) {
-      nDCalc.dateGreaterThanNow(cohoString.toString) mustBe false
+      nDCalc.dateGreaterThanNow(cohoString) mustBe false
     }
     "return false for epoch less than now" in new SetupWithDateTimeOverrides(now = date) {
-      nDCalc.dateGreaterThanNow(cohoStringMinus1.toString) mustBe false
+      nDCalc.dateGreaterThanNow(cohoStringMinus1) mustBe false
     }
   }
 

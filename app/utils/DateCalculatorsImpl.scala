@@ -31,14 +31,15 @@ trait DateCalculators {
   def getDateTimeNowUTC: LocalDateTime = LocalDateTime.now(ZoneOffset.UTC)
   def getDateTimeNowGMT = LocalDateTime.now(ZoneId.of("Europe/London"))
 
-  private val cohoFormat = DateTimeFormatter.ofPattern("uuuuMMddHHmmssSSS")
+  private val cohoFormat = DateTimeFormatter.ofPattern("uuuuMMddHHmmssSSS").withLocale(Locale.UK)
 
-  val cohoStringToDateTime: String => LocalDateTime = (cohoString: String) => if (cohoString.size < 17) {
+  def cohoStringToDateTime(cohoString: String): LocalDateTime = if (cohoString.size < 17) {
     throw new Exception(s"timepoint is not 17 characters it is ${cohoString.size}")
   } else {
     LocalDateTime.parse(cohoString, cohoFormat)
   }
-  val dateGreaterThanNow: String => Boolean = (dateToCompare: String) =>
+
+  def dateGreaterThanNow(dateToCompare: String) =
     cohoStringToDateTime(dateToCompare).isAfter(getDateTimeNowGMT)
 
   def getTheDay(nowDateTime: LocalDateTime): String =
