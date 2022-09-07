@@ -34,7 +34,8 @@ trait DateCalculators {
   val cohoStringToDateTime: String => LocalDateTime = (cohoString: String) => if (cohoString.size < 17) {
     throw new Exception(s"timepoint is not 17 characters it is ${cohoString.size}")
   } else {
-    LocalDateTime.parse(cohoString, DateTimeFormatter.ofPattern("uuuuMMddHHmmssSSS"))
+    val dtf = DateTimeFormatter.ofPattern("uuuuMMddHHmmssSSS")
+    LocalDateTime.parse(cohoString, dtf)
   }
   val dateGreaterThanNow: String => Boolean = (dateToCompare: String) =>
     cohoStringToDateTime(dateToCompare).isAfter(getDateTimeNowGMT)
