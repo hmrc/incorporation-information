@@ -20,12 +20,13 @@ import config.MicroserviceConfig
 import connectors.FiringSubscriptionsConnector
 import jobs._
 import models.{IncorpUpdateResponse, QueuedIncorpUpdate}
-import org.joda.time.{DateTime, Duration}
 import play.api.{Environment, Logging}
 import repositories._
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.mongo.lock.{LockService, MongoLockRepository}
+import uk.gov.hmrc.mongo.lock.LockService
+import utils.DateCalculators
 
+import java.time.{Instant, LocalDateTime}
 import javax.inject.Inject
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
@@ -51,7 +52,7 @@ class SubscriptionFiringServiceImpl @Inject()(fsConnector: FiringSubscriptionsCo
   implicit val hc = HeaderCarrier()
 }
 
-trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], LockResponse]] with Logging {
+trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], LockResponse]] with Logging with DateCalculators {
   implicit val ec: ExecutionContext
   val firingSubsConnector: FiringSubscriptionsConnector
   val lockKeeper: LockService
@@ -82,10 +83,7 @@ trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], Lo
   def fireIncorpUpdateBatch: Future[Seq[Boolean]] = {
     queueRepository.getIncorpUpdates(fetchSize) flatMap { updates =>
       Future.sequence(updates map { update =>
-        for {
-          checkTSresult <- checkTimestamp(update.timestamp)
-          fireResult <- fire(checkTSresult, update)
-        } yield fireResult
+        fire(checkTimestamp(update.timestamp), update)
       })
     }
   }
@@ -100,9 +98,7 @@ trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], Lo
     }
   }
 
-  def checkTimestamp(ts: DateTime): Future[Boolean] = {
-    Future(ts.getMillis <= DateTime.now.getMillis)
-  }
+  def checkTimestamp(ts: LocalDateTime): Boolean = !ts.isAfter(getDateTimeNowUTC)
 
   private def deleteSub(transId: String, regime: String, subscriber: String): Future[Boolean] = {
     subscriptionsRepository.deleteSub(transId, regime, subscriber) map {
@@ -143,7 +139,7 @@ trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], Lo
           logger.info(s"[SubscriptionFiringService] [fireIncorpUpdate] - Posting response to callback for txid : ${iu.incorpUpdate.transactionId} was successful")
           response.status match {
             case 202 => {
-              val newTS = DateTime.now.plusSeconds(queueRetryDelay)
+              val newTS = Instant.now.plusSeconds(queueRetryDelay)
               queueRepository.updateTimestamp(sub.transactionId, newTS).map(_ => false)
             }
             case _ => deleteSub(sub.transactionId, sub.regime, sub.subscriber)
@@ -151,7 +147,7 @@ trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], Lo
         } recoverWith {
           case e: Exception =>
             logger.info(s"[SubscriptionFiringService][fireIncorpUpdate] Subscription with transactionId: ${sub.transactionId} failed to return a 200 response")
-            val newTS = DateTime.now.plusSeconds(queueFailureDelay)
+            val newTS = Instant.now.plusSeconds(queueFailureDelay)
             queueRepository.updateTimestamp(sub.transactionId, newTS).map(_ => false)
         }
       }) flatMap { sb =>

@@ -18,14 +18,16 @@ package repositories
 
 import helpers.SCRSMongoSpec
 import models.{IncorpUpdate, QueuedIncorpUpdate}
-import org.joda.time.DateTime
 import play.api.test.Helpers._
+import utils.DateCalculators
 
+import java.time.{Instant, LocalDateTime, ZoneOffset}
+import java.time.temporal.ChronoUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 
-class QueueRepositoryISpec extends SCRSMongoSpec {
+class QueueRepositoryISpec extends SCRSMongoSpec with DateCalculators {
 
   lazy val repo = app.injector.instanceOf[QueueMongoImpl].repo
 
@@ -41,7 +43,7 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
     def fInsert(u: QueuedIncorpUpdate) = repo.collection.insertOne(u).toFuture()
   }
 
-  val now = DateTime.now
+  val now = getDateTimeNowUTC.withNano(0)
   val transactionId = "12345"
 
   val update = IncorpUpdate(transactionId, "rejected", None, None, "tp", Some("description"))
@@ -117,7 +119,7 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
       val q2 = q1.copy(timestamp = baseTs.plusSeconds(60))
       val q3 = q1.copy(timestamp = baseTs.minusSeconds(70))
       val q4 = q1.copy(timestamp = baseTs.plusSeconds(70))
-      val q5 = q1.copy(timestamp = baseTs.minusMillis(1))
+      val q5 = q1.copy(timestamp = baseTs.minus(1, ChronoUnit.MILLIS))
       val q6 = q1.copy(timestamp = baseTs.minusSeconds(1))
 
       await(Future.sequence(Seq(q1, q2, q3, q4, q5, q6) map (fInsert(_))))
@@ -135,7 +137,7 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
     val q2 = q1.copy(timestamp = baseTs.plusSeconds(60))
     val q3 = q1.copy(timestamp = baseTs.minusSeconds(70))
     val q4 = q1.copy(timestamp = baseTs.plusSeconds(70))
-    val q5 = q1.copy(timestamp = baseTs.minusMillis(1))
+    val q5 = q1.copy(timestamp = baseTs.minus(1, ChronoUnit.MILLIS))
     val q6 = q1.copy(timestamp = baseTs.minusSeconds(1))
 
     await(Future.sequence(Seq(q1, q2, q3, q4, q5, q6) map (fInsert(_))))
@@ -225,19 +227,18 @@ class QueueRepositoryISpec extends SCRSMongoSpec {
   "updateTimestamp" must {
     "update a Timestamp of an existing queued incorp update" in new Setup {
       count mustBe 0
-      val numPart = 1
+
       await(repo.storeIncorpUpdates(docs(1)))
       count mustBe 1
 
       val result = await(repo.getIncorpUpdate("foo1"))
       result.get.timestamp mustBe now
 
-      val newTS = DateTime.now.plusSeconds(10)
+      val newTS = Instant.now.plusSeconds(10)
       await(repo.updateTimestamp("foo1", newTS))
       val updateResult = await(repo.getIncorpUpdate("foo1"))
-      val updatedTimestamp = now.plusMinutes(10)
 
-      updateResult.get.timestamp.getMillis mustBe newTS.getMillis
+      updateResult.get.timestamp.toInstant(ZoneOffset.UTC).toEpochMilli mustBe newTS.toEpochMilli
     }
   }
 

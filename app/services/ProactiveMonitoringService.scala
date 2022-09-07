@@ -19,7 +19,6 @@ package services
 import config.MicroserviceConfig
 import connectors.{IncorporationAPIConnector, PublicCohoApiConnectorImpl, SuccessfulTransactionalAPIResponse}
 import jobs._
-import org.joda.time.Duration
 import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.lock.LockService

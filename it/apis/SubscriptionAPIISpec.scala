@@ -18,15 +18,17 @@ package apis
 
 import helpers.IntegrationSpecBase
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
-import org.joda.time.{DateTime, Minutes}
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsObject, Json, __}
 import play.api.test.Helpers._
 import repositories.{IncorpUpdateMongoImpl, QueueMongoImpl, SubscriptionsMongo}
-import uk.gov.hmrc.mongo.MongoComponent
+import utils.DateCalculators
 
-class SubscriptionAPIISpec extends IntegrationSpecBase {
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
+
+class SubscriptionAPIISpec extends IntegrationSpecBase with DateCalculators {
 
   val mockUrl = s"http://$wiremockHost:$wiremockPort"
 
@@ -78,7 +80,7 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
   val subscriber = "abc123"
   val url = "www.test.com"
   val crn = "crn-12345"
-  val incorpDate = DateTime.now()
+  val incorpDate = getDateTimeNowUTC
 
   val sub = Subscription(transactionId, regime, subscriber, url)
   val incorpUpdate = IncorpUpdate(transactionId, "rejected", None, None, "tp", Some("description"))
@@ -205,7 +207,7 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
 
     "force a subscription that will be processed 5 minutes in the future if an incorp update exists but no queued incorp" in new Setup {
 
-      val now = DateTime.now()
+      val now = getDateTimeNowUTC
 
       insert(incorpUpdate)
 
@@ -215,7 +217,7 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
 
       val queuedIncorpTimestamp = getQueuedIncorp(transactionId).get.timestamp
 
-      Minutes.minutesBetween(now, queuedIncorpTimestamp).getMinutes mustBe 5
+      ChronoUnit.MINUTES.between(now, queuedIncorpTimestamp) mustBe 5
 
     }
 
@@ -235,7 +237,7 @@ class SubscriptionAPIISpec extends IntegrationSpecBase {
 
       val updatedQueuedIncorpTimestamp = getQueuedIncorp(transactionId).get.timestamp
 
-      Minutes.minutesBetween(oldQueuedIncorpTimestamp, updatedQueuedIncorpTimestamp).getMinutes mustBe 5
+      ChronoUnit.MINUTES.between(oldQueuedIncorpTimestamp, updatedQueuedIncorpTimestamp) mustBe 5
 
     }
   }

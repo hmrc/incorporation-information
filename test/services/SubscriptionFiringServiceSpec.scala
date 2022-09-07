@@ -20,7 +20,6 @@ import Helpers.{JSONhelpers, SCRSSpec}
 import com.mongodb.client.result.DeleteResult
 import connectors.FiringSubscriptionsConnector
 import models.{IncorpUpdate, IncorpUpdateResponse, QueuedIncorpUpdate, Subscription}
-import org.joda.time.DateTime
 import org.mockito.ArgumentMatchers
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito._
@@ -29,12 +28,14 @@ import play.api.test.Helpers._
 import repositories.{QueueRepository, SubscriptionsRepository}
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import uk.gov.hmrc.mongo.lock.LockService
+import utils.DateCalculators
 
+import java.time.LocalDateTime
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
 
-class SubscriptionFiringServiceSpec extends SCRSSpec with BeforeAndAfterEach with JSONhelpers {
+class SubscriptionFiringServiceSpec extends SCRSSpec with BeforeAndAfterEach with JSONhelpers with DateCalculators {
 
   val mockFiringSubsConnector: FiringSubscriptionsConnector = mock[FiringSubscriptionsConnector]
   val mockQueueRepository: QueueRepository = mock[QueueRepository]
@@ -73,7 +74,7 @@ class SubscriptionFiringServiceSpec extends SCRSSpec with BeforeAndAfterEach wit
   }
 
   val incorpUpdate: IncorpUpdate = IncorpUpdate("transId1", "awaiting", None, None, "timepoint", None)
-  val queuedIncorpUpdate: QueuedIncorpUpdate = QueuedIncorpUpdate(DateTime.now.minusMinutes(2), incorpUpdate)
+  val queuedIncorpUpdate: QueuedIncorpUpdate = QueuedIncorpUpdate(getDateTimeNowUTC.minusMinutes(2), incorpUpdate)
   val sub: Subscription = Subscription("transId1", "CT", "subscriber", "www.test.com")
   val incorpUpdateResponse: IncorpUpdateResponse = IncorpUpdateResponse("CT", "subscriber", "www.test.com", incorpUpdate)
 
@@ -93,7 +94,7 @@ class SubscriptionFiringServiceSpec extends SCRSSpec with BeforeAndAfterEach wit
 
     "return a sequence of false when is one queued incorp update in the batch and the timestamp of this queued update is in" +
       " the future and therefore the subscription is not fired" in new Setup {
-      val queuedIncorpUpdate: QueuedIncorpUpdate = QueuedIncorpUpdate(DateTime.now.plusMinutes(5), incorpUpdate)
+      val queuedIncorpUpdate: QueuedIncorpUpdate = QueuedIncorpUpdate(getDateTimeNowUTC.plusMinutes(5), incorpUpdate)
       when(mockQueueRepository.getIncorpUpdates(ArgumentMatchers.any())).thenReturn(Future.successful(Seq(queuedIncorpUpdate)))
 
       val result: Seq[Boolean] = await(service.fireIncorpUpdateBatch)
@@ -114,12 +115,12 @@ class SubscriptionFiringServiceSpec extends SCRSSpec with BeforeAndAfterEach wit
 
   "checkTimestamp" must {
     "return true when a given timestamp is not in the future" in new Setup {
-      val result: Boolean = await(service.checkTimestamp(DateTime.now.minusMinutes(2)))
+      val result: Boolean = service.checkTimestamp(getDateTimeNowUTC.minusMinutes(2))
       result mustBe true
     }
 
     "return false when a given timestamp is in the future" in new Setup {
-      val result: Boolean = await(service.checkTimestamp(DateTime.now.plusMinutes(2)))
+      val result: Boolean = service.checkTimestamp(getDateTimeNowUTC.plusMinutes(2))
       result mustBe false
     }
   }

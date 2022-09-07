@@ -20,7 +20,6 @@ import config.MicroserviceConfig
 import connectors.IncorporationAPIConnector
 import jobs._
 import models.{IncorpUpdate, QueuedIncorpUpdate}
-import org.joda.time.DateTime
 import org.mongodb.scala.result.UpdateResult
 import play.api.Logging
 import repositories._
@@ -28,6 +27,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.lock.LockService
 import utils.{AlertLogging, DateCalculators, PagerDutyKeys}
 
+import java.time.LocalDateTime
 import javax.inject.{Inject, Provider}
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
@@ -56,7 +56,7 @@ class IncorpUpdateServiceImpl @Inject()(injConnector: IncorporationAPIConnector,
   lazy val lockKeeper: LockService = LockService(lockRepositoryProvider.repo, "incorp-update-job-lock", lockoutTimeout.seconds)
 }
 
-trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResponse]] with AlertLogging with Logging {
+trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResponse]] with AlertLogging with Logging with DateCalculators {
 
   val incorporationCheckAPIConnector: IncorporationAPIConnector
   val incorpUpdateRepository: IncorpUpdateRepository
@@ -275,7 +275,7 @@ trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResp
   }
 
   def createQueuedIncorpUpdate(incorpUpdate: IncorpUpdate, delayInMinutes: Option[Int] = None): QueuedIncorpUpdate = {
-    val dateTime = delayInMinutes.fold(DateTime.now())(delay => DateTime.now().plusMinutes(delay))
+    val dateTime = delayInMinutes.fold(getDateTimeNowUTC)(delay => getDateTimeNowUTC.plusMinutes(delay))
     QueuedIncorpUpdate(dateTime, incorpUpdate)
   }
 

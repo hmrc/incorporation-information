@@ -19,25 +19,26 @@ package services
 import Helpers.SCRSSpec
 import com.mongodb.client.result.DeleteResult
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
-import org.joda.time.DateTime
 import org.mockito.ArgumentMatchers.{eq => eqTo, _}
 import org.mockito.Mockito._
 import org.mongodb.scala.WriteError
 import org.mongodb.scala.bson.BsonDocument
 import play.api.test.Helpers._
 import repositories._
+import utils.DateCalculators
 
+import java.time.LocalDateTime
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
 
-class SubscriptionServiceSpec extends SCRSSpec {
+class SubscriptionServiceSpec extends SCRSSpec with DateCalculators {
 
   val mockSubRepo = mock[SubscriptionsMongoRepository]
   val mockIncorpRepo = mock[IncorpUpdateMongoRepository]
   val mockIncorpUpdateService = mock[IncorpUpdateService]
 
-  val now = DateTime.now()
+  val now = getDateTimeNowUTC
   val subDelay = 5
 
   trait Setup {

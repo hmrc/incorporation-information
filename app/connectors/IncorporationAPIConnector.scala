@@ -19,8 +19,6 @@ package connectors
 import com.codahale.metrics.Counter
 import config.{MicroserviceConfig, WSHttpProxy}
 import models.IncorpUpdate
-import org.joda.time.DateTime
-import org.joda.time.format.DateTimeFormat
 import play.api.Logging
 import play.api.libs.functional.syntax._
 import play.api.libs.json.{JsValue, Reads, __}
@@ -37,9 +35,6 @@ import scala.util.control.NoStackTrace
 case class IncorpUpdatesResponse(items: Seq[IncorpUpdate], nextLink: String)
 
 object IncorpUpdatesResponse {
-  val dateReads = Reads[DateTime](js =>
-    js.validate[String].map[DateTime](DateTime.parse(_, DateTimeFormat.forPattern("yyyy-MM-dd")))
-  )
 
   implicit val updateFmt = IncorpUpdate.cohoFormat
 

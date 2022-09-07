@@ -16,11 +16,9 @@
 
 package utils
 
-import org.joda.time.format.DateTimeFormat
-import org.joda.time.{DateTime, DateTimeZone}
-
-import java.time.format.DateTimeFormatter
-import java.time.{LocalDateTime, LocalTime, ZoneId, ZonedDateTime}
+import java.time.format.{DateTimeFormatter, TextStyle}
+import java.time.{LocalDateTime, LocalTime, ZoneId, ZoneOffset}
+import java.util.Locale
 import javax.inject.Inject
 
 
@@ -28,36 +26,21 @@ class DateCalculatorsImpl @Inject()() extends DateCalculators
 
 trait DateCalculators {
 
-  def getCurrentDay: String = {
-    getDateNow
-      .dayOfWeek()
-      .getAsText()
-      .substring(0, 3)
-      .toUpperCase
-  }
+  def getCurrentDay: String = getTheDay(getDateTimeNowUTC)
 
-  def getDateNow: DateTime = DateTime.now(DateTimeZone.UTC)
+  def getDateTimeNowUTC: LocalDateTime = LocalDateTime.now(ZoneOffset.UTC)
+  def getDateTimeNowGMT = LocalDateTime.now(ZoneId.of("Europe/London"))
 
-  def getDateNowUkZonedTime: DateTime = {
-    getDateNow
-      .plusSeconds(ZonedDateTime.of(LocalDateTime.now(), ZoneId.of("Europe/London"))
-        .getOffset.getTotalSeconds)
-  }
-
-  def getCurrentTime: LocalTime = LocalTime.now
-
-  val cohoStringToDateTime: String => DateTime = (cohoString: String) => if (cohoString.size < 17) {
+  val cohoStringToDateTime: String => LocalDateTime = (cohoString: String) => if (cohoString.size < 17) {
     throw new Exception(s"timepoint is not 17 characters it is ${cohoString.size}")
   } else {
-    DateTimeFormat.forPattern("yyyyMMddHHmmssSSS").parseDateTime(cohoString)
+    LocalDateTime.parse(cohoString, DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"))
   }
-  val dateGreaterThanNow: String => Boolean = (dateToCompare: String) => {
-    cohoStringToDateTime(dateToCompare).getMillis > getDateNowUkZonedTime.getMillis
-  }
+  val dateGreaterThanNow: String => Boolean = (dateToCompare: String) =>
+    cohoStringToDateTime(dateToCompare).isAfter(getDateTimeNowGMT)
 
-  def getTheDay(nowDateTime: DateTime): String = {
-    nowDateTime.dayOfWeek().getAsText().substring(0, 3).toUpperCase
-  }
+  def getTheDay(nowDateTime: LocalDateTime): String =
+    nowDateTime.getDayOfWeek.getDisplayName(TextStyle.SHORT, Locale.UK).toUpperCase
 
   def loggingDay(validLoggingDays: String, todaysDate: String): Boolean = {
     validLoggingDays.split(",").contains(todaysDate)

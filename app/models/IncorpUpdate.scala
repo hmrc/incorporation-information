@@ -16,15 +16,17 @@
 
 package models
 
-import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
+import utils.{DateCalculators, TimestampFormats}
 import utils.TimestampFormats._
+
+import java.time.{LocalDateTime, ZoneOffset}
 
 case class IncorpUpdate(transactionId: String,
                         status: String,
                         crn: Option[String],
-                        incorpDate: Option[DateTime],
+                        incorpDate: Option[LocalDateTime],
                         timepoint: String,
                         statusDescription: Option[String] = None)
 
@@ -35,7 +37,7 @@ object IncorpUpdate {
     (__ \ "_id").format[String] and
       (__ \ "transaction_status").format[String] and
       (__ \ "company_number").formatNullable[String] and
-      (__ \ "incorporated_on").formatNullable[DateTime](dateFormat) and
+      (__ \ "incorporated_on").formatNullable[LocalDateTime](dateFormat) and
       (__ \ "timepoint").format[String] and
       (__ \ "transaction_status_description").formatNullable[String]
     ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
@@ -44,7 +46,7 @@ object IncorpUpdate {
     (__ \ "transaction_id").format[String] and
       (__ \ "transaction_status").format[String] and
       (__ \ "company_number").formatNullable[String] and
-      (__ \ "incorporated_on").formatNullable[DateTime](dateFormat) and
+      (__ \ "incorporated_on").formatNullable[LocalDateTime](dateFormat) and
       (__ \ "timepoint").format[String] and
       (__ \ "transaction_status_description").formatNullable[String]
     ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
@@ -53,21 +55,21 @@ object IncorpUpdate {
     (__ \ "transaction_id").format[String] and
       (__ \ "status").format[String] and
       (__ \ "crn").formatNullable[String] and
-      (__ \ "incorporationDate").formatNullable[DateTime](dateFormat) and
+      (__ \ "incorporationDate").formatNullable[LocalDateTime](dateFormat) and
       (__ \ "timepoint").format[String] and
       (__ \ "transaction_status_description").formatNullable[String]
     ) (IncorpUpdate.apply, unlift(IncorpUpdate.unapply))
 }
 
-case class IncorpStatusEvent(status: String, crn: Option[String], incorporationDate: Option[DateTime], description: Option[String], timestamp: DateTime)
+case class IncorpStatusEvent(status: String, crn: Option[String], incorporationDate: Option[LocalDateTime], description: Option[String], timestamp: LocalDateTime)
 
 object IncorpStatusEvent {
   val writes: OFormat[IncorpStatusEvent] = (
     (__ \ "status").format[String] and
       (__ \ "crn").formatNullable[String] and
-      (__ \ "incorporationDate").formatNullable[DateTime] and
+      (__ \ "incorporationDate").formatNullable[LocalDateTime] and
       (__ \ "description").formatNullable[String] and
-      (__ \ "timestamp").format[DateTime]
+      (__ \ "timestamp").format[LocalDateTime]
     ) (IncorpStatusEvent.apply, unlift(IncorpStatusEvent.unapply))
 
   implicit val format: OFormat[IncorpStatusEvent] = Json.format[IncorpStatusEvent]
@@ -75,7 +77,7 @@ object IncorpStatusEvent {
 
 case class IncorpUpdateResponse(regime: String, subscriber: String, callbackUrl: String, incorpUpdate: IncorpUpdate)
 
-object IncorpUpdateResponse {
+object IncorpUpdateResponse extends DateCalculators {
 
   def writes: Writes[IncorpUpdateResponse] = new Writes[IncorpUpdateResponse] {
 
@@ -96,20 +98,18 @@ object IncorpUpdateResponse {
     }
 
     private def toIncorpStatusEvent(u: IncorpUpdate): IncorpStatusEvent = {
-      IncorpStatusEvent(u.status, u.crn, u.incorpDate, u.statusDescription, now)
+      IncorpStatusEvent(u.status, u.crn, u.incorpDate, u.statusDescription, getDateTimeNowUTC)
     }
-
-    def now: DateTime = DateTime.now(DateTimeZone.UTC)
   }
 
   implicit val format: OFormat[IncorpUpdateResponse] = Json.format[IncorpUpdateResponse]
 }
 
-case class QueuedIncorpUpdate(timestamp: DateTime, incorpUpdate: IncorpUpdate)
+case class QueuedIncorpUpdate(timestamp: LocalDateTime, incorpUpdate: IncorpUpdate)
 
 object QueuedIncorpUpdate {
   implicit val format: OFormat[QueuedIncorpUpdate] = (
-    (__ \ "timestamp").format[DateTime] and
+    (__ \ "timestamp").format[LocalDateTime] and
       (__ \ "incorp_update").format[IncorpUpdate](IncorpUpdate.cohoFormat)
     ) (QueuedIncorpUpdate.apply, unlift(QueuedIncorpUpdate.unapply))
 }

@@ -31,7 +31,6 @@ trait DocValidator extends MongoSupport {
       "validator" -> BsonDocument("company_number" -> BsonDocument("$regex" -> regex))
     )
 
-    mongoComponent.database.listCollections().map(println)
     mongoComponent.database.runCommand(commandDoc).toFuture()
   }
 }

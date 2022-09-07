@@ -13,7 +13,6 @@ object AppDependencies {
     ws,
     "com.enragedginger" %%  "akka-quartz-scheduler"           % "1.9.2-akka-2.6.x",
     "uk.gov.hmrc"       %% s"bootstrap-backend$playVersion"   % bootstrapVersion,
-    "com.typesafe.play" %%  "play-json-joda"                  % "2.6.10",
     "uk.gov.hmrc.mongo" %% s"hmrc-mongo$playVersion"          % hmrcMongoVersion,
   )
 
