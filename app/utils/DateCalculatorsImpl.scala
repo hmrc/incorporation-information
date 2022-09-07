@@ -31,12 +31,22 @@ trait DateCalculators {
   def getDateTimeNowUTC: LocalDateTime = LocalDateTime.now(ZoneOffset.UTC)
   def getDateTimeNowGMT = LocalDateTime.now(ZoneId.of("Europe/London"))
 
-  private val cohoFormat = DateTimeFormatter.ofPattern("uuuuMMddHHmmssSSS").withLocale(Locale.UK)
-
   def cohoStringToDateTime(cohoString: String): LocalDateTime = if (cohoString.size < 17) {
     throw new Exception(s"timepoint is not 17 characters it is ${cohoString.size}")
   } else {
-    LocalDateTime.parse(cohoString, cohoFormat)
+
+    //TODO: Bespoke extraction due to issue with DateTimeFormatter in Java8. Moving to Java11 may resolve this and can be re-written back to:
+    //    val cohoFormat = DateTimeFormatter.ofPattern("uuuuMMddHHmmssSSS")
+    //    LocalDateTime.parse(cohoString, cohoFormat)
+    val year = cohoString.substring(0,4).toInt
+    val month = cohoString.substring(4,6).toInt
+    val day = cohoString.substring(6,8).toInt
+    val hours = cohoString.substring(8,10).toInt
+    val minutes = cohoString.substring(10,12).toInt
+    val seconds = cohoString.substring(12,14).toInt
+    val nanos = "%-9s".format(cohoString.substring(14,17)).replace(" ", "0").toInt
+
+    LocalDateTime.of(year, month, day, hours, minutes, seconds, nanos)
   }
 
   def dateGreaterThanNow(dateToCompare: String) =
