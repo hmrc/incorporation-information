@@ -18,10 +18,8 @@ package jobs
 
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.google.inject.name.Names
-import com.mongodb.bulk.BulkWriteError
 import helpers.IntegrationSpecBase
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
-import org.joda.time.DateTime
 import org.mongodb.scala.MongoWriteException
 import org.mongodb.scala.bson.BsonDocument
 import play.api.inject.guice.GuiceApplicationBuilder
@@ -32,10 +30,11 @@ import play.api.{Application, inject}
 import repositories._
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.test.MongoSupport
+import utils.DateCalculators
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class IncorporationUpdateISpec extends IntegrationSpecBase with MongoSupport with DocValidator {
+class IncorporationUpdateISpec extends IntegrationSpecBase with MongoSupport with DocValidator with DateCalculators {
 
   val mockUrl = s"http://$wiremockHost:$wiremockPort"
   val additionalConfiguration = Map(
@@ -303,7 +302,7 @@ class IncorporationUpdateISpec extends IntegrationSpecBase with MongoSupport wit
       setupFeatures(submissionCheck = false)
 
       val iu = IncorpUpdate("1234", "awaiting", None, None, "tp", None)
-      val qiu1 = QueuedIncorpUpdate(DateTime.now, iu)
+      val qiu1 = QueuedIncorpUpdate(getDateTimeNowUTC, iu)
 
       insert(qiu1)
       await(queueRepo.collection.countDocuments().toFuture()) mustBe 1

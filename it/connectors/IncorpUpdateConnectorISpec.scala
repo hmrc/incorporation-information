@@ -19,12 +19,12 @@ package connectors
 import com.github.tomakehurst.wiremock.client.WireMock.{getRequestedFor, matching, urlMatching, verify}
 import helpers.IntegrationSpecBase
 import models.IncorpUpdate
-import org.joda.time.DateTime
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.test.Helpers._
-import uk.gov.hmrc.http.Authorization
-import uk.gov.hmrc.http.{BadRequestException, HeaderCarrier}
+import uk.gov.hmrc.http.{Authorization, BadRequestException, HeaderCarrier}
+
+import java.time.LocalDateTime
 
 class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
 
@@ -63,7 +63,7 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
          |}""".stripMargin
 
 
-    val date = new DateTime(2016, 8, 10, 0, 0)
+    val date = LocalDateTime.of(2016, 8, 10, 0, 0)
     val item1 = IncorpUpdate(transactionId, "accepted", Some("9999999999"), Some(date), "123456789", None)
 
     "items from the sample response keeping headers when getting from stub" in {

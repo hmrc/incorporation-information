@@ -19,7 +19,6 @@ package config
 import Helpers.{LogCapturing, SCRSSpec}
 import com.mongodb.client.result.DeleteResult
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
-import org.joda.time.DateTime
 import org.mockito.ArgumentMatchers.{any, eq => eqTo}
 import org.mockito.Mockito._
 import org.scalatest.concurrent.Eventually
@@ -29,6 +28,7 @@ import repositories._
 import services.{IncorpUpdateService, SubscriptionService}
 import uk.gov.hmrc.http.HeaderCarrier
 
+import java.time.LocalDateTime
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -122,7 +122,7 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually with
 
   "logIncorpInfo" must {
 
-    val dateTime = DateTime.parse("2010-06-30T01:20+00:00")
+    val dateTime = LocalDateTime.of(2010, 6, 30, 1, 20, 0)
 
     val transId1 = "trans-1"
     val transId2 = "trans-2"
@@ -154,7 +154,7 @@ class AppStartupJobsSpec extends SCRSSpec with LogCapturing with Eventually with
 
       val expectedLogs = List(
         "[HeldDocs] For txId: trans-1 - subscriptions: List(Subscription(trans-1,testRegime,testSubscriber,testCallbackUrl)) - " +
-          "incorp update: incorp status: accepted - incorp date: Some(2010-06-30T01:20:00.000Z) - crn: Some(crn-1) - timepoint: 12345 - queue: In queue",
+          "incorp update: incorp status: accepted - incorp date: Some(2010-06-30T01:20:00.0) - crn: Some(crn-1) - timepoint: 12345 - queue: In queue",
         "[HeldDocs] For txId: trans-2 - subscriptions: No subs - incorp update: No incorp update - queue: No queued incorp update"
       )
 

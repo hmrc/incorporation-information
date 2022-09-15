@@ -18,7 +18,6 @@ package repositories
 
 import com.mongodb.client.model.Updates.set
 import models.QueuedIncorpUpdate
-import org.joda.time.DateTime
 import org.mongodb.scala.model.Filters.{equal, lte}
 import org.mongodb.scala.model.Indexes.ascending
 import org.mongodb.scala.model._
@@ -27,6 +26,7 @@ import play.api.libs.json.Format
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 
+import java.time.{Instant, LocalDateTime, ZoneOffset}
 import javax.inject.Inject
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
@@ -53,7 +53,7 @@ trait QueueRepository {
 
   def removeQueuedIncorpUpdate(transactionId: String): Future[Boolean]
 
-  def updateTimestamp(transactionId: String, newTS: DateTime): Future[Boolean]
+  def updateTimestamp(transactionId: String, newTS: Instant): Future[Boolean]
 }
 
 class QueueMongoRepository(mongo: MongoComponent, format: Format[QueuedIncorpUpdate])(implicit val ec: ExecutionContext) extends PlayMongoRepository[QueuedIncorpUpdate](
@@ -110,7 +110,7 @@ class QueueMongoRepository(mongo: MongoComponent, format: Format[QueuedIncorpUpd
 
   override def getIncorpUpdates(fetchSize: Int): Future[Seq[QueuedIncorpUpdate]] =
     collection
-      .find(lte("timestamp", DateTime.now.getMillis))
+      .find(lte("timestamp", Instant.now().toEpochMilli))
       .sort(Sorts.ascending("timestamp"))
       .limit(fetchSize)
       .toFuture()
@@ -118,6 +118,6 @@ class QueueMongoRepository(mongo: MongoComponent, format: Format[QueuedIncorpUpd
   override def removeQueuedIncorpUpdate(transactionId: String): Future[Boolean] =
     collection.deleteOne(txSelector(transactionId)).toFuture().map(_.getDeletedCount > 0)
 
-  override def updateTimestamp(transactionId: String, newTS: DateTime): Future[Boolean] =
-    collection.updateOne(txSelector(transactionId), set("timestamp", newTS.getMillis)).toFuture().map(_.getModifiedCount > 0)
+  override def updateTimestamp(transactionId: String, newTS: Instant): Future[Boolean] =
+    collection.updateOne(txSelector(transactionId), set("timestamp", newTS.toEpochMilli)).toFuture().map(_.getModifiedCount > 0)
 }

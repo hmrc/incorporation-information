@@ -19,18 +19,17 @@ package services
 import Helpers.{LogCapturing, SCRSSpec}
 import connectors.{FailedTransactionalAPIResponse, IncorporationAPIConnector, PublicCohoApiConnectorImpl, SuccessfulTransactionalAPIResponse}
 import models.IncorpUpdate
-import org.joda.time.DateTime
-import org.joda.time.format.DateTimeFormat
-import org.mockito.ArgumentMatchers.{any, eq => eqTo}
 import org.mockito.ArgumentMatchers
+import org.mockito.ArgumentMatchers.{any, eq => eqTo}
 import org.mockito.Mockito._
 import play.api.Logger
-import play.api.libs.json.JodaWrites.JodaDateTimeNumberWrites
 import play.api.libs.json._
+import play.api.test.Helpers._
 import repositories.IncorpUpdateRepository
 import utils.TimestampFormats
-import play.api.test.Helpers._
 
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -237,7 +236,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
   val transactionId = "tx-12345"
   val crn = "XX010101"
 
-  val dateTime = Json.toJson(DateTime.parse("2017-05-15T17:45:45Z"))(JodaDateTimeNumberWrites)
+  val dateTime = Json.toJson(LocalDateTime.parse("2017-05-15T17:45:45Z", TimestampFormats.ldtFormatter))(TimestampFormats.milliDateTimeFormat)
 
   "extractJson" must {
 
@@ -291,7 +290,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
 
     val crn = "crn-12345"
 
-    val incorpUpdate = IncorpUpdate(transactionId, "accepted", Some(crn), Some(DateTime.parse("2018-05-01", DateTimeFormat.forPattern(TimestampFormats.datePattern))), "", None)
+    val incorpUpdate = IncorpUpdate(transactionId, "accepted", Some(crn), Some(LocalDateTime.parse("2018-05-01", TimestampFormats.ldtFormatter)), "", None)
 
     "return Json when a document is retrieved by the supplied transaction Id and the sub-document is fetched by the supplied key" in new Setup {
       val response = SuccessfulTransactionalAPIResponse(buildJson())

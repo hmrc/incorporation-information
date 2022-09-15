@@ -50,7 +50,7 @@ trait AlertLogging extends Logging {
 
   private[utils] def today: String = dateCalculators.getCurrentDay
 
-  private[utils] def now: LocalTime = dateCalculators.getCurrentTime
+  private[utils] def now: LocalTime = dateCalculators.getDateTimeNowUTC.toLocalTime
 
   private[utils] def isLoggingDay = loggingDays.split(",").contains(today)
 

@@ -21,10 +21,10 @@ import play.api.{Configuration, Logging}
 import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo, TimepointMongo}
 import services.{IncorpUpdateService, SubscriptionService}
 import uk.gov.hmrc.http.HeaderCarrier
+import utils.TimestampFormats
+
 import java.util.Base64
-
 import javax.inject.Inject
-
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
@@ -93,7 +93,7 @@ class StartUpJobs @Inject()(val configuration: Configuration,
             s"""incorp update: ${
               incorpUpdate.fold("No incorp update")(incorp =>
                 s"incorp status: ${incorp.status} - " +
-                  s"incorp date: ${incorp.incorpDate} - " +
+                  s"incorp date: ${incorp.incorpDate.map(TimestampFormats.ldtFormatter.format(_))} - " +
                   s"crn: ${incorp.crn} - " +
                   s"timepoint: ${incorp.timepoint}"
               )

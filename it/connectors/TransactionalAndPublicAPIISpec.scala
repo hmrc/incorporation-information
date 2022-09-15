@@ -18,16 +18,15 @@ package connectors
 
 import helpers.IntegrationSpecBase
 import models.IncorpUpdate
-import org.joda.time.DateTime
-import org.joda.time.format.DateTimeFormat
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsObject, Json}
 import play.api.test.Helpers._
 import repositories.IncorpUpdateMongo
+import utils.TimestampFormats
 import utils.TimestampFormats._
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import java.time.LocalDateTime
 class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
 
   val publicCohoStubUri = "/cohoFrontEndStubs"
@@ -51,7 +50,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
     def insert(update: IncorpUpdate) = await(incRepo.storeSingleIncorpUpdate(update))
   }
 
-  val incorpDate = DateTime.parse("2018-05-01", DateTimeFormat.forPattern(datePattern))
+  val incorpDate = LocalDateTime.parse("2018-05-01", TimestampFormats.ldtFormatter)
 
   "fetchTransactionalData" must {
 
@@ -449,7 +448,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
            |  ]
          |}
          |    """.stripMargin
-    val dateTime = Json.toJson(DateTime.parse("2017-05-15T17:45:45Z"))
+    val dateTime = Json.toJson(LocalDateTime.parse("2017-05-15T17:45:45Z", TimestampFormats.ldtFormatter))
     val officerListInput =
       s"""
                                 |{ "items":[{

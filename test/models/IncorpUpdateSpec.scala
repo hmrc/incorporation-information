@@ -17,11 +17,13 @@
 package models
 
 import Helpers.{JSONhelpers, SCRSSpec}
-import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.json._
+import utils.{DateCalculators, TimestampFormats}
+
+import java.time.{Instant, LocalDateTime, ZoneOffset}
 
 
-class IncorpUpdateSpec extends SCRSSpec with JSONhelpers {
+class IncorpUpdateSpec extends SCRSSpec with JSONhelpers with DateCalculators {
 
   "writes" must {
 
@@ -30,9 +32,9 @@ class IncorpUpdateSpec extends SCRSSpec with JSONhelpers {
     val regime = "CT"
     val callbackUrl = "www.url.com"
     val crn = "crn12345"
-    val incDate = DateTime.parse("2000-12-12")
+    val incDate = LocalDateTime.parse("2000-12-12", TimestampFormats.ldtFormatter)
     val status = "accepted"
-    val time =  DateTime.now(DateTimeZone.UTC)
+    val time =  getDateTimeNowUTC
 
     "return json when an accepted incorporation is provided" in {
 
@@ -51,7 +53,7 @@ class IncorpUpdateSpec extends SCRSSpec with JSONhelpers {
            |    "IncorpStatusEvent":{
            |      "status":"$status",
            |      "crn":"$crn",
-           |      "incorporationDate":${incDate.getMillis}
+           |      "incorporationDate":${incDate.toInstant(ZoneOffset.UTC).toEpochMilli}
            |    }
            |  }
            |}
@@ -64,7 +66,7 @@ class IncorpUpdateSpec extends SCRSSpec with JSONhelpers {
 
       // TODO - should be an ISO formatted timestamp
       // check it's within a second
-      generatedTS mustBe time.toDate.getTime +- 1000
+      generatedTS mustBe time.toInstant(ZoneOffset.UTC).toEpochMilli +- 1000
       jsonNoTS mustBe json
     }
 
@@ -92,17 +94,17 @@ class IncorpUpdateSpec extends SCRSSpec with JSONhelpers {
 
       val (generatedTS, jsonNoTS) = extractTimestamp(response)
 
-      generatedTS mustBe time.toDate.getTime +- 1000
+      generatedTS mustBe time.toInstant(ZoneOffset.UTC).toEpochMilli +- 1000
       jsonNoTS mustBe json
     }
 
     "return json including a valid timestamp" in {
       val incorpUpdate = IncorpUpdate(transactionId, "rejected", None, None, "tp", Some("description"))
 
-      val before = DateTime.now(DateTimeZone.UTC).getMillis
+      val before = Instant.now().toEpochMilli
       val json = Json.toJson(IncorpUpdateResponse(regime, subscriber, callbackUrl, incorpUpdate))(IncorpUpdateResponse.writes).as[JsObject]
       val timestamp = (json \ "SCRSIncorpStatus" \ "IncorpStatusEvent" \ "timestamp").as[Long]
-      val after = DateTime.now(DateTimeZone.UTC).getMillis
+      val after = Instant.now().toEpochMilli
 
       (before <= timestamp && after >= timestamp) mustBe true
     }
@@ -124,7 +126,7 @@ class IncorpUpdateSpec extends SCRSSpec with JSONhelpers {
     "return an IncorpUpdate in mongo format and be able to convert it back again consistently" in {
       val ts = "2013-12-12"
       val json = j(ts)
-      val incorpUpdate = IncorpUpdate("transId1", "awaiting", Some("08978562"), Some(DateTime.parse(ts)), "timepoint", Some("status"))
+      val incorpUpdate = IncorpUpdate("transId1", "awaiting", Some("08978562"), Some(LocalDateTime.parse(ts, TimestampFormats.ldtFormatter)), "timepoint", Some("status"))
 
       val result = json.validate[IncorpUpdate](IncorpUpdate.mongoFormat)
 
@@ -150,7 +152,7 @@ class IncorpUpdateSpec extends SCRSSpec with JSONhelpers {
     "return an IncorpUpdate in mongo format and be able to convert it back again consistently" in {
       val ts = "2013-12-12"
       val json = j(ts)
-      val incorpUpdate = IncorpUpdate("transId1", "awaiting", Some("08978562"), Some(DateTime.parse(ts)), "timepoint", Some("status"))
+      val incorpUpdate = IncorpUpdate("transId1", "awaiting", Some("08978562"), Some(LocalDateTime.parse(ts, TimestampFormats.ldtFormatter)), "timepoint", Some("status"))
 
       val result = json.validate[IncorpUpdate](IncorpUpdate.cohoFormat)
 
@@ -177,7 +179,7 @@ class IncorpUpdateSpec extends SCRSSpec with JSONhelpers {
     "return an IncorpUpdate in mongo format and be able to convert it back again consistently" in {
       val ts = "2013-12-12"
       val json = j(ts)
-      val incorpUpdate = IncorpUpdate("transId1", "awaiting", Some("08978562"), Some(DateTime.parse(ts)), "timepoint", Some("status"))
+      val incorpUpdate = IncorpUpdate("transId1", "awaiting", Some("08978562"), Some(LocalDateTime.parse(ts, TimestampFormats.ldtFormatter)), "timepoint", Some("status"))
 
       val result = json.validate[IncorpUpdate](IncorpUpdate.responseFormat)
 

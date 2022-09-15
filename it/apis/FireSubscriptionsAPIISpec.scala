@@ -18,15 +18,17 @@ package apis
 
 import helpers.IntegrationSpecBase
 import models.{IncorpUpdate, IncorpUpdateResponse, QueuedIncorpUpdate, Subscription}
-import org.joda.time.DateTime
 import play.api._
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.test.Helpers._
 import repositories.{QueueMongoImpl, SubscriptionsMongo}
 import services.SubscriptionFiringService
 import uk.gov.hmrc.http.HeaderCarrier
+import utils.DateCalculators
+
+import java.time.LocalDateTime
 @javax.inject.Singleton
-class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
+class FireSubscriptionsAPIISpec extends IntegrationSpecBase with DateCalculators {
 
   val mockUrl = s"http://$wiremockHost:$wiremockPort"
 
@@ -63,9 +65,9 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
   val incorpUpdate = IncorpUpdate("transId1", "awaiting", None, None, "timepoint", None)
   val incorpUpdate2 = IncorpUpdate("transId2", "awaiting", None, None, "timepoint", None)
   val incorpUpdate3 = IncorpUpdate("transId3", "awaiting", None, None, "timepoint", None)
-  val queuedIncorpUpdate = QueuedIncorpUpdate(DateTime.now, incorpUpdate)
-  val queuedIncorpUpdate2 = QueuedIncorpUpdate(DateTime.now, incorpUpdate2)
-  val queuedIncorpUpdate3 = QueuedIncorpUpdate(DateTime.now, incorpUpdate3)
+  val queuedIncorpUpdate = QueuedIncorpUpdate(getDateTimeNowUTC, incorpUpdate)
+  val queuedIncorpUpdate2 = QueuedIncorpUpdate(getDateTimeNowUTC, incorpUpdate2)
+  val queuedIncorpUpdate3 = QueuedIncorpUpdate(getDateTimeNowUTC, incorpUpdate3)
   val sub1c = Subscription("transId1", "CT", "subscriber", s"$mockUrl/mockUri")
   val sub1p = Subscription("transId1", "PAYE", "subscriber", s"$mockUrl/mockUri")
   val sub2 = Subscription("transId2", "CT", "subscriber", s"$mockUrl/mockUri")
@@ -173,7 +175,7 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase {
       insert(sub1c)
       subCount mustBe 1
 
-      val futureQIU = QueuedIncorpUpdate(DateTime.now.plusMinutes(10), incorpUpdate)
+      val futureQIU = QueuedIncorpUpdate(getDateTimeNowUTC.plusMinutes(10), incorpUpdate)
       insert(futureQIU)
       queueCount mustBe 1
 

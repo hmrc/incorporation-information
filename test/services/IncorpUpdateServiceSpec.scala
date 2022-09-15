@@ -20,7 +20,6 @@ import Helpers.{JSONhelpers, LogCapturing, SCRSSpec}
 import com.mongodb.client.result.UpdateResult
 import connectors.IncorporationAPIConnector
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
-import org.joda.time.DateTime
 import org.mockito.ArgumentMatchers.{any, eq => eqTo}
 import org.mockito.Mockito._
 import org.mockito.{ArgumentCaptor, ArgumentMatchers}
@@ -33,11 +32,11 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.lock.LockService
 import utils.{DateCalculators, PagerDutyKeys}
 
-import java.time.LocalTime
+import java.time.{LocalDateTime, LocalTime, ZoneOffset}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturing {
+class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturing with DateCalculators {
 
   val mockIncorporationCheckAPIConnector = mock[IncorporationAPIConnector]
   val mockIncorpUpdateRepository = mock[IncorpUpdateRepository]
@@ -91,8 +90,8 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
   val incorpUpdates = Seq(incorpUpdate, incorpUpdateNew)
   val seqOfIncorpUpdates = Seq(incorpUpdate, incorpUpdate2, incorpUpdate3)
   val emptyUpdates = Seq()
-  val queuedIncorpUpdate = QueuedIncorpUpdate(DateTime.now, incorpUpdate)
-  val queuedIncorpUpdate2 = QueuedIncorpUpdate(DateTime.now, incorpUpdateNew)
+  val queuedIncorpUpdate = QueuedIncorpUpdate(getDateTimeNowUTC, incorpUpdate)
+  val queuedIncorpUpdate2 = QueuedIncorpUpdate(getDateTimeNowUTC, incorpUpdateNew)
   val regimeCT = "ct"
   val regimeCTAX = "ctax"
   val subscriber = "scrs"
@@ -196,14 +195,14 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
     }
   }
   "timepointValidator" must {
-    val todaysDate = new DateTime("2019-01-07T00:00:00.005")
+    val todaysDate = LocalDateTime.parse("2019-01-07T00:00:00.005")
     val cohoString = 20190107000000005L
     val todaysDateCoho = cohoString.toString
     val todaysDateToCohoMinus1 = 20190107000000004L
     val todaysDateToCohoPlus1 = 20190107010000006L
 
-    def nDCalc(date: DateTime): DateCalculators = new DateCalculators {
-      override def getDateNowUkZonedTime: DateTime = date
+    def nDCalc(date: LocalDateTime): DateCalculators = new DateCalculators {
+      override def getDateTimeNowGMT: LocalDateTime = date
     }
 
     "return false if timepoint < now" in new Setup(nDCalc(todaysDate)) {
@@ -223,7 +222,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
   }
 
   "latestTimepoint" must {
-    val mondayWorking = new DateTime("2019-01-07T00:00:00.005")
+    val mondayWorking = LocalDateTime.parse("2019-01-07T00:00:00.005")
     val goodTimePoint = 20190104000000005L
     val previousGoodTimePoint = goodTimePoint - 1
 
@@ -244,19 +243,18 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
 
     def time(h: Int, m: Int, s: Int) = LocalTime.of(h, m, s)
 
-    def nDCalc(time: LocalTime, date: DateTime): DateCalculators = new DateCalculators {
-      override def getCurrentTime: LocalTime = time
+    def nDCalc(date: LocalDateTime): DateCalculators = new DateCalculators {
 
-      override def getDateNowUkZonedTime: DateTime = date
+      override def getDateTimeNowGMT: LocalDateTime = date
     }
 
-    "throw a PAGER DUTY log message if working day true and timepoint > now" in new Setup(nDCalc(time(8, 0, 1), mondayWorking)) {
+    "throw a PAGER DUTY log message if working day true and timepoint > now" in new Setup(nDCalc(mondayWorking)) {
       withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         service.latestTimepoint(incorpUpdatesGoodAndBad) mustBe badDateTimePointWorkingDay.toString
         loggingEvents.head.getMessage mustBe s"${PagerDutyKeys.TIMEPOINT_INVALID} - last timepoint received from coho invalid: $badDateTimePointWorkingDay"
       }
     }
-    "throw a PAGER DUTY log message at level ERROR if working day true and timepoint cannot be parsed" in new Setup(nDCalc(time(8, 0, 1), mondayWorking)) {
+    "throw a PAGER DUTY log message at level ERROR if working day true and timepoint cannot be parsed" in new Setup(nDCalc(mondayWorking)) {
       withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         service.latestTimepoint(incorpUpdatesNonParsable) mustBe badNonParsableTimePoint.toString
         loggingEvents.head.getMessage mustBe "couldn't parse Foobar"
@@ -264,19 +262,19 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
       }
     }
 
-    "throw a PAGER DUTY log message if working day false, timepoint > now" in new Setup(nDCalc(time(7, 0, 1), mondayWorking.plusDays(1))) {
+    "throw a PAGER DUTY log message if working day false, timepoint > now" in new Setup(nDCalc(mondayWorking.plusDays(1))) {
       withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         service.latestTimepoint(incorpUpdatesGoodAndBad) mustBe badDateTimePointWorkingDay.toString
         loggingEvents.head.getMessage mustBe s"${PagerDutyKeys.TIMEPOINT_INVALID} - last timepoint received from coho invalid: $badDateTimePointWorkingDay"
       }
     }
-    "don't throw a log message if working day true, timepoint < now" in new Setup(nDCalc(time(8, 0, 1), mondayWorking)) {
+    "don't throw a log message if working day true, timepoint < now" in new Setup(nDCalc(mondayWorking)) {
       withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         service.latestTimepoint(incorpUpdatesGoodOnlyRealTimepoints) mustBe previousGoodTimePoint.toString
         loggingEvents.size mustBe 0
       }
     }
-    "don't throw a log message if working day true, timepoint = now" in new Setup(nDCalc(time(8, 0, 1), mondayWorking)) {
+    "don't throw a log message if working day true, timepoint = now" in new Setup(nDCalc(mondayWorking)) {
       withCaptureOfLoggingFrom(Logger(service.getClass)) { loggingEvents =>
         service.latestTimepoint(incorpUpdatesGoodOnlyRealTimepoints) mustBe previousGoodTimePoint.toString
         loggingEvents.size mustBe 0
@@ -422,7 +420,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
       val result = service.createQueuedIncorpUpdates(Seq(incorpUpdate))
 
       result.head.copy(timestamp = queuedIncorpUpdate.timestamp) mustBe queuedIncorpUpdate
-      result.head.timestamp.getMillis mustBe (queuedIncorpUpdate.timestamp.getMillis +- 1500)
+      result.head.timestamp.toInstant(ZoneOffset.UTC).toEpochMilli mustBe (queuedIncorpUpdate.timestamp.toInstant(ZoneOffset.UTC).toEpochMilli +- 1500)
     }
   }
 

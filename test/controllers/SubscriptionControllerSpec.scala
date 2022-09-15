@@ -18,9 +18,8 @@ package controllers
 
 import Helpers.{JSONhelpers, SCRSSpec}
 import models.{IncorpUpdate, Subscription}
-import org.joda.time.DateTime
-import org.mockito.ArgumentMatchers.{any, eq => eqTo}
 import org.mockito.ArgumentMatchers
+import org.mockito.ArgumentMatchers.{any, eq => eqTo}
 import org.mockito.Mockito._
 import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.mvc.{AnyContentAsEmpty, ControllerComponents, Result}
@@ -28,7 +27,9 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import repositories._
 import services.SubscriptionService
+import utils.TimestampFormats
 
+import java.time.{LocalDateTime, ZoneOffset}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -50,7 +51,7 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
   val callbackUrl = "www.url.com"
   val crn = "crn12345"
   val acceptedStatus = "accepted"
-  val incDate: DateTime = DateTime.parse("2000-12-12")
+  val incDate: LocalDateTime = LocalDateTime.parse("2000-12-12", TimestampFormats.ldtFormatter)
   val sub: Subscription = Subscription(transactionId, regime, subscriber, "www.test.com")
   val testIncorpUpdate: IncorpUpdate = IncorpUpdate(transactionId, acceptedStatus, Some(crn), Some(incDate), "20170327093004787", None)
 
@@ -80,7 +81,7 @@ class SubscriptionControllerSpec extends SCRSSpec with JSONhelpers {
         |    "IncorpStatusEvent":{
         |      "status":"$acceptedStatus",
         |      "crn":"$crn",
-        |      "incorporationDate":${incDate.getMillis}
+        |      "incorporationDate":${incDate.toInstant(ZoneOffset.UTC).toEpochMilli}
         |    }
         |  }
         |}

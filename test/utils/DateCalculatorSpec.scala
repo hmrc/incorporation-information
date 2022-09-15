@@ -16,11 +16,9 @@
 
 package utils
 
-import java.time.LocalTime
+import java.time.{LocalDateTime, LocalTime, ZoneOffset}
 import java.time.format.DateTimeFormatter
-
 import Helpers.SCRSSpec
-import org.joda.time.DateTime
 import org.scalatest.BeforeAndAfterEach
 
 class DateCalculatorSpec extends SCRSSpec with BeforeAndAfterEach {
@@ -33,23 +31,23 @@ class DateCalculatorSpec extends SCRSSpec with BeforeAndAfterEach {
 
   "getTheDay" must {
     "return todays day" in new StandardSetup {
-      val testDate = DateTime.parse("2017-07-11T00:00:00.000Z")
+      val testDate = LocalDateTime.parse("2017-07-11T00:00:00.000")
       dCalc.getTheDay(testDate) mustBe "TUE"
     }
   }
 
-  class SetupWithDateTimeOverrides(now:DateTime) {
+  class SetupWithDateTimeOverrides(now: LocalDateTime) {
     val nDCalc = new DateCalculators {
-      override def getDateNowUkZonedTime = now
+      override def getDateTimeNowGMT = now
     }
   }
   "epochToDateTime" must {
     "convert coho timestamp to the correct datetime" in new StandardSetup {
       val res = dCalc.cohoStringToDateTime("20190107171206152")
-      res mustBe new DateTime("2019-01-07T17:12:06.152")
-      res.getMillis mustBe 1546881126152L
-      val date = new DateTime("2019-01-07T17:12:06.152")
-      date.getMillis mustBe res.getMillis
+      res mustBe LocalDateTime.parse("2019-01-07T17:12:06.152")
+      res.toInstant(ZoneOffset.UTC).toEpochMilli mustBe 1546881126152L
+      val date = LocalDateTime.parse("2019-01-07T17:12:06.152")
+      date mustBe res
     }
     "coho timestamp will throw exception if incorrect format (not long enough)" in new StandardSetup {
       intercept[Exception](dCalc.cohoStringToDateTime("2019010717120615"))
@@ -60,18 +58,20 @@ class DateCalculatorSpec extends SCRSSpec with BeforeAndAfterEach {
 
   }
   "dateGreaterThanNow" must {
-    val date = new DateTime("2017-07-11T00:00:00.005")
-    val cohoString = 20170711000000005L
-    val cohoStringPlus1 = 20170711000000006L
-    val cohoStringMinus1 = 20170711000000004L
+    val date = LocalDateTime.parse("2017-07-11T00:00:00.005")
+
+    val cohoString = "20170711000000005"
+    val cohoStringPlus1 = "20170711000000006"
+    val cohoStringMinus1 = "20170711000000004"
+
     "return true for coho string greater than now" in new SetupWithDateTimeOverrides(now = date) {
-      nDCalc.dateGreaterThanNow(cohoStringPlus1.toString) mustBe true
+      nDCalc.dateGreaterThanNow(cohoStringPlus1) mustBe true
     }
     "return false for coho string equal to now" in new SetupWithDateTimeOverrides(now = date) {
-      nDCalc.dateGreaterThanNow(cohoString.toString) mustBe false
+      nDCalc.dateGreaterThanNow(cohoString) mustBe false
     }
     "return false for epoch less than now" in new SetupWithDateTimeOverrides(now = date) {
-      nDCalc.dateGreaterThanNow(cohoStringMinus1.toString) mustBe false
+      nDCalc.dateGreaterThanNow(cohoStringMinus1) mustBe false
     }
   }
 

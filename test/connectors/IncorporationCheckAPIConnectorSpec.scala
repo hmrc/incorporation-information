@@ -20,7 +20,6 @@ import Helpers.SCRSSpec
 import com.codahale.metrics.{Counter, Timer}
 import mocks.MockMetrics
 import models.IncorpUpdate
-import org.joda.time.DateTime
 import org.mockito.ArgumentMatchers
 import org.mockito.ArgumentMatchers.{any, eq => eqTo}
 import org.mockito.Mockito._
@@ -31,6 +30,8 @@ import uk.gov.hmrc.http._
 import uk.gov.hmrc.play.http.ws.{WSHttp, WSProxy}
 import utils.{DateCalculators, FeatureSwitch, SCRSFeatureSwitches}
 
+import java.time.format.DateTimeParseException
+import java.time.{LocalDate, LocalDateTime}
 import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
@@ -306,7 +307,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       "7894578956784",
       "accepted",
       Some("9999999999"),
-      Some(new DateTime(2016, 8, 10, 0, 0)),
+      Some(LocalDateTime.of(2016, 8, 10, 0, 0)),
       "123456789")
   )
 
@@ -418,7 +419,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
           "7894578956784",
           "accepted",
           Some(crn),
-          Some(DateTime.parse("2016-08-10")),
+          Some(LocalDate.parse("2016-08-10").atStartOfDay()),
           "123456789"
         )
 
@@ -456,7 +457,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         val result = connector.checkForIncorpUpdate(Some(timepoint))
         val failure = intercept[IncorpUpdateAPIFailure](await(result))
 
-        failure.ex mustBe a[IllegalArgumentException]
+        failure.ex mustBe a[DateTimeParseException]
       }
       "there is an empty date of incorporation" in new Setup {
         val url = s"$testProxyUrl/submissions?timepoint=$timepoint&items_per_page=1"
@@ -467,7 +468,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         val result = connector.checkForIncorpUpdate(Some(timepoint))
         val failure = intercept[IncorpUpdateAPIFailure](await(result))
 
-        failure.ex mustBe a[IllegalArgumentException]
+        failure.ex mustBe a[DateTimeParseException]
       }
       "only one of many submissions is invalid" in new Setup {
         val url = s"$testProxyUrl/submissions?timepoint=$timepoint&items_per_page=1"

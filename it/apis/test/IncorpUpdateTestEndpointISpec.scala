@@ -18,13 +18,15 @@ package apis.test
 
 import helpers.IntegrationSpecBase
 import models.IncorpUpdate
-import org.joda.time.format.ISODateTimeFormat
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.test.Helpers._
 import play.api.{Application, inject}
 import repositories._
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.test.MongoSupport
+import utils.TimestampFormats
+
+import java.time.LocalDateTime
 
 class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase with MongoSupport {
 
@@ -82,7 +84,7 @@ class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase with MongoSuppor
       getIncorp(transactionId) mustBe Some(IncorpUpdate("123abc", "rejected", None, None, "-1", None))
     }
 
-    def toDateTime(d: String) = ISODateTimeFormat.dateParser().withOffsetParsed().parseDateTime(d)
+    def toDateTime(d: String) = LocalDateTime.parse(d, TimestampFormats.ldtFormatter)
 
     "Allow a successful IU" in new Setup {
       val incorpDate = "2017-02-01"

@@ -16,15 +16,15 @@
 
 package controllers.test
 
-import javax.inject.Inject
 import models.{IncorpUpdate, QueuedIncorpUpdate}
-import org.joda.time.DateTime
-import org.joda.time.format.ISODateTimeFormat
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import repositories.{IncorpUpdateMongo, IncorpUpdateRepository, QueueMongo, QueueRepository}
 import uk.gov.hmrc.play.bootstrap.backend.controller.{BackendBaseController, BackendController}
+import utils.{DateCalculators, TimestampFormats}
 
-import scala.concurrent.{ExecutionContext, Future}
+import java.time.LocalDateTime
+import javax.inject.Inject
+import scala.concurrent.ExecutionContext
 
 
 class IncorpUpdateControllerImpl @Inject()(val injIncorpMongo: IncorpUpdateMongo,
@@ -35,7 +35,7 @@ class IncorpUpdateControllerImpl @Inject()(val injIncorpMongo: IncorpUpdateMongo
   override lazy val queueRepository = injQueueMongo.repo
 }
 
-trait IncorpUpdateController extends BackendBaseController {
+trait IncorpUpdateController extends BackendBaseController with DateCalculators {
 
   implicit val ec: ExecutionContext
   val repo: IncorpUpdateRepository
@@ -47,15 +47,13 @@ trait IncorpUpdateController extends BackendBaseController {
           success: Boolean = false
          ): Action[AnyContent] = Action.async {
     val status = if (success) "accepted" else "rejected"
-    val incorpDate = date map {
-      ISODateTimeFormat.dateParser().withOffsetParsed().parseDateTime(_)
-    }
+    val incorpDate = date.map(LocalDateTime.parse(_, TimestampFormats.ldtFormatter))
 
     val incorpUpdate = IncorpUpdate(txId, status, crn, incorpDate, "-1")
 
     for {
       _ <- repo.storeIncorpUpdates(Seq(incorpUpdate))
-      _ <- queueRepository.storeIncorpUpdates(Seq(QueuedIncorpUpdate(DateTime.now(), IncorpUpdate(txId, status, crn, incorpDate, "-1"))))
+      _ <- queueRepository.storeIncorpUpdates(Seq(QueuedIncorpUpdate(getDateTimeNowUTC, IncorpUpdate(txId, status, crn, incorpDate, "-1"))))
     } yield Ok
   }
 }

@@ -19,16 +19,17 @@ package jobs
 import com.google.inject.name.Names
 import helpers.IntegrationSpecBase
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
-import org.joda.time.DateTime
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.inject.{BindingKey, QualifierInstance}
 import play.api.test.Helpers._
 import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo, TimepointMongo}
+import utils.DateCalculators
 
+import java.time.LocalDateTime
 import scala.concurrent.ExecutionContext.Implicits._
 
-class FireSubscriptionsISpec extends IntegrationSpecBase {
+class FireSubscriptionsISpec extends IntegrationSpecBase with DateCalculators {
 
   val mockUrl = s"http://$wiremockHost:$wiremockPort"
 
@@ -109,7 +110,7 @@ class FireSubscriptionsISpec extends IntegrationSpecBase {
       await(timepointRepo.retrieveTimePoint) mustBe None
 
       val incorpUpdate = IncorpUpdate("transId1", "awaiting", None, None, "timepoint", None)
-      val QIU = QueuedIncorpUpdate(DateTime.now, incorpUpdate)
+      val QIU = QueuedIncorpUpdate(getDateTimeNowUTC, incorpUpdate)
       insert(QIU)
       await(queueRepo.collection.countDocuments().toFuture()) mustBe 1
 

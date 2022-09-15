@@ -16,28 +16,50 @@
 
 package utils
 
-import org.joda.time.DateTime
-import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat}
-import play.api.libs.json.JodaReads.DefaultJodaDateTimeReads
-import play.api.libs.json.JodaWrites.JodaDateTimeNumberWrites
-import play.api.libs.json.{Format, JsString, Reads, Writes}
+import play.api.libs.json._
+
+import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
+import java.time.temporal.ChronoField
+import java.time.{Instant, LocalDateTime, ZoneOffset}
 
 object TimestampFormats {
 
-  val datePattern = "yyyy-MM-dd"
+  val ldtFormatter: DateTimeFormatter =
+    new DateTimeFormatterBuilder()
+      .appendPattern("uuuu-MM-dd['T'HH:mm:ss]")
+      .optionalStart()
+      .appendFraction(ChronoField.MICRO_OF_SECOND, 1, 5, true)
+      .optionalEnd()
+      .optionalStart()
+      .appendZoneId()
+      .optionalEnd()
+      .parseDefaulting(ChronoField.HOUR_OF_DAY, 0)
+      .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
+      .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0)
+      .parseDefaulting(ChronoField.MICRO_OF_SECOND, 0)
+      .toFormatter()
 
-  val dateFormat = Format[DateTime](
-    Reads[DateTime](js =>
+  val dateFormat = Format[LocalDateTime](
+    Reads[LocalDateTime](js =>
       js.validate[String].map {
-        date => DateTime.parse(date, DateTimeFormat.forPattern(datePattern))
+        date => LocalDateTime.parse(date, ldtFormatter)
       }
     ),
-    Writes[DateTime](d =>
-      JsString(ISODateTimeFormat.date().print(d))
+    Writes[LocalDateTime](d =>
+      JsString(d.toLocalDate.toString)
     )
   )
 
-  implicit val jodaDateTimeFormat: Format[DateTime] = Format(DefaultJodaDateTimeReads, JodaDateTimeNumberWrites)
+  implicit val milliDateTimeFormat: Format[LocalDateTime] = Format[LocalDateTime](
+    Reads[LocalDateTime](js =>
+      js.validate[Long].map {
+        epoch => Instant.ofEpochMilli(epoch).atOffset(ZoneOffset.UTC).toLocalDateTime
+      }
+    ),
+    Writes[LocalDateTime](d =>
+      JsNumber(d.toInstant(ZoneOffset.UTC).toEpochMilli)
+    )
+  )
 
 }
 

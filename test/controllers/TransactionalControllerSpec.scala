@@ -19,8 +19,6 @@ package controllers
 import Helpers.SCRSSpec
 import connectors.PublicCohoApiConnector
 import models.IncorpUpdate
-import org.joda.time.DateTime
-import org.joda.time.format.DateTimeFormat
 import org.mockito.ArgumentMatchers.{any, eq => eqTo}
 import org.mockito.Mockito._
 import play.api.libs.json.{JsObject, JsValue, Json}
@@ -32,6 +30,8 @@ import services.{FailedToFetchOfficerListFromTxAPI, TransactionalService}
 import uk.gov.hmrc.http.HeaderCarrier
 import utils.TimestampFormats
 
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -207,7 +207,7 @@ class TransactionalControllerSpec extends SCRSSpec {
 
   "fetchIncorpUpdate" must {
     "return a 200 and the CRN as JSON" in new Setup {
-      val incorpUpdate: IncorpUpdate = IncorpUpdate(transactionId, "accepted", Some("example CRN"), Some(DateTime.parse("2018-05-01", DateTimeFormat.forPattern(TimestampFormats.datePattern))), "", None)
+      val incorpUpdate: IncorpUpdate = IncorpUpdate(transactionId, "accepted", Some("example CRN"), Some(LocalDateTime.parse("2018-05-01", TimestampFormats.ldtFormatter)), "", None)
       val expectedJson: JsValue = Json.parse(
         s"""
            |{
