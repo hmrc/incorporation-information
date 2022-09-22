@@ -19,7 +19,7 @@ package connectors
 import com.codahale.metrics.Counter
 import config.{MicroserviceConfig, WSHttpProxy}
 import models.IncorpUpdate
-import play.api.Logging
+import utils.Logging
 import play.api.libs.functional.syntax._
 import play.api.libs.json.{JsValue, Reads, __}
 import services.MetricsService
@@ -172,13 +172,13 @@ trait IncorporationAPIConnector extends AlertLogging with Logging {
       logError(ex, timepoint)
       throw new IncorpUpdateAPIFailure(ex)
     case ex: Upstream4xxResponse =>
-      logger.error("[IncorporationCheckAPIConnector] [checkForIncorpUpdate]" + ex.upstreamResponseCode + " " + ex.message)
+      logger.error("[checkForIncorpUpdate]" + ex.upstreamResponseCode + " " + ex.message)
       throw new IncorpUpdateAPIFailure(ex)
     case ex: Upstream5xxResponse =>
-      logger.error("[IncorporationCheckAPIConnector] [checkForIncorpUpdate]" + ex.upstreamResponseCode + " " + ex.message)
+      logger.error("[checkForIncorpUpdate]" + ex.upstreamResponseCode + " " + ex.message)
       throw new IncorpUpdateAPIFailure(ex)
     case ex: Exception =>
-      logger.error("[IncorporationCheckAPIConnector] [checkForIncorpUpdate]" + ex)
+      logger.error("[checkForIncorpUpdate]" + ex)
       throw new IncorpUpdateAPIFailure(ex)
   }
 
@@ -199,7 +199,7 @@ trait IncorporationAPIConnector extends AlertLogging with Logging {
       pagerduty(PagerDutyKeys.COHO_TX_API_5XX, Some(s"Returned status code: ${ex.upstreamResponseCode} for $transactionID - reason: ${ex.getMessage}"))
       FailedTransactionalAPIResponse
     case ex: Throwable =>
-      logger.info(s"[TransactionalConnector] [fetchTransactionalData] - Failed for $transactionID - reason: ${ex.getMessage}")
+      logger.info(s"[fetchTransactionalData] - Failed for $transactionID - reason: ${ex.getMessage}")
       FailedTransactionalAPIResponse
   }
 

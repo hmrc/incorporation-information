@@ -18,7 +18,7 @@ package controllers.test
 
 import constants.JobNames._
 import jobs.ScheduledJob
-import play.api.Logging
+import utils.Logging
 import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
 import uk.gov.hmrc.play.bootstrap.backend.controller.{BackendBaseController, BackendController}
 

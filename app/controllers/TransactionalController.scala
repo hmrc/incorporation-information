@@ -19,7 +19,7 @@ package controllers
 import config.MicroserviceConfig
 import connectors.PublicCohoApiConnector
 import models.IncorpUpdate
-import play.api.Logging
+import utils.Logging
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import repositories.{IncorpUpdateMongo, IncorpUpdateMongoRepository, IncorpUpdateRepository}
@@ -80,12 +80,12 @@ trait TransactionalController extends BackendBaseController with Logging {
     implicit request =>
       service.fetchOfficerList(transactionId).map(Ok(_)) recover {
         case ex: TransactionalServiceException =>
-          logger.error(s"[TransactionalController] [fetchOfficerList] - TransactionalServiceException caught - reason: ${
+          logger.error(s"[fetchOfficerList] - TransactionalServiceException caught - reason: ${
             ex.message
           }", ex)
           NotFound
         case ex: Throwable =>
-          logger.error(s"[TransactionalController] [fetchOfficerList] - Exception caught - reason: ${
+          logger.error(s"[fetchOfficerList] - Exception caught - reason: ${
             ex.getMessage
           }", ex)
           InternalServerError

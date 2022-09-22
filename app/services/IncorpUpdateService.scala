@@ -21,7 +21,7 @@ import connectors.IncorporationAPIConnector
 import jobs._
 import models.{IncorpUpdate, QueuedIncorpUpdate}
 import org.mongodb.scala.result.UpdateResult
-import play.api.Logging
+import utils.Logging
 import repositories._
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.lock.LockService
@@ -292,7 +292,7 @@ trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResp
   def upsertToQueue(queuedUpdate: QueuedIncorpUpdate)
                    (implicit ec: ExecutionContext): Future[Boolean] = {
     queueRepository.upsertIncorpUpdate(queuedUpdate) map { res =>
-      logger.info(s"[IncorpUpdateService] [upsertToQueue] upsert result for transaction id : ${queuedUpdate.incorpUpdate.transactionId} - ${res.toString}")
+      logger.info(s"[upsertToQueue] - upsert result for transaction id : ${queuedUpdate.incorpUpdate.transactionId} - ${res.toString}")
       res.errors.isEmpty
     }
   }

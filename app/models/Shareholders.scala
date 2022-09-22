@@ -16,7 +16,7 @@
 
 package models
 
-import play.api.Logging
+import utils.Logging
 import play.api.libs.json._
 
 object Shareholders extends Logging {

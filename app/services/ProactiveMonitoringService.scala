@@ -19,7 +19,7 @@ package services
 import config.MicroserviceConfig
 import connectors.{IncorporationAPIConnector, PublicCohoApiConnectorImpl, SuccessfulTransactionalAPIResponse}
 import jobs._
-import play.api.Logging
+import utils.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.lock.LockService
 import utils.Base64

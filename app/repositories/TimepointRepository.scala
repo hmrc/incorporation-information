@@ -20,7 +20,7 @@ package repositories
 import com.mongodb.client.model.Updates.set
 import org.mongodb.scala.model.Filters.equal
 import org.mongodb.scala.model.{FindOneAndUpdateOptions, ReturnDocument}
-import play.api.Logger
+import utils.Logging
 import play.api.libs.json.Json
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
@@ -58,9 +58,7 @@ class TimepointMongoRepository(mongo: MongoComponent)
     collectionName = "time-points",
     domainFormat = TimePoint.formats,
     indexes = Seq()
-  ) with TimepointRepository {
-
-  val logger = Logger(getClass)
+  ) with TimepointRepository with Logging {
 
   private val selector = equal("_id", "CH-INCORPSTATUS-TIMEPOINT")
 

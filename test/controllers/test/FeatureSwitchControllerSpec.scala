@@ -38,7 +38,7 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
   class Setup {
     reset(mockSched)
     reset(mockQuartz)
-    val controller = new FeatureSwitchController {
+    object Controller extends FeatureSwitchController {
       override val incUpdatesJob: ScheduledJob = mockSched
       override val metricsJob: ScheduledJob = mockSched
       override val fireSubsJob: ScheduledJob = mockSched
@@ -57,7 +57,7 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
       when(mockSched.scheduler).thenReturn(mockQuartz)
       when(mockQuartz.suspendJob(any())).thenReturn(false)
 
-      val result = controller.switch(featureName, featureState)(FakeRequest())
+      val result = Controller.switch(featureName, featureState)(FakeRequest())
       status(result) mustBe OK
       contentAsString(result) mustBe message(featureName, "false")
     }
@@ -68,7 +68,7 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
       when(mockSched.scheduler).thenReturn(mockQuartz)
       when(mockQuartz.resumeJob(any())).thenReturn(false)
 
-      val result = controller.switch(featureName, featureState)(FakeRequest())
+      val result = Controller.switch(featureName, featureState)(FakeRequest())
       status(result) mustBe OK
       contentAsString(result) mustBe message(featureName, "true")
     }
@@ -77,7 +77,7 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
       val featureName = KEY_TX_API
       val featureState = "stub"
 
-      val result = controller.switch(featureName, featureState)(FakeRequest())
+      val result = Controller.switch(featureName, featureState)(FakeRequest())
       status(result) mustBe OK
       contentAsString(result) mustBe message(featureName, "false")
     }
@@ -86,7 +86,7 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
       val featureName = KEY_TX_API
       val featureState = "coho"
 
-      val result = controller.switch(featureName, featureState)(FakeRequest())
+      val result = Controller.switch(featureName, featureState)(FakeRequest())
       status(result) mustBe OK
       contentAsString(result) mustBe message(featureName, "true")
     }
@@ -95,7 +95,7 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
       val featureName = KEY_TX_API
       val featureState = "xxxx"
 
-      val result = controller.switch(featureName, featureState)(FakeRequest())
+      val result = Controller.switch(featureName, featureState)(FakeRequest())
       status(result) mustBe OK
       contentAsString(result) mustBe message(featureName, "false")
 
@@ -107,7 +107,7 @@ class FeatureSwitchControllerSpec extends SCRSSpec with BeforeAndAfterEach {
       when(mockSched.scheduler).thenReturn(mockQuartz)
       when(mockQuartz.resumeJob(any())).thenReturn(false)
 
-      val result = controller.switch(featureName, featureState)(FakeRequest())
+      val result = Controller.switch(featureName, featureState)(FakeRequest())
       status(result) mustBe OK
       contentAsString(result) mustBe message(featureName, "false")
     }

@@ -20,7 +20,7 @@ import com.codahale.metrics.{Counter, Gauge, Timer}
 import com.kenshoo.play.metrics.{Metrics, MetricsDisabledException}
 import config.MicroserviceConfig
 import jobs._
-import play.api.Logging
+import utils.Logging
 import repositories._
 import uk.gov.hmrc.mongo.lock.LockService
 

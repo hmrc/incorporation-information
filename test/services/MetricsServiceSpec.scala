@@ -46,7 +46,7 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
 
   trait Setup {
 
-    val service = new MetricsService {
+    object Service extends MetricsService {
       override val metrics = mockMetrics
       override val subRepo = mockSubRepo
       override val publicCohoApiFailureCounter: Counter = mockCounter
@@ -76,7 +76,7 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
     "update no metrics if no subscriptions" in new Setup {
       when(mockSubRepo.getSubscriptionStats()).thenReturn(Future.successful(Map[String, Int]()))
 
-      val result = await(service.updateSubscriptionMetrics())
+      val result = await(Service.updateSubscriptionMetrics())
 
       result mustBe Map()
 
@@ -88,7 +88,7 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
       when(mockMetrics.defaultRegistry).thenReturn(mockRegistry)
       when(mockSubRepo.getSubscriptionStats()).thenReturn(Future.successful(Map("wibble" -> 1)))
 
-      val result = await(service.updateSubscriptionMetrics())
+      val result = await(Service.updateSubscriptionMetrics())
 
       result mustBe Map("wibble" -> 1)
 
@@ -101,7 +101,7 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
       when(mockMetrics.defaultRegistry).thenReturn(mockRegistry)
       when(mockSubRepo.getSubscriptionStats()).thenReturn(Future.successful(Map("foo1" -> 1, "foo2" -> 2, "foo3" -> 3)))
 
-      val result = await(service.updateSubscriptionMetrics())
+      val result = await(Service.updateSubscriptionMetrics())
 
       result mustBe Map("foo1" -> 1, "foo2" -> 2, "foo3" -> 3)
 
@@ -118,24 +118,24 @@ class MetricsServiceSpec extends SCRSSpec with BeforeAndAfterEach {
   "calling processDataResponseWithMatrics" must {
 
     "should return the resut of the input function if a timer and counters are passed through" in new Setup {
-      val result = await(service.processDataResponseWithMetrics[Int](Some(mockCounter),
+      val result = await(Service.processDataResponseWithMetrics[Int](Some(mockCounter),
         Some(mockCounter),Some(mockTimer))(Future.successful(1 + 1)))
 
       result mustBe 2
     }
     "should return the result of the input function when called with a success and failure counter" in new Setup {
-      val result = await(service.processDataResponseWithMetrics[Int](Some(mockCounter),
+      val result = await(Service.processDataResponseWithMetrics[Int](Some(mockCounter),
         Some(mockCounter))(Future.successful(1 + 1)))
 
       result mustBe 2
     }
     "should return the result of the input function when called with a success counter" in new Setup {
-      val result = await(service.processDataResponseWithMetrics[Int](Some(mockCounter))(Future.successful(1 + 1)))
+      val result = await(Service.processDataResponseWithMetrics[Int](Some(mockCounter))(Future.successful(1 + 1)))
 
       result mustBe 2
     }
     "should return the result of the input function when called with no parameters" in new Setup {
-      val result = await(service.processDataResponseWithMetrics[Int]()(Future.successful(1 + 1)))
+      val result = await(Service.processDataResponseWithMetrics[Int]()(Future.successful(1 + 1)))
 
       result mustBe 2
     }

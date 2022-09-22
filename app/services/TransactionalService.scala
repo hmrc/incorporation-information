@@ -18,7 +18,7 @@ package services
 
 import connectors._
 import models.Shareholders
-import play.api.Logging
+import utils.Logging
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
@@ -155,7 +155,7 @@ trait TransactionalService extends Logging {
         }
       case None =>
 
-        logger.info(s"[TransactionalService][fetchCompanyProfileFromCoho] Service failed to fetch a company that appeared incorporated in INCORPORATION_INFORMATION with the crn number: $crn")
+        logger.info(s"[fetchCompanyProfileFromCoho] - Service failed to fetch a company that appeared incorporated in INCORPORATION_INFORMATION with the crn number: $crn")
         fetchOfficerListFromTxAPI(transactionId)
     }
   }

@@ -29,7 +29,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSupport with LogCapturing {
 
   class Setup extends MongoErrorCodes {
-    val repo = new IncorpUpdateMongoRepository(mongoComponent, IncorpUpdate.mongoFormat)
+    object Repository extends IncorpUpdateMongoRepository(mongoComponent, IncorpUpdate.mongoFormat)
   }
 
   "logUniqueIncorporations" must {
@@ -42,7 +42,7 @@ class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSupport with LogCapt
     }
 
     "log the transaction id's of the unique incorporations" in new Setup {
-      withCaptureOfLoggingFrom(Logger(repo.getClass)) { logEvents =>
+      withCaptureOfLoggingFrom(Repository.logger) { logEvents =>
 
         val incorps = incorpUpdates("trans1", "trans2", "trans3")
 
@@ -51,19 +51,19 @@ class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSupport with LogCapt
           new BulkWriteError(ERR_DUPLICATE, duplicateErrorMessage("trans3"), BsonDocument(), 1)
         )
 
-        val result = repo.nonDuplicateIncorporations(incorps, errors)
+        val result = Repository.nonDuplicateIncorporations(incorps, errors)
 
         result mustBe incorpUpdates("trans2")
 
         logEvents.size mustBe 1
         logEvents.head.getLevel mustBe Level.INFO
-        logEvents.head.getMessage mustBe "[UniqueIncorp] transactionId : trans2"
+        logEvents.head.getMessage mustBe "[Repository] [UniqueIncorp] transactionId : trans2"
       }
     }
 
 
     "log the transaction id's of the unique incorporations when a non-duplicate error ir present" in new Setup {
-      withCaptureOfLoggingFrom(Logger(repo.getClass)) { logEvents =>
+      withCaptureOfLoggingFrom(Repository.logger) { logEvents =>
 
         val incorps = incorpUpdates("trans1", "trans2", "trans3")
 
@@ -73,18 +73,18 @@ class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSupport with LogCapt
           new BulkWriteError(ERR_DUPLICATE, duplicateErrorMessage("trans3"), BsonDocument(), 2)
         )
 
-        val result = repo.nonDuplicateIncorporations(incorps, errors)
+        val result = Repository.nonDuplicateIncorporations(incorps, errors)
 
         result mustBe incorpUpdates("trans2")
 
         logEvents.size mustBe 1
         logEvents.head.getLevel mustBe Level.INFO
-        logEvents.head.getMessage mustBe "[UniqueIncorp] transactionId : trans2"
+        logEvents.head.getMessage mustBe "[Repository] [UniqueIncorp] transactionId : trans2"
       }
     }
 
     "not log anything when there are no unique incorporations" in new Setup {
-      withCaptureOfLoggingFrom(Logger(repo.getClass)) { logEvents =>
+      withCaptureOfLoggingFrom(Repository.logger) { logEvents =>
 
         val incorps = incorpUpdates("trans1", "trans2", "trans3")
 
@@ -94,7 +94,7 @@ class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSupport with LogCapt
           new BulkWriteError(ERR_DUPLICATE, duplicateErrorMessage("trans3"), BsonDocument(), 2)
         )
 
-        val result = repo.nonDuplicateIncorporations(incorps, errors)
+        val result = Repository.nonDuplicateIncorporations(incorps, errors)
         result mustBe incorpUpdates()
 
         logEvents.size mustBe 0
@@ -102,19 +102,19 @@ class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSupport with LogCapt
     }
 
     "log all incorporations when an empty error list is supplied" in new Setup {
-      withCaptureOfLoggingFrom(Logger(repo.getClass)) { logEvents =>
+      withCaptureOfLoggingFrom(Repository.logger) { logEvents =>
         val incorps = incorpUpdates("trans1", "trans2", "trans3")
 
-        val result = repo.nonDuplicateIncorporations(incorps, Seq.empty)
+        val result = Repository.nonDuplicateIncorporations(incorps, Seq.empty)
         result mustBe incorps
 
         logEvents.size mustBe 3
         logEvents.head.getLevel mustBe Level.INFO
-        logEvents.head.getMessage mustBe "[UniqueIncorp] transactionId : trans1"
+        logEvents.head.getMessage mustBe "[Repository] [UniqueIncorp] transactionId : trans1"
         logEvents.apply(1).getLevel mustBe Level.INFO
-        logEvents.apply(1).getMessage mustBe "[UniqueIncorp] transactionId : trans2"
+        logEvents.apply(1).getMessage mustBe "[Repository] [UniqueIncorp] transactionId : trans2"
         logEvents.apply(2).getLevel mustBe Level.INFO
-        logEvents.apply(2).getMessage mustBe "[UniqueIncorp] transactionId : trans3"
+        logEvents.apply(2).getMessage mustBe "[Repository] [UniqueIncorp] transactionId : trans3"
       }
     }
   }
