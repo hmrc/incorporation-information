@@ -65,7 +65,7 @@ class ManualTriggerControllerSpec extends SCRSSpec {
 
   class Setup {
     reset(mockSM, mockSMSeq, mockIncorpUpdateService, mockSubFiringService)
-    val controller = new ManualTriggerController {
+    object Controller extends ManualTriggerController {
       override protected val incUpdatesJob = mockIncUpdatesJob
       override protected val fireSubJob = mockFireSubJob
       val controllerComponents: ControllerComponents = stubControllerComponents()
@@ -80,7 +80,7 @@ class ManualTriggerControllerSpec extends SCRSSpec {
       "execute the job and return a message" in new Setup {
         when(mockSM.service).thenReturn(mockIncorpUpdateService)
         when(mockIncorpUpdateService.invoke(any[ExecutionContext]())).thenReturn(Future.successful(Left(InsertResult(1, 1))))
-        val result = controller.triggerJob(INCORP_UPDATE)(FakeRequest())
+        val result = Controller.triggerJob(INCORP_UPDATE)(FakeRequest())
 
         status(result) mustBe 200
         contentAsString(result) mustBe Left(InsertResult(1, 1)).toString
@@ -92,7 +92,7 @@ class ManualTriggerControllerSpec extends SCRSSpec {
       "execute the job and return a message" in new Setup {
         when(mockSMSeq.service).thenReturn(mockSubFiringService)
         when(mockSubFiringService.invoke(any[ExecutionContext]())).thenReturn(Future.successful(Left(Seq(true))))
-        val result = controller.triggerJob(FIRE_SUBS)(FakeRequest())
+        val result = Controller.triggerJob(FIRE_SUBS)(FakeRequest())
 
         status(result) mustBe 200
         contentAsString(result) mustBe "Left(List(true))"
@@ -102,7 +102,7 @@ class ManualTriggerControllerSpec extends SCRSSpec {
     "supplying the job name xxxx" must {
 
       "return a 404" in new Setup {
-        val result = controller.triggerJob("xxxx")(FakeRequest())
+        val result = Controller.triggerJob("xxxx")(FakeRequest())
 
         status(result) mustBe 404
       }

@@ -24,7 +24,7 @@ import org.mongodb.scala.MongoBulkWriteException
 import org.mongodb.scala.model.Filters.equal
 import org.mongodb.scala.model.{BulkWriteOptions, InsertOneModel, ReplaceOptions}
 import org.mongodb.scala.result.UpdateResult
-import play.api.Logger
+import utils.Logging
 import play.api.libs.json.Format
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
@@ -58,13 +58,11 @@ class IncorpUpdateMongoRepository(val mongo: MongoComponent, format: Format[Inco
   collectionName = "incorporation-information",
   domainFormat = format,
   indexes = Seq()
-) with IncorpUpdateRepository with MongoErrorCodes {
+) with IncorpUpdateRepository with MongoErrorCodes with Logging {
 
   implicit val fmt = format
 
   private def selector(transactionId: String) = equal("_id", transactionId)
-
-  val logger = Logger(getClass)
 
   def storeIncorpUpdates(updates: Seq[IncorpUpdate]): Future[InsertResult] = {
     if(updates.nonEmpty) {

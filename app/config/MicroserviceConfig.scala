@@ -16,7 +16,7 @@
 
 package config
 
-import play.api.Logging
+import utils.Logging
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import utils.Base64
 
@@ -41,7 +41,7 @@ trait MicroserviceConfig extends Logging {
   lazy val incorpUpdateItemsToFetch: String = servicesConfig.getConfString("incorp-update-api.itemsToFetch", throw new Exception("incorp-update-api.itemsToFetch not found"))
 
   lazy val queueFetchSize: Int = servicesConfig.getConfInt("fire-subs-job.queueFetchSizes", {
-    logger.warn("[Config] fire-subs-job.queueFetchSizes missing, defaulting to 1")
+    logger.warn("fire-subs-job.queueFetchSizes missing, defaulting to 1")
     1
   })
 

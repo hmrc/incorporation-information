@@ -18,7 +18,7 @@ package services
 
 import config.MicroserviceConfig
 import models.{IncorpUpdate, Subscription}
-import play.api.Logging
+import utils.Logging
 import repositories._
 
 import javax.inject.Inject

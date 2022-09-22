@@ -17,7 +17,7 @@
 package connectors
 
 import models.IncorpUpdateResponse
-import play.api.{Logging}
+import utils.Logging
 import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.http._
 import uk.gov.hmrc.http.HttpClient
@@ -40,8 +40,7 @@ trait FiringSubscriptionsConnector extends Logging {
       http.POST[JsValue, HttpResponse](s"$url", json)
     } catch {
       case ex: Exception =>
-        // Exceptions like MalformedUrlException won't be wrapped in a future by default :-(
-        logger.error(s"[FiringSubscriptionsConnector] [connectToAnyURL] - Error posting incorp response to $url - ${ex.getMessage}", ex)
+        logger.error(s"[connectToAnyURL] - Error posting incorp response to $url - ${ex.getMessage}", ex)
         Future.failed(ex)
     }
   }

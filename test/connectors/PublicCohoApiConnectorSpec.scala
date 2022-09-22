@@ -56,7 +56,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
     reset(mockHttp, mockHttpProxy, mockTimerContext)
 
-    val connector = new PublicCohoApiConnector {
+    object Connector extends PublicCohoApiConnector {
       override val dateCalculators: DateCalculators = new DateCalculators {}
       val incorpFrontendStubUrl = "incorp FE Stub"
       val cohoPublicUrl = "Coho public url"
@@ -117,7 +117,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
         .thenReturn(Future.successful(HttpResponse(200, Some(validCompanyProfileResourceJson))))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
-      val result = await(connector.getCompanyProfile(testCrn))
+      val result = await(Connector.getCompanyProfile(testCrn))
       result mustBe Some(validCompanyProfileResourceJson)
 
       verify(mockTimerContext, times(1)).stop()
@@ -127,9 +127,9 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new NotFoundException("404")))
 
-      withCaptureOfLoggingFrom(Logger(connector.getClass)) { logEvents =>
-        await(connector.getCompanyProfile(testCrn, isScrs = true)) mustBe None
-        logEvents.map(_.getMessage) mustBe List("COHO_PUBLIC_API_NOT_FOUND - Could not find company data for CRN - 1234567890")
+      withCaptureOfLoggingFrom(Connector.logger) { logEvents =>
+        await(Connector.getCompanyProfile(testCrn, isScrs = true)) mustBe None
+        logEvents.map(_.getMessage) mustBe List("[Connector] COHO_PUBLIC_API_NOT_FOUND - Could not find company data for CRN - 1234567890")
         logEvents.size mustBe 1
       }
     }
@@ -138,9 +138,9 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new NotFoundException("404")))
 
-      withCaptureOfLoggingFrom(Logger(connector.getClass)) { logEvents =>
-        await(connector.getCompanyProfile(testCrn, isScrs = false)) mustBe None
-        logEvents.map(_.getMessage) mustBe List("Could not find company data for CRN - 1234567890")
+      withCaptureOfLoggingFrom(Connector.logger) { logEvents =>
+        await(Connector.getCompanyProfile(testCrn, isScrs = false)) mustBe None
+        logEvents.map(_.getMessage) mustBe List("[Connector] Could not find company data for CRN - 1234567890")
         logEvents.size mustBe 1
       }
     }
@@ -149,7 +149,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new HttpException("400", 400)))
 
-      val result = await(connector.getCompanyProfile(testCrn))
+      val result = await(Connector.getCompanyProfile(testCrn))
 
       result mustBe None
 
@@ -161,7 +161,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
         .thenReturn(Future.failed(new Throwable()))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
-      val result = await(connector.getCompanyProfile(testCrn))
+      val result = await(Connector.getCompanyProfile(testCrn))
 
       result mustBe None
     }
@@ -206,7 +206,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
         .thenReturn(Future.successful(HttpResponse(200, Some(validOfficerListResourceJson))))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
-      val result = await(connector.getOfficerList(testCrn))
+      val result = await(Connector.getOfficerList(testCrn))
       result mustBe Some(validOfficerListResourceJson)
 
       verify(mockTimerContext, times(1)).stop()
@@ -216,7 +216,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new NotFoundException("404")))
 
-      val result = await(connector.getOfficerList(testCrn))
+      val result = await(Connector.getOfficerList(testCrn))
 
       result mustBe None
     }
@@ -225,7 +225,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new HttpException("400", 400)))
 
-      val result = await(connector.getOfficerList(testCrn))
+      val result = await(Connector.getOfficerList(testCrn))
 
       result mustBe None
     }
@@ -235,7 +235,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
         .thenReturn(Future.failed(new Throwable()))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
-      val result = await(connector.getOfficerList(testCrn))
+      val result = await(Connector.getOfficerList(testCrn))
 
       result mustBe None
 
@@ -270,7 +270,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
         .thenReturn(Future.successful(HttpResponse(200, Some(validOfficerAppointmentsResourceJson))))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
-      val result = await(connector.getOfficerAppointment(testOfficerId))
+      val result = await(Connector.getOfficerAppointment(testOfficerId))
       result mustBe validOfficerAppointmentsResourceJson
 
       verify(mockTimerContext, times(1)).stop()
@@ -283,7 +283,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
         .thenReturn(Future.successful(HttpResponse(200, Some(validOfficerAppointmentsResourceJson))))
 
 
-      val result = await(connector.getOfficerAppointment(testOfficerUrl))
+      val result = await(Connector.getOfficerAppointment(testOfficerUrl))
       result mustBe validOfficerAppointmentsResourceJson
     }
 
@@ -291,14 +291,14 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new NotFoundException("404")))
 
-      intercept[NotFoundException](await(connector.getOfficerAppointment(testOfficerId)))
+      intercept[NotFoundException](await(Connector.getOfficerAppointment(testOfficerId)))
     }
 
     "report an error when receiving a 400" in new Setup {
       when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(Future.failed(new HttpException("400", 400)))
 
-      val ex = intercept[HttpException](await(connector.getOfficerAppointment(testOfficerId)))
+      val ex = intercept[HttpException](await(Connector.getOfficerAppointment(testOfficerId)))
 
       ex.responseCode mustBe 400
     }
@@ -308,7 +308,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
         .thenReturn(Future.failed(new Throwable()))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
-      intercept[Throwable](await(connector.getOfficerAppointment(testOfficerId)))
+      intercept[Throwable](await(Connector.getOfficerAppointment(testOfficerId)))
 
       verify(mockTimerContext, times(1)).stop()
     }
@@ -316,13 +316,13 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
   "getStubbedFirstAndLastName" must {
     "return testFirstName and testSurname if string is less than 15 characters" in new Setup {
-      val (firstname, lastname) = connector.getStubbedFirstAndLastName(testOfficerId)
+      val (firstname, lastname) = Connector.getStubbedFirstAndLastName(testOfficerId)
       firstname mustBe "testFirstName"
       lastname mustBe "testSurname"
     }
 
     "return a dynamic name if string is less than 15 characters" in new Setup {
-      val (firstname, lastname) = connector.getStubbedFirstAndLastName(testOfficerUrl)
+      val (firstname, lastname) = Connector.getStubbedFirstAndLastName(testOfficerUrl)
       firstname mustBe "tMand-greattsfh"
       lastname mustBe "officersSdjhshd"
     }
@@ -331,10 +331,10 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
   "createAPIAuthHeader" must {
     "return a Header with the correct Basic auth token" when {
       "a request is made by an allowListed service" in new Setup {
-        connector.createAPIAuthHeader() mustBe Seq("Authorization" -> "Basic Q29ob1B1YmxpY1Rva2Vu")
+        Connector.createAPIAuthHeader() mustBe Seq("Authorization" -> "Basic Q29ob1B1YmxpY1Rva2Vu")
       }
       "a request is made by an un-allowlisted service" in new Setup {
-        connector.createAPIAuthHeader(isScrs = false) mustBe Seq("Authorization" -> "Basic Tm9uU0NSU0NvaG9QdWJsaWNUb2tlbg==")
+        Connector.createAPIAuthHeader(isScrs = false) mustBe Seq("Authorization" -> "Basic Tm9uU0NSU0NvaG9QdWJsaWNUb2tlbg==")
       }
     }
   }

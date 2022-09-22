@@ -16,8 +16,6 @@
 
 package utils
 
-import play.api.Logging
-
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
