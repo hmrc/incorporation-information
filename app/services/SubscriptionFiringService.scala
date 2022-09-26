@@ -20,7 +20,8 @@ import config.MicroserviceConfig
 import connectors.FiringSubscriptionsConnector
 import jobs._
 import models.{IncorpUpdateResponse, QueuedIncorpUpdate}
-import play.api.{Environment, Logging}
+import play.api.Environment
+import utils.Logging
 import repositories._
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.lock.LockService
