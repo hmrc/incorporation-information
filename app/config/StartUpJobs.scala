@@ -17,11 +17,12 @@
 package config
 
 import com.google.inject.Singleton
-import play.api.{Configuration, Logging}
+import play.api.Configuration
 import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo, TimepointMongo}
 import services.{IncorpUpdateService, SubscriptionService}
 import uk.gov.hmrc.http.HeaderCarrier
 import utils.TimestampFormats
+import utils.Logging
 
 import java.util.Base64
 import javax.inject.Inject
