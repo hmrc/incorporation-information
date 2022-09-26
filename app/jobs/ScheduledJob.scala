@@ -20,7 +20,8 @@ import akka.actor.{ActorRef, ActorSystem}
 import com.typesafe.akka.extension.quartz.QuartzSchedulerExtension
 import jobs.SchedulingActor.ScheduledMessage
 import org.quartz.CronExpression
-import play.api.{Configuration, Logging}
+import play.api.Configuration
+import utils.Logging
 
 trait ScheduledJob extends Logging {
   val scheduledMessage: ScheduledMessage[_]
