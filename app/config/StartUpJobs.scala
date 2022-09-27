@@ -16,16 +16,17 @@
 
 package config
 
+import akka.actor.ActorSystem
 import com.google.inject.Singleton
 import play.api.Configuration
 import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo, TimepointMongo}
 import services.{IncorpUpdateService, SubscriptionService}
 import uk.gov.hmrc.http.HeaderCarrier
-import utils.TimestampFormats
-import utils.Logging
+import utils.{Logging, TimestampFormats}
 
 import java.util.Base64
 import javax.inject.Inject
+import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
@@ -35,8 +36,14 @@ class StartUpJobs @Inject()(val configuration: Configuration,
                             val timepointMongo: TimepointMongo,
                             val subsRepo: SubscriptionsMongo,
                             val incorpUpdateRepo: IncorpUpdateMongo,
-                            val queueRepo: QueueMongo
+                            val queueRepo: QueueMongo,
+                            val appConfig: MicroserviceConfig
                            )(implicit val ec: ExecutionContext) extends Logging {
+
+  lazy val jobName = "startUpJob"
+  lazy val actor = ActorSystem(jobName)
+  lazy val initialDelayMillis = appConfig.getConfigInt(s"$jobName.initialDelayMillis")
+
   lazy val tpConfig = configuration.getOptional[String]("timepointList")
 
   private def reFetchIncorpInfo(): Future[Unit] = {
@@ -144,17 +151,14 @@ class StartUpJobs @Inject()(val configuration: Configuration,
       }
     }
   }
-  reFetchIncorpInfo()
 
-  reFetchIncorpInfoWhenNoQueue()
-
-  resetTimepoint()
-
-  recreateSubscription()
-
-  logIncorpInfo()
-
-  logRemainingSubscriptionIdentifiers()
-
-  removeBrokenSubmissions()
+  actor.scheduler.scheduleOnce(initialDelayMillis.milliseconds) {
+    reFetchIncorpInfo()
+    reFetchIncorpInfoWhenNoQueue()
+    resetTimepoint()
+    recreateSubscription()
+    logIncorpInfo()
+    logRemainingSubscriptionIdentifiers()
+    removeBrokenSubmissions()
+  }
 }
