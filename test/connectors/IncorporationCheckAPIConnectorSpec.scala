@@ -318,7 +318,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
     "return a submission status response when no timepoint is provided" in new Setup {
       when(mockHttp.GET[HttpResponse](eqTo(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.successful(HttpResponse(200, Some(validSubmissionResponseJson))))
+        .thenReturn(Future.successful(HttpResponse(200, json = validSubmissionResponseJson, Map())))
 
       val result = await(connector.checkForIncorpUpdate())
       result mustBe validSubmissionResponseItems
@@ -328,7 +328,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       val url = s"$testProxyUrl/submissions?timepoint=$testTimepoint&items_per_page=1"
 
       when(mockHttp.GET[HttpResponse](eqTo(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.successful(HttpResponse(200, Some(validSubmissionResponseJson))))
+        .thenReturn(Future.successful(HttpResponse(200, json = validSubmissionResponseJson, Map())))
 
       val result = await(connector.checkForIncorpUpdate(Some(testTimepoint)))
       result mustBe validSubmissionResponseItems
@@ -351,14 +351,14 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
     "report an error when receiving an Upstream4xx" in new Setup {
       when(mockHttp.GET[IncorpUpdatesResponse](eqTo(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.failed(Upstream4xxResponse("429", 429, 429)))
+        .thenReturn(Future.failed(UpstreamErrorResponse("429", 429, 429)))
 
       intercept[IncorpUpdateAPIFailure](await(connector.checkForIncorpUpdate(None)))
     }
 
     "report an error when receiving an Upstream5xx" in new Setup {
       when(mockHttp.GET[IncorpUpdatesResponse](eqTo(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.failed(Upstream5xxResponse("502", 502, 502)))
+        .thenReturn(Future.failed(UpstreamErrorResponse("502", 502, 502)))
 
       intercept[IncorpUpdateAPIFailure](await(connector.checkForIncorpUpdate(None)))
     }
@@ -378,7 +378,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
 
     "return a submission status response when no timepoint is provided" in new Setup {
       when(mockHttp.GET[HttpResponse](eqTo(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.successful(HttpResponse(200, Some(validSubmissionResponseJson))))
+        .thenReturn(Future.successful(HttpResponse(200, json = validSubmissionResponseJson, Map())))
 
       val result = await(connector.checkForIndividualIncorpUpdate())
       result mustBe validSubmissionResponseItems
@@ -388,7 +388,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       val url = s"$testProxyUrl/submissions?timepoint=$testTimepoint&items_per_page=1"
 
       when(mockHttp.GET[HttpResponse](eqTo(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.successful(HttpResponse(200, Some(validSubmissionResponseJson))))
+        .thenReturn(Future.successful(HttpResponse(200, json = validSubmissionResponseJson, Map())))
 
       val result = await(connector.checkForIndividualIncorpUpdate(Some(testTimepoint)))
       result mustBe validSubmissionResponseItems
@@ -424,7 +424,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         )
 
         when(mockHttp.GET[HttpResponse](eqTo(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-          .thenReturn(Future.successful(HttpResponse(200, Some(manyValidSubmissionResponseJson))))
+          .thenReturn(Future.successful(HttpResponse(200, json = manyValidSubmissionResponseJson, Map())))
 
         val result = await(connector.checkForIncorpUpdate(Some(timepoint)))
         result mustBe Seq(incorpUpdate("9999999997"), incorpUpdate("9999999998"), incorpUpdate("9999999999"))
@@ -434,7 +434,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       "there is no CRN" in new Setup {
         val url = s"$testProxyUrl/submissions?timepoint=$timepoint&items_per_page=1"
         when(mockHttp.GET[HttpResponse](eqTo(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-          .thenReturn(Future.successful(HttpResponse(200, Some(invalidNoCRNSubmissionResponseJson))))
+          .thenReturn(Future.successful(HttpResponse(200, json = invalidNoCRNSubmissionResponseJson, Map())))
 
         val result = await(connector.checkForIncorpUpdate(Some(timepoint)))
         result mustBe Seq()
@@ -443,7 +443,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         val url = s"$testProxyUrl/submissions?timepoint=$timepoint&items_per_page=1"
 
         when(mockHttp.GET[HttpResponse](eqTo(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-          .thenReturn(Future.successful(HttpResponse(200, Some(invalidNoDateSubmissionResponseJson))))
+          .thenReturn(Future.successful(HttpResponse(200, json = invalidNoDateSubmissionResponseJson, Map())))
 
         val result = await(connector.checkForIncorpUpdate(Some(timepoint)))
         result mustBe Seq()
@@ -452,7 +452,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         val url = s"$testProxyUrl/submissions?timepoint=$timepoint&items_per_page=1"
 
         when(mockHttp.GET[HttpResponse](eqTo(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-          .thenReturn(Future.successful(HttpResponse(200, Some(invalidDateSubmissionResponseJson))))
+          .thenReturn(Future.successful(HttpResponse(200, json = invalidDateSubmissionResponseJson, Map())))
 
         val result = connector.checkForIncorpUpdate(Some(timepoint))
         val failure = intercept[IncorpUpdateAPIFailure](await(result))
@@ -463,7 +463,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         val url = s"$testProxyUrl/submissions?timepoint=$timepoint&items_per_page=1"
 
         when(mockHttp.GET[HttpResponse](eqTo(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-          .thenReturn(Future.successful(HttpResponse(200, Some(invalidEmptyDateSubmissionResponseJson))))
+          .thenReturn(Future.successful(HttpResponse(200, json = invalidEmptyDateSubmissionResponseJson, Map())))
 
         val result = connector.checkForIncorpUpdate(Some(timepoint))
         val failure = intercept[IncorpUpdateAPIFailure](await(result))
@@ -474,7 +474,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
         val url = s"$testProxyUrl/submissions?timepoint=$timepoint&items_per_page=1"
 
         when(mockHttp.GET[HttpResponse](eqTo(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-          .thenReturn(Future.successful(HttpResponse(200, Some(manyValidSubmissionResponseJsonWithInvalid))))
+          .thenReturn(Future.successful(HttpResponse(200, json = manyValidSubmissionResponseJsonWithInvalid, Map())))
 
         val result = await(connector.checkForIncorpUpdate(Some(timepoint)))
 
@@ -486,7 +486,7 @@ class IncorporationCheckAPIConnectorSpec extends SCRSSpec {
       val url = s"$testProxyUrl/submissions?timepoint=$timepoint&items_per_page=1"
 
       when(mockHttp.GET[HttpResponse](eqTo(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.successful(HttpResponse(200, Some(validRejectedSubmissionResponseJson))))
+        .thenReturn(Future.successful(HttpResponse(200, json = validRejectedSubmissionResponseJson, Map())))
 
       val result = await(connector.checkForIncorpUpdate(Some(timepoint)))
       result mustBe Seq(rejectedIncorpUpdate)

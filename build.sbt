@@ -3,9 +3,6 @@ import uk.gov.hmrc.DefaultBuildSettings
 import uk.gov.hmrc.DefaultBuildSettings.{defaultSettings, integrationTestSettings, scalaSettings}
 import uk.gov.hmrc.sbtdistributables.SbtDistributablesPlugin.publishingSettings
 
-lazy val plugins : Seq[Plugins] = Seq(play.sbt.PlayScala)
-lazy val playSettings : Seq[Setting[_]] = Seq.empty
-
 val appName = "incorporation-information"
 
 lazy val scoverageSettings = {
@@ -13,20 +10,21 @@ lazy val scoverageSettings = {
 
   Seq(
     ScoverageKeys.coverageExcludedPackages := "<empty>;Reverse.*;models/.data/..*;view.*;config.*;.*(AuthService|BuildInfo|Routes).*",
-    ScoverageKeys.coverageMinimum := 80,
-    ScoverageKeys.coverageFailOnMinimum := false,
+    ScoverageKeys.coverageMinimumStmtTotal := 90,
+    ScoverageKeys.coverageFailOnMinimum := true,
     ScoverageKeys.coverageHighlighting := true
   )
 }
 
 lazy val microservice = Project(appName, file("."))
-  .enablePlugins(Seq(play.sbt.PlayScala,SbtAutoBuildPlugin, SbtGitVersioning, SbtDistributablesPlugin, SbtArtifactory) ++ plugins : _*)
-  .settings(playSettings ++ scoverageSettings : _*)
+  .enablePlugins(play.sbt.PlayScala, SbtAutoBuildPlugin, SbtDistributablesPlugin)
+  .settings(scoverageSettings : _*)
   .settings(scalaSettings: _*)
   .settings(publishingSettings: _*)
   .settings(defaultSettings(): _*)
   .settings(
-    libraryDependencies ++= AppDependencies.compile ++ AppDependencies.test(),
+    scalacOptions += "-Xlint:-unused",
+    libraryDependencies ++= AppDependencies(),
     retrieveManaged := true,
     evictionWarningOptions := EvictionWarningOptions.default.withWarnScalaVersionEviction(false),
     scalaVersion := "2.12.15",

@@ -22,7 +22,7 @@ import utils.Logging
 import play.api.libs.json.JsValue
 import services.MetricsService
 import uk.gov.hmrc.http._
-import uk.gov.hmrc.play.bootstrap.http.HttpClient
+import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.play.http.ws.WSProxy
 import utils._
 

@@ -17,7 +17,7 @@
 package Helpers
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
+import akka.stream.{ActorMaterializer, Materializer}
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.PlaySpec
 import uk.gov.hmrc.http.HeaderCarrier
@@ -26,5 +26,5 @@ trait SCRSSpec extends PlaySpec with MockitoSugar {
 
   implicit val defaultHc: HeaderCarrier = HeaderCarrier()
   implicit val system: ActorSystem = ActorSystem("II")
-  implicit val materializer: ActorMaterializer = ActorMaterializer()
+  implicit val materializer: Materializer = Materializer(system)
 }

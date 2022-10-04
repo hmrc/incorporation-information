@@ -26,7 +26,7 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
 
   val mockUrl = s"http://$wiremockHost:$wiremockPort"
 
-  val additionalConfiguration = Map(
+  val additionalConfiguration: Map[String, Any] = Map(
     "metrics.enabled" -> true,
     "microservice.services.public-coho-api.baseUrl" -> s"http://${wiremockHost}:${wiremockPort}",
     "microservice.services.public-coho-api.authToken" -> "SCRSservice",
@@ -67,7 +67,7 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
         client("test-only/feature-switch/transactionalAPI/on").get().futureValue
 
         stubbedWithToken(scrsToken)
-        val allowlistedResponse = client(s"$crn/incorporated-company-profile").withHeaders("User-Agent" -> "TestService").get().futureValue
+        val allowlistedResponse = client(s"$crn/incorporated-company-profile").withHttpHeaders("User-Agent" -> "TestService").get().futureValue
 
         allowlistedResponse.status mustBe 200
         allowlistedResponse.body mustBe json
@@ -76,7 +76,7 @@ class TransactionalControllerISpec extends IntegrationSpecBase {
         client("test-only/feature-switch/transactionalAPI/on").get().futureValue
 
         stubbedWithToken(mdtpToken)
-        val allowlistedResponse = client(s"$crn/incorporated-company-profile").withHeaders("User-Agent" -> "Not allowlisted").get().futureValue
+        val allowlistedResponse = client(s"$crn/incorporated-company-profile").withHttpHeaders("User-Agent" -> "Not allowlisted").get().futureValue
 
         allowlistedResponse.status mustBe 200
         allowlistedResponse.body mustBe json

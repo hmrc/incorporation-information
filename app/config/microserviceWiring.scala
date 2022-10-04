@@ -24,7 +24,7 @@ import uk.gov.hmrc.http.hooks.HttpHook
 import uk.gov.hmrc.play.audit.http.HttpAuditing
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.bootstrap.config.AppName
-import uk.gov.hmrc.play.bootstrap.http.HttpClient
+import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.play.http.ws._
 
 import javax.inject.Inject
@@ -39,7 +39,7 @@ class WSHttpProxyImpl @Inject()(val microserviceConfig: MicroserviceConfig,
 trait WSHttpProxy extends HttpClient with WSHttp with HttpAuditing with WSProxy {
   val config: Configuration
 
-  lazy val wsProxyServer: Option[WSProxyServer] = WSProxyConfiguration(s"proxy", config)
+  lazy val wsProxyServer: Option[WSProxyServer] = WSProxyConfiguration.buildWsProxyServer(config)
 
   override lazy val configuration: Config = config.underlying
 
