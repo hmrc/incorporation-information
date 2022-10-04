@@ -31,7 +31,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
 
   val publicCohoStubUri = "/cohoFrontEndStubs"
 
-  val additionalConfiguration = Map(
+  val additionalConfiguration: Map[String, Any] = Map(
     "metrics.enabled" -> true,
     "microservice.services.incorp-update-api.stub-url" -> s"http://${wiremockHost}:${wiremockPort}/incorporation-frontend-stubs",
     "microservice.services.incorp-update-api.url" -> s"http://${wiremockHost}:${wiremockPort}",

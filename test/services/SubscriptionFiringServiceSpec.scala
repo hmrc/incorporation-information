@@ -85,7 +85,7 @@ class SubscriptionFiringServiceSpec extends SCRSSpec with BeforeAndAfterEach wit
       when(mockQueueRepository.getIncorpUpdates(ArgumentMatchers.any())).thenReturn(Future.successful(Seq(queuedIncorpUpdate)))
       when(mockSubscriptionsRepository.getSubscriptions(ArgumentMatchers.any())).thenReturn(Future.successful(Seq(sub)), Future.successful(Seq()))
       when(mockQueueRepository.removeQueuedIncorpUpdate(sub.transactionId)).thenReturn(Future.successful(true))
-      when(mockFiringSubsConnector.connectToAnyURL(ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any())).thenReturn(Future.successful(HttpResponse(200)))
+      when(mockFiringSubsConnector.connectToAnyURL(ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any())).thenReturn(Future.successful(HttpResponse(200, "")))
       when(mockQueueRepository.updateTimestamp(any(), any())).thenReturn(Future.successful(true))
 
       val result: Seq[Boolean] = await(service.fireIncorpUpdateBatch)
@@ -104,7 +104,7 @@ class SubscriptionFiringServiceSpec extends SCRSSpec with BeforeAndAfterEach wit
     "return a sequence of false when a successfully fired subscription has failed to be deleted" in new Setup {
       when(mockQueueRepository.getIncorpUpdates(ArgumentMatchers.any())).thenReturn(Future.successful(Seq(queuedIncorpUpdate)))
       when(mockSubscriptionsRepository.getSubscriptions(ArgumentMatchers.any())).thenReturn(Future.successful(Seq(sub)))
-      when(mockFiringSubsConnector.connectToAnyURL(ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any())).thenReturn(Future.successful(HttpResponse(200)))
+      when(mockFiringSubsConnector.connectToAnyURL(ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any())).thenReturn(Future.successful(HttpResponse(200, "")))
       when(mockSubscriptionsRepository.deleteSub(sub.transactionId, sub.regime, sub.subscriber)).thenReturn(Future.successful(DeleteResult.acknowledged(0)))
 
       val result: Seq[Boolean] = await(service.fireIncorpUpdateBatch)
@@ -154,7 +154,7 @@ class SubscriptionFiringServiceSpec extends SCRSSpec with BeforeAndAfterEach wit
       when(mockSubscriptionsRepository.getSubscriptions(ArgumentMatchers.any()))
         .thenReturn(Future.successful(Seq(sub)))
       when(mockFiringSubsConnector.connectToAnyURL(ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any()))
-        .thenReturn(Future.successful(HttpResponse(202)))
+        .thenReturn(Future.successful(HttpResponse(202, "")))
       when(mockQueueRepository.updateTimestamp(any(), any())).thenReturn(Future.successful(true))
 
       await(service.fireIncorpUpdate(queuedIncorpUpdate))
@@ -165,7 +165,7 @@ class SubscriptionFiringServiceSpec extends SCRSSpec with BeforeAndAfterEach wit
       when(mockSubscriptionsRepository.getSubscriptions(ArgumentMatchers.any()))
         .thenReturn(Future.successful(Seq(sub)))
       when(mockFiringSubsConnector.connectToAnyURL(ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any()))
-        .thenReturn(Future.successful(HttpResponse(200)))
+        .thenReturn(Future.successful(HttpResponse(200, "")))
       when(mockSubscriptionsRepository.deleteSub(any(), any(), any())).thenReturn(Future.successful(DeleteResult.acknowledged(1)))
 
       await(service.fireIncorpUpdate(queuedIncorpUpdate))

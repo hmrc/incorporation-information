@@ -114,7 +114,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
     "return some valid JSON when a valid CRN is provided and stop the timer metric" in new Setup {
       when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.successful(HttpResponse(200, Some(validCompanyProfileResourceJson))))
+        .thenReturn(Future.successful(HttpResponse(200, json = validCompanyProfileResourceJson, Map())))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(Connector.getCompanyProfile(testCrn))
@@ -203,7 +203,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
     "return some valid JSON when a valid CRN is provided and stop the timer metric" in new Setup {
       when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.successful(HttpResponse(200, Some(validOfficerListResourceJson))))
+        .thenReturn(Future.successful(HttpResponse(200, json = validOfficerListResourceJson, Map())))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(Connector.getOfficerList(testCrn))
@@ -267,7 +267,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
     "return some valid JSON when a valid Officer ID is provided and stop the timer metric" in new Setup {
       when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.successful(HttpResponse(200, Some(validOfficerAppointmentsResourceJson))))
+        .thenReturn(Future.successful(HttpResponse(200, json = validOfficerAppointmentsResourceJson, Map())))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(Connector.getOfficerAppointment(testOfficerId))
@@ -280,7 +280,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       val url = "stubbed/get-officer-appointment?fn=tMand-greattsfh&sn=officersSdjhshd"
 
       when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.successful(HttpResponse(200, Some(validOfficerAppointmentsResourceJson))))
+        .thenReturn(Future.successful(HttpResponse(200, json = validOfficerAppointmentsResourceJson, Map())))
 
 
       val result = await(Connector.getOfficerAppointment(testOfficerUrl))

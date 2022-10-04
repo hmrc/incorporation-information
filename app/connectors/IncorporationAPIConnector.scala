@@ -24,7 +24,7 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json.{JsValue, Reads, __}
 import services.MetricsService
 import uk.gov.hmrc.http._
-import uk.gov.hmrc.play.bootstrap.http.HttpClient
+import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.play.http.ws.WSProxy
 import utils.{AlertLogging, DateCalculators, PagerDutyKeys, SCRSFeatureSwitches}
 

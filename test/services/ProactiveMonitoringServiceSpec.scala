@@ -104,7 +104,7 @@ class ProactiveMonitoringServiceSpec extends SCRSSpec {
         .thenReturn(Future.successful(Some(testJson)))
 
       val result: (String, String) = await(service.pollAPIs)
-      result mustBe ("polling transactional API - success", "polling public API - success")
+      result mustBe "polling transactional API - success" -> "polling public API - success"
     }
 
     "return a failed response from each API" in new Setup {
@@ -114,7 +114,7 @@ class ProactiveMonitoringServiceSpec extends SCRSSpec {
         .thenReturn(Future.successful(None))
 
       val result: (String, String) = await(service.pollAPIs)
-      result mustBe ("polling transactional API - failed", "polling public API - failed")
+      result mustBe "polling transactional API - failed" -> "polling public API - failed"
     }
 
     "return a success response from the transactional API and a failed response from the public API" in new Setup {
@@ -124,7 +124,7 @@ class ProactiveMonitoringServiceSpec extends SCRSSpec {
         .thenReturn(Future.successful(None))
 
       val result: (String, String) = await(service.pollAPIs)
-      result mustBe ("polling transactional API - success", "polling public API - failed")
+      result mustBe "polling transactional API - success" -> "polling public API - failed"
     }
   }
 }
