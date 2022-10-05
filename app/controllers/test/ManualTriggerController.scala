@@ -41,7 +41,7 @@ trait ManualTriggerController extends BackendBaseController with Logging {
       case INCORP_UPDATE => triggerIncorpUpdateJob
       case FIRE_SUBS => triggerFireSubsJob
       case _ =>
-        val message = s"$jobName did not match any known jobs"
+        val message = s"[$jobName] did not match any known jobs"
         logger.info(message)
         Future.successful(NotFound(message))
     }

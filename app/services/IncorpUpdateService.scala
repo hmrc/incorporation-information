@@ -21,13 +21,11 @@ import connectors.IncorporationAPIConnector
 import jobs._
 import models.{IncorpUpdate, QueuedIncorpUpdate}
 import org.mongodb.scala.result.UpdateResult
-import utils.Logging
 import repositories._
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.lock.LockService
-import utils.{AlertLogging, DateCalculators, PagerDutyKeys}
+import utils.{AlertLogging, DateCalculators, Logging, PagerDutyKeys}
 
-import java.time.LocalDateTime
 import javax.inject.{Inject, Provider}
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
@@ -107,7 +105,6 @@ trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResp
 
   private[services] def alertOnNoCTInterest(updates: Seq[IncorpUpdate])(implicit ec: ExecutionContext): Future[Int] = {
 
-    // TODO SCRS-11013 got pager duty outside of working hours - alert log scanner matching substring?
     def logNoSubscription(transactionId: String) {
       logger.error(s"NO_CT_REG_OF_INTEREST for txid $transactionId")
       if (inWorkingHours) {
@@ -132,7 +129,7 @@ trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResp
 
   private[services] def timepointValidator(timePoint: String): Boolean = {
     Try(dateCalculators.dateGreaterThanNow(timePoint)).getOrElse {
-      logger.info(s"couldn't parse $timePoint")
+      logger.info(s"[timepointValidator] couldn't parse $timePoint")
       true
     }
   }
@@ -156,14 +153,14 @@ trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResp
     implicit val hc = HeaderCarrier()
     lockKeeper.withLock(updateNextIncorpUpdateJobLot).map {
       case Some(res) =>
-        logger.info("IncorpUpdateService acquired lock and returned results")
-        logger.info(s"Result: $res")
+        logger.info("[invoke] IncorpUpdateService acquired lock and returned results")
+        logger.info(s"[invoke] Result: $res")
         Left(res)
       case None =>
-        logger.info("IncorpUpdateService cant acquire lock")
+        logger.info("[invoke] IncorpUpdateService cant acquire lock")
         Right(MongoLocked)
     }.recover {
-      case e: Exception => logger.error(s"Error running updateNextIncorpUpdateJobLot with message: ${e.getMessage}")
+      case e: Exception => logger.error(s"[invoke] Error running updateNextIncorpUpdateJobLot with message: ${e.getMessage}")
         Right(UnlockingFailed)
     }
   }
@@ -173,14 +170,13 @@ trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResp
     fetchIncorpUpdates flatMap { items =>
       storeIncorpUpdates(items) flatMap {
         case ir@InsertResult(0, 0, Seq(), 0, _) => {
-          logger.info("No Incorp updates were fetched")
+          logger.info("[updateNextIncorpUpdateJobLot] No Incorp updates were fetched")
           Future.successful(ir)
         }
         case ir@InsertResult(0, d, Seq(), a, _) => {
           logger.info(s"All $d fetched updates were duplicates")
           timepointRepository.updateTimepoint(latestTimepoint(items)).map(tp => {
-            val message = s"0 incorp updates were inserted, $d incorp updates were duplicates, $a alerts and the timepoint has been updated to $tp"
-            logger.info(message)
+            logger.info(s"[updateNextIncorpUpdateJobLot] 0 incorp updates were inserted, $d incorp updates were duplicates, $a alerts and the timepoint has been updated to $tp")
             ir
           })
         }
@@ -188,17 +184,16 @@ trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResp
           copyToQueue(createQueuedIncorpUpdates(insertedItems)) flatMap {
             case true =>
               timepointRepository.updateTimepoint(latestTimepoint(items)).map(tp => {
-                val message = s"$i incorp updates were inserted, $d incorp updates were duplicates, $a alerts and the timepoint has been updated to $tp"
-                logger.info(message)
+                logger.info(s"[updateNextIncorpUpdateJobLot] $i incorp updates were inserted, $d incorp updates were duplicates, $a alerts and the timepoint has been updated to $tp")
                 ir
               })
             case false =>
-              logger.info(s"There was an error when copying incorp updates to the new queue")
+              logger.warn(s"[updateNextIncorpUpdateJobLot] There was an error when copying incorp updates to the new queue")
               Future.successful(ir)
           }
         }
         case ir@InsertResult(_, _, e, _, _) =>
-          logger.info(s"There was an error when inserting incorp updates, message: ${e.map(_.getMessage)}")
+          logger.warn(s"[updateNextIncorpUpdateJobLot] There was an error when inserting incorp updates, message: ${e.map(_.getMessage)}")
           Future.successful(ir)
       }
     }
@@ -221,13 +216,12 @@ trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResp
     }
 
     def processByTP(tp: String): Future[IncorpUpdate] = {
-      val logPrefix = "[IncorpUpdateService] [processByTP]"
-      logger.info(s"${logPrefix} Passed in timepoint is " + tp)
+      logger.info(s"[processByTP] Passed in timepoint is " + tp)
       for {
         item <- fetchSpecificIncorpUpdates(Some(tp))
         result <- storeSpecificIncorpUpdate(item)
       } yield {
-        logger.info(s"${logPrefix} Result of updating Incorp Update: for " + item + " is: Store result: " + result.wasAcknowledged())
+        logger.info(s"[processByTP] Result of updating Incorp Update: for " + item + " is: Store result: " + result.wasAcknowledged())
         item
       }
     }
@@ -241,8 +235,7 @@ trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResp
     }
 
     def updateTheQueue(qEntry: Option[QueuedIncorpUpdate], iUpdate: IncorpUpdate): Future[Boolean] = {
-      val logPrefix = "[IncorpUpdateService] [updateTheQueue]"
-      logger.info(s"${logPrefix} About to update queue for txid ${iUpdate.transactionId}")
+      logger.info(s"[updateTheQueue] About to update queue for txid ${iUpdate.transactionId}")
       qEntry match {
         case Some(qeData) =>
           val txID = qeData.incorpUpdate.transactionId
@@ -251,17 +244,17 @@ trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResp
             copyTOQ <- copyToQueue(createQueuedIncorpUpdates(Seq(iUpdate)))
           }
             yield {
-              logger.info(s"${logPrefix} Results of updating the queue for txid: " + qeData.incorpUpdate.transactionId + " Remove from queue result: " + removeQueue + " Copy to queue result: " + copyTOQ)
+              logger.info(s"[updateTheQueue] Results of updating the queue for txid: " + qeData.incorpUpdate.transactionId + " Remove from queue result: " + removeQueue + " Copy to queue result: " + copyTOQ)
               true
             }
         case _ => if (forNoQueue) {
           copyToQueue(createQueuedIncorpUpdates(Seq(iUpdate))).map { copyToQ =>
-            logger.info(s"${logPrefix} Result of adding a new queue entry: " + copyToQ)
+            logger.info(s"[updateTheQueue] Result of adding a new queue entry: " + copyToQ)
             true
           }
         }
         else {
-          logger.info(s"${logPrefix} No queue update done")
+          logger.info(s"[updateTheQueue] No queue update done")
           Future.successful(false)
         }
       }
@@ -282,9 +275,7 @@ trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResp
   def copyToQueue(queuedIncorpUpdates: Seq[QueuedIncorpUpdate])
                  (implicit ec: ExecutionContext): Future[Boolean] = {
     queueRepository.storeIncorpUpdates(queuedIncorpUpdates).map { r =>
-      // TODO - explain result
-      logger.info(s"Incorp updates to be copied to queue = $queuedIncorpUpdates")
-      logger.info(s"result = $r")
+      logger.info(s"[copyToQueue] Incorp updates to be copied to queue = $queuedIncorpUpdates\nresult = $r")
       r.inserted == queuedIncorpUpdates.length
     }
   }

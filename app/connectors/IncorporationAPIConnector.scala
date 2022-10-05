@@ -108,8 +108,8 @@ trait IncorporationAPIConnector extends AlertLogging with Logging {
                   case IncorpUpdate(_, "accepted", Some(crn), Some(incorpDate), _, _) => false
                   case IncorpUpdate(_, "rejected", _, _, _, _) => false
                   case failure =>
-                    logger.error("CH_UPDATE_INVALID")
-                    logger.info(s"CH Update failed for transaction ID: ${failure.transactionId}. Status: ${failure.status}, incorpdate provided: ${failure.incorpDate.isDefined}")
+                    logger.error("[checkForIncorpUpdate] CH_UPDATE_INVALID")
+                    logger.info(s"[checkForIncorpUpdate] CH Update failed for transaction ID: ${failure.transactionId}. Status: ${failure.status}, incorpdate provided: ${failure.incorpDate.isDefined}")
                     true
                 }
               ) {
@@ -159,7 +159,7 @@ trait IncorporationAPIConnector extends AlertLogging with Logging {
   }
 
   private def logError(ex: HttpException, timepoint: Option[String]) = {
-    logger.error(s"[IncorporationCheckAPIConnector] [incorpUpdates]" +
+    logger.error(s"[incorpUpdates]" +
       s" request to fetch incorp updates returned a ${ex.responseCode}. " +
       s"No incorporations were processed for timepoint $timepoint - Reason = ${ex.getMessage}")
   }
@@ -167,27 +167,24 @@ trait IncorporationAPIConnector extends AlertLogging with Logging {
   private def handleError(timepoint: Option[String]): PartialFunction[Throwable, Seq[IncorpUpdate]] = {
     case ex: BadRequestException =>
       logError(ex, timepoint)
-      throw new IncorpUpdateAPIFailure(ex)
+      throw IncorpUpdateAPIFailure(ex)
     case ex: NotFoundException =>
       logError(ex, timepoint)
-      throw new IncorpUpdateAPIFailure(ex)
-    case ex: Upstream4xxResponse =>
-      logger.error("[checkForIncorpUpdate]" + ex.upstreamResponseCode + " " + ex.message)
-      throw new IncorpUpdateAPIFailure(ex)
-    case ex: Upstream5xxResponse =>
-      logger.error("[checkForIncorpUpdate]" + ex.upstreamResponseCode + " " + ex.message)
-      throw new IncorpUpdateAPIFailure(ex)
+      throw IncorpUpdateAPIFailure(ex)
+    case ex: UpstreamErrorResponse =>
+      logger.error("[incorpUpdates]" + ex.statusCode + " " + ex.message)
+      throw IncorpUpdateAPIFailure(ex)
     case ex: Exception =>
-      logger.error("[checkForIncorpUpdate]" + ex)
-      throw new IncorpUpdateAPIFailure(ex)
+      logger.error("[incorpUpdates]" + ex)
+      throw IncorpUpdateAPIFailure(ex)
   }
 
   private def handleError(transactionID: String): PartialFunction[Throwable, TransactionalAPIResponse] = {
     case _: NotFoundException =>
       pagerduty(PagerDutyKeys.COHO_TX_API_NOT_FOUND, Some(s"Could not find incorporation data for transaction ID - $transactionID"))
       FailedTransactionalAPIResponse
-    case ex: Upstream4xxResponse =>
-      pagerduty(PagerDutyKeys.COHO_TX_API_4XX, Some(s"${ex.upstreamResponseCode} returned for transaction id - $transactionID"))
+    case ex: UpstreamErrorResponse if UpstreamErrorResponse.Upstream4xxResponse.unapply(ex).isDefined =>
+      pagerduty(PagerDutyKeys.COHO_TX_API_4XX, Some(s"${ex.statusCode} returned for transaction id - $transactionID"))
       FailedTransactionalAPIResponse
     case _: GatewayTimeoutException =>
       pagerduty(PagerDutyKeys.COHO_TX_API_GATEWAY_TIMEOUT, Some(s"Gateway timeout for transaction id - $transactionID"))
@@ -195,8 +192,8 @@ trait IncorporationAPIConnector extends AlertLogging with Logging {
     case _: ServiceUnavailableException =>
       pagerduty(PagerDutyKeys.COHO_TX_API_SERVICE_UNAVAILABLE)
       FailedTransactionalAPIResponse
-    case ex: Upstream5xxResponse =>
-      pagerduty(PagerDutyKeys.COHO_TX_API_5XX, Some(s"Returned status code: ${ex.upstreamResponseCode} for $transactionID - reason: ${ex.getMessage}"))
+    case ex: UpstreamErrorResponse if UpstreamErrorResponse.Upstream5xxResponse.unapply(ex).isDefined =>
+      pagerduty(PagerDutyKeys.COHO_TX_API_5XX, Some(s"Returned status code: ${ex.statusCode} for $transactionID - reason: ${ex.getMessage}"))
       FailedTransactionalAPIResponse
     case ex: Throwable =>
       logger.info(s"[fetchTransactionalData] - Failed for $transactionID - reason: ${ex.getMessage}")

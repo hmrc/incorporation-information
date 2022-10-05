@@ -256,7 +256,7 @@ class IncorpUpdateServiceSpec extends SCRSSpec with JSONhelpers with LogCapturin
     "throw a PAGER DUTY log message at level ERROR if working day true and timepoint cannot be parsed" in new Setup(nDCalc(mondayWorking)) {
       withCaptureOfLoggingFrom(Service.logger) { loggingEvents =>
         Service.latestTimepoint(incorpUpdatesNonParsable) mustBe badNonParsableTimePoint.toString
-        loggingEvents.head.getMessage mustBe "[Service] couldn't parse Foobar"
+        loggingEvents.head.getMessage mustBe "[Service][timepointValidator] couldn't parse Foobar"
         loggingEvents.tail.head.getMessage mustBe s"[Service] ${PagerDutyKeys.TIMEPOINT_INVALID} - last timepoint received from coho invalid: ${inu4BADNonParsable.timepoint}"
       }
     }

@@ -65,14 +65,13 @@ trait MetricsService extends ScheduledService[Either[Map[String, Int], LockRespo
   def invoke(implicit ec: ExecutionContext): Future[Either[Map[String, Int], LockResponse]] = {
     lockKeeper.withLock(updateSubscriptionMetrics).map {
       case Some(res) =>
-        logger.info("MetricsService acquired lock and returned results")
-        logger.info(s"Result: $res")
+        logger.info(s"[invoke] MetricsService acquired lock and returned results\n\nResult: $res")
         Left(res)
       case None =>
-        logger.info("MetricsService cant acquire lock")
+        logger.info("[invoke] MetricsService cant acquire lock")
         Right(MongoLocked)
     }.recover {
-      case e: Exception => logger .error(s"Error running updateSubscriptionMetrics with message: ${e.getMessage}")
+      case e: Exception => logger.error(s"[invoke] Error running updateSubscriptionMetrics with message: ${e.getMessage}")
         Right(UnlockingFailed)
     }
   }
@@ -90,7 +89,7 @@ trait MetricsService extends ScheduledService[Either[Map[String, Int], LockRespo
   }
 
   private def recordSubscriptionRegimeStat(regime: String, count: Int) = {
-    val metricName = s"subscription-regime-stat.${regime}"
+    val metricName = s"subscription-regime-stat.$regime"
     try {
       val gauge = new Gauge[Int] {
         val getValue = count
@@ -99,9 +98,8 @@ trait MetricsService extends ScheduledService[Either[Map[String, Int], LockRespo
       metrics.defaultRegistry.remove(metricName)
       metrics.defaultRegistry.register(metricName, gauge)
     } catch {
-      case ex: MetricsDisabledException => {
-        logger.warn(s"[MetricsService] [recordSubscriptionRegimeStat] Metrics disabled - ${metricName} -> ${count}")
-      }
+      case _: MetricsDisabledException =>
+        logger.warn(s"[recordSubscriptionRegimeStat] Metrics disabled - $metricName -> $count")
     }
   }
 

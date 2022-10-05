@@ -48,27 +48,27 @@ class StartUpJobs @Inject()(val configuration: Configuration,
 
   private def reFetchIncorpInfo(): Future[Unit] = {
     tpConfig match {
-      case None => Future.successful(logger.info(s"[Config] No timepoints to re-fetch"))
+      case None => Future.successful(logger.info(s"[reFetchIncorpInfo] No timepoints to re-fetch"))
       case Some(timepointList) =>
         val tpList = new String(Base64.getDecoder.decode(timepointList), "UTF-8")
-        logger.info(s"[Config] List of timepoints are $tpList")
+        logger.info(s"[reFetchIncorpInfo] List of timepoints are $tpList")
         incorpUpdateService.updateSpecificIncorpUpdateByTP(tpList.split(","))(HeaderCarrier(), ec) map { result =>
-          logger.info(s"Updating incorp data is switched on - result = $result")
+          logger.info(s"[reFetchIncorpInfo] Updating incorp data is switched on - result = $result")
         }
     }
   }
 
   private def recreateSubscription(): Future[Unit] = {
     configuration.getOptional[String]("resubscribe") match {
-      case None => Future.successful(logger.info(s"[Config] No re-subscriptions"))
+      case None => Future.successful(logger.info(s"[recreateSubscription] No re-subscriptions"))
       case Some(resubs) =>
         val configString = new String(Base64.getDecoder.decode(resubs), "UTF-8")
         configString.split(",").toList match {
           case txId :: callbackUrl :: Nil =>
             subscriptionService.checkForSubscription(txId, "ctax", "scrs", callbackUrl, true) map {
-              result => logger.info(s"[Config] result of subscription service call for $txId = $result")
+              result => logger.info(s"[recreateSubscription] result of subscription service call for $txId = $result")
             }
-          case _ => Future.successful(logger.info(s"[Config] No info in re-subscription variable"))
+          case _ => Future.successful(logger.info(s"[recreateSubscription] No info in re-subscription variable"))
         }
     }
   }
@@ -76,12 +76,12 @@ class StartUpJobs @Inject()(val configuration: Configuration,
   private def reFetchIncorpInfoWhenNoQueue(): Future[Unit] = {
 
     configuration.getOptional[String]("timepointListNoQueue") match {
-      case None => Future.successful(logger.info(s"[Config] No timepoints to re-fetch for no queue entries"))
+      case None => Future.successful(logger.info(s"[reFetchIncorpInfoWhenNoQueue] No timepoints to re-fetch for no queue entries"))
       case Some(timepointListNQ) =>
         val tpList = new String(Base64.getDecoder.decode(timepointListNQ), "UTF-8")
-        logger.info(s"[Config] List of timepoints for no queue entries are $tpList")
+        logger.info(s"[reFetchIncorpInfoWhenNoQueue] List of timepoints for no queue entries are $tpList")
         incorpUpdateService.updateSpecificIncorpUpdateByTP(tpList.split(","), forNoQueue = true)(HeaderCarrier(), ec) map { result =>
-          logger.info(s"Updating incorp data is switched on for no queue entries - result = $result")
+          logger.info(s"[reFetchIncorpInfoWhenNoQueue] Updating incorp data is switched on for no queue entries - result = $result")
         }
     }
   }
@@ -96,7 +96,7 @@ class StartUpJobs @Inject()(val configuration: Configuration,
           incorpUpdate <- incorpUpdateRepo.repo.getIncorpUpdate(transId)
           queuedUpdate <- queueRepo.repo.getIncorpUpdate(transId)
         } yield {
-          logger.info(s"[HeldDocs] For txId: $transId - " +
+          logger.info(s"[logIncorpInfo][HeldDocs] For txId: $transId - " +
             s"subscriptions: ${if (subscriptions.isEmpty) "No subs" else subscriptions} - " +
             s"""incorp update: ${
               incorpUpdate.fold("No incorp update")(incorp =>
@@ -117,20 +117,20 @@ class StartUpJobs @Inject()(val configuration: Configuration,
     val maxAmountToLog = configuration.getOptional[Int]("log-count").getOrElse(20)
 
     subsRepo.repo.getSubscriptionsByRegime(regime, maxAmountToLog) map { subs =>
-      logger.info(s"Logging existing subscriptions for $regime regime, found ${subs.size} subscriptions")
+      logger.info(s"[logRemainingSubscriptionIdentifiers] Logging existing subscriptions for $regime regime, found ${subs.size} subscriptions")
       subs foreach { sub =>
-        logger.info(s"[Subscription] [$regime] Transaction ID: ${sub.transactionId}, Subscriber: ${sub.subscriber}")
+        logger.info(s"[logRemainingSubscriptionIdentifiers][$regime] Transaction ID: ${sub.transactionId}, Subscriber: ${sub.subscriber}")
       }
     }
   }
 
   private def resetTimepoint(): Future[Boolean] = {
     configuration.getOptional[String]("microservice.services.reset-timepoint-to").fold {
-      logger.info("[ResetTimepoint] Could not find a timepoint to reset to (config key microservice.services.reset-timepoint-to)")
+      logger.info("[resetTimepoint] Could not find a timepoint to reset to (config key microservice.services.reset-timepoint-to)")
       Future(false)
     } {
       timepoint =>
-        logger.info(s"[ResetTimepoint] Found timepoint from config - $timepoint")
+        logger.info(s"[resetTimepoint] Found timepoint from config - $timepoint")
         timepointMongo.repo.updateTimepoint(timepoint).map(_ => true)
     }
   }
@@ -138,7 +138,7 @@ class StartUpJobs @Inject()(val configuration: Configuration,
   def removeBrokenSubmissions(): Unit = {
     val transIdsFromConfig = configuration.getOptional[String]("brokenTxIds")
     transIdsFromConfig.fold(
-      logger.info(s"[Start Up] No broken submissions in config")
+      logger.info(s"[removeBrokenSubmissions] No broken submissions in config")
     ) { transIds =>
       val transIdList = utils.Base64.decode(transIds).split(",")
       transIdList.foreach { transId =>
@@ -146,7 +146,7 @@ class StartUpJobs @Inject()(val configuration: Configuration,
           writeResult <- subsRepo.repo.deleteSub(transId,"ctax","scrs")
           queueResult <- queueRepo.repo.removeQueuedIncorpUpdate(transId)
         } yield {
-          logger.info(s"[Start Up] Removed broken submission with txId: $transId - delete sub: $writeResult queue result: $queueResult")
+          logger.info(s"[removeBrokenSubmissions] Removed broken submission with txId: $transId - delete sub: $writeResult queue result: $queueResult")
         }
       }
     }

@@ -57,7 +57,7 @@ class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSupport with LogCapt
 
         logEvents.size mustBe 1
         logEvents.head.getLevel mustBe Level.INFO
-        logEvents.head.getMessage mustBe "[Repository] [UniqueIncorp] transactionId : trans2"
+        logEvents.head.getMessage mustBe "[Repository][UniqueIncorp] transactionId : trans2"
       }
     }
 
@@ -79,7 +79,7 @@ class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSupport with LogCapt
 
         logEvents.size mustBe 1
         logEvents.head.getLevel mustBe Level.INFO
-        logEvents.head.getMessage mustBe "[Repository] [UniqueIncorp] transactionId : trans2"
+        logEvents.head.getMessage mustBe "[Repository][UniqueIncorp] transactionId : trans2"
       }
     }
 
@@ -110,11 +110,11 @@ class IncorpUpdateRepositorySpec extends SCRSSpec with MongoSupport with LogCapt
 
         logEvents.size mustBe 3
         logEvents.head.getLevel mustBe Level.INFO
-        logEvents.head.getMessage mustBe "[Repository] [UniqueIncorp] transactionId : trans1"
+        logEvents.head.getMessage mustBe "[Repository][UniqueIncorp] transactionId : trans1"
         logEvents.apply(1).getLevel mustBe Level.INFO
-        logEvents.apply(1).getMessage mustBe "[Repository] [UniqueIncorp] transactionId : trans2"
+        logEvents.apply(1).getMessage mustBe "[Repository][UniqueIncorp] transactionId : trans2"
         logEvents.apply(2).getLevel mustBe Level.INFO
-        logEvents.apply(2).getMessage mustBe "[Repository] [UniqueIncorp] transactionId : trans3"
+        logEvents.apply(2).getMessage mustBe "[Repository][UniqueIncorp] transactionId : trans3"
       }
     }
   }

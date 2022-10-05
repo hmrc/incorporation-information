@@ -1312,10 +1312,9 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
         .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(txJsonContainingShareholders)))
       withCaptureOfLoggingFrom(Service.logger) { logEvents =>
         await(Service.fetchShareholders(transactionId)) mustBe Some(extractedJson)
-        val message = "[fetchShareholders] returned an array with the size - 1"
         val log =  logEvents.map(l => (l.getLevel, l.getMessage)).head
         log._1.toString mustBe "INFO"
-        log._2 mustBe s"[Service] ${message}"
+        log._2 mustBe s"[Service][fetchShareholders] returned an array with the size - 1"
       }
     }
     "return JsArray containing empty list of shareholders, but key exists logging size at level WARN" in new Setup {
@@ -1337,10 +1336,9 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
         .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(txJsonContainingEmptyListOfShareholders)))
       withCaptureOfLoggingFrom(Service.logger) { logEvents =>
         await(Service.fetchShareholders(transactionId)) mustBe Some(extractedJson)
-        val message = "[fetchShareholders] returned an array with the size - 0"
         val log = logEvents.map(l => (l.getLevel, l.getMessage)).head
         log._1.toString mustBe "WARN"
-        log._2 mustBe s"[Service] ${message}"
+        log._2 mustBe s"[Service][fetchShareholders] returned an array with the size - 0"
       }
     }
     "return None when key does not exist" in new Setup {
@@ -1357,10 +1355,9 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
         .thenReturn(Future.successful(SuccessfulTransactionalAPIResponse(txJsonContainingNOShareholdersKey)))
       withCaptureOfLoggingFrom(Service.logger) { logEvents =>
         await(Service.fetchShareholders(transactionId)) mustBe None
-        val message = "[fetchShareholders] returned nothing as key 'shareholders' was not found"
         val log = logEvents.map(l => (l.getLevel, l.getMessage)).head
         log._1.toString mustBe "INFO"
-        log._2 mustBe s"[Service] ${message}"
+        log._2 mustBe s"[Service][fetchShareholders] returned nothing as key 'shareholders' was not found"
       }
     }
   }

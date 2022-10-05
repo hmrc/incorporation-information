@@ -151,11 +151,11 @@ trait PublicCohoApiConnector extends AlertLogging with Logging {
         pagerduty(PagerDutyKeys.COHO_PUBLIC_API_NOT_FOUND, Some(s"Could not find company data for CRN - $crn"))
         None
       } else {
-        logger.info(s"Could not find company data for CRN - $crn")
+        logger.info(s"[getCompanyProfile] Could not find company data for CRN - $crn")
         None
       }
-    case ex: Upstream4xxResponse =>
-      pagerduty(PagerDutyKeys.COHO_PUBLIC_API_4XX, Some(s"Returned status code: ${ex.upstreamResponseCode} for $crn - reason: ${ex.getMessage}"))
+    case ex: UpstreamErrorResponse if UpstreamErrorResponse.Upstream4xxResponse.unapply(ex).isDefined =>
+      pagerduty(PagerDutyKeys.COHO_PUBLIC_API_4XX, Some(s"Returned status code: ${ex.statusCode} for $crn - reason: ${ex.getMessage}"))
       None
     case _: GatewayTimeoutException =>
       pagerduty(PagerDutyKeys.COHO_PUBLIC_API_GATEWAY_TIMEOUT, Some(s"Gateway timeout for $crn"))
@@ -163,8 +163,8 @@ trait PublicCohoApiConnector extends AlertLogging with Logging {
     case _: ServiceUnavailableException =>
       pagerduty(PagerDutyKeys.COHO_PUBLIC_API_SERVICE_UNAVAILABLE)
       None
-    case ex: Upstream5xxResponse =>
-      pagerduty(PagerDutyKeys.COHO_PUBLIC_API_5XX, Some(s"Returned status code: ${ex.upstreamResponseCode} for $crn - reason: ${ex.getMessage}"))
+    case ex: UpstreamErrorResponse if UpstreamErrorResponse.Upstream5xxResponse.unapply(ex).isDefined =>
+      pagerduty(PagerDutyKeys.COHO_PUBLIC_API_5XX, Some(s"Returned status code: ${ex.statusCode} for $crn - reason: ${ex.getMessage}"))
       None
     case ex: Throwable =>
       logger.info(s"[getCompanyProfile] - Failed for $crn - reason: ${ex.getMessage}")
