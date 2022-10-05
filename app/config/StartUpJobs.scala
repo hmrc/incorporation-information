@@ -48,7 +48,7 @@ class StartUpJobs @Inject()(val configuration: Configuration,
 
   private def reFetchIncorpInfo(): Future[Unit] = {
     tpConfig match {
-      case None => Future.successful(logger.info(s"[removeBrokenSubmissions] No timepoints to re-fetch"))
+      case None => Future.successful(logger.info(s"[reFetchIncorpInfo] No timepoints to re-fetch"))
       case Some(timepointList) =>
         val tpList = new String(Base64.getDecoder.decode(timepointList), "UTF-8")
         logger.info(s"[reFetchIncorpInfo] List of timepoints are $tpList")
