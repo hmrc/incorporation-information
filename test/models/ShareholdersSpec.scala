@@ -42,10 +42,9 @@ class ShareholdersSpec extends SCRSSpec with LogCapturing{
         """.stripMargin)
     withCaptureOfLoggingFrom(Shareholders.logger) { logEvents =>
       json.as[Option[JsArray]](Shareholders.reads).isDefined mustBe false
-      val message = "[ShareholdersReads] 'shareholders' is not an array"
       val log =  logEvents.map(l => (l.getLevel, l.getMessage)).head
       log._1.toString mustBe "ERROR"
-      log._2 mustBe s"[Shareholders] ${message}"
+      log._2 mustBe s"[Shareholders][ShareholdersReads] 'shareholders' is not an array"
     }
   }
   "return Some if key exists and is jsArray" in {

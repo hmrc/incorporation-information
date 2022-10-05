@@ -140,7 +140,7 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
 
       withCaptureOfLoggingFrom(Connector.logger) { logEvents =>
         await(Connector.getCompanyProfile(testCrn, isScrs = false)) mustBe None
-        logEvents.map(_.getMessage) mustBe List("[Connector] Could not find company data for CRN - 1234567890")
+        logEvents.map(_.getMessage) mustBe List("[Connector][getCompanyProfile] Could not find company data for CRN - 1234567890")
         logEvents.size mustBe 1
       }
     }

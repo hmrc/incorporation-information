@@ -75,7 +75,7 @@ class TimepointMongoRepository(mongo: MongoComponent)
     collection.find(selector).headOption() map {
       case Some(res) => Some(res.timepoint)
       case _ =>
-        logger.warn("Could not find an existing Timepoint - this is ok for first run of the system")
+        logger.warn("[retrieveTimePoint] Could not find an existing Timepoint - this is ok for first run of the system")
         None
     }
   }

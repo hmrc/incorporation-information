@@ -75,8 +75,8 @@ class ProactiveMonitoringISpec extends IntegrationSpecBase with FakeAppConfig
       stubFetchTransactionalAPI(502)
       stubFetchCompanyProfilePublicAPI(502)
 
-      withCaptureOfLoggingFrom(Logger("application.IncorporationAPIConnectorImpl")) { incorpApiConnectorLogs =>
-        withCaptureOfLoggingFrom(Logger("application.PublicCohoApiConnectorImpl")) { publicCohoApiConnectorLogs =>
+      withCaptureOfLoggingFrom(Logger("application.connectors.IncorporationAPIConnectorImpl")) { incorpApiConnectorLogs =>
+        withCaptureOfLoggingFrom(Logger("application.connectors.PublicCohoApiConnectorImpl")) { publicCohoApiConnectorLogs =>
           val (txApiResponse, publicApiResponse) = await(service.pollAPIs)
           txApiResponse mustBe "polling transactional API - failed"
           publicApiResponse mustBe "polling public API - failed"
