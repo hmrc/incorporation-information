@@ -64,8 +64,6 @@ class IncorpUpdateSpec extends SCRSSpec with JSONhelpers with DateCalculators {
 
       val (generatedTS, jsonNoTS) = extractTimestamp(response)
 
-      // TODO - should be an ISO formatted timestamp
-      // check it's within a second
       generatedTS mustBe time.toInstant(ZoneOffset.UTC).toEpochMilli +- 1000
       jsonNoTS mustBe json
     }

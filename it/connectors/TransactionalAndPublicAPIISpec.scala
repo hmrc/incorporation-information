@@ -26,7 +26,7 @@ import repositories.IncorpUpdateMongo
 import utils.TimestampFormats
 import utils.TimestampFormats._
 
-import java.time.LocalDateTime
+import java.time.{LocalDateTime, ZoneOffset}
 class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
 
   val publicCohoStubUri = "/cohoFrontEndStubs"
@@ -38,7 +38,6 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
     "microservice.services.public-coho-api.stub-url" -> s"http://${wiremockHost}:${wiremockPort}$publicCohoStubUri"
   )
 
-  //todo: set feature switch to false
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
     .configure(fakeConfig(additionalConfiguration))
     .build()
@@ -127,7 +126,6 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
          |}
     """.stripMargin
 
-    // TODO - re-check against expecations
     "return a 200 and Json from the companies house API stub" in new Setup {
       stubGet(destinationUrl, 200, body)
 
@@ -379,76 +377,8 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
     }
   "getOfficerList" must {
     val crn = "crn5"
-    val input =
-      s"""
-         |{
-         |  "transaction_id": "12345",
-         |  "company_number": "crn5",
-         |  "company_name": "MOOO LIMITED",
-         |  "company_type": "ltd",
-         |    "type": "ltd",
-         |    "company_status":"foo",
-         |  "registered_office_address": {
-         |    "country": "United Kingdom",
-         |    "address_line_2": "foo2",
-         |    "premises": "98",
-         |    "po_box": "po1",
-         |    "region":"region1",
-         |    "care_of": "care of 1",
-         |    "postal_code": "post1",
-         |    "address_line_1": "lim1",
-         |    "locality": "WORTHING"
-         |  },
-         |  "officers": [
-         |    {
-         |      "date_of_birth": {
-         |        "month": "11",
-         |        "day": "12",
-         |        "year": "1973"
-         |      },
-         |      "name_elements": {
-         |        "forename": "Bob",
-         |        "surname": "Bobbings",
-         |        "other_forenames": "Bimbly Bobblous"
-         |      },
-         |      "address": {
-         |        "country": "United Kingdom",
-         |        "address_line_2": "add2",
-         |        "premises": "98",
-         |        "postal_code": "post1",
-         |        "address_line_1": "lim1",
-         |        "locality": "WORTHING"
-         |      }
-         |    },
-         |    {
-         |      "date_of_birth": {
-         |        "month": "00",
-         |        "day": "01",
-         |        "year": "0002"
-         |      },
-         |      "name_elements": {
-         |        "title": "Mx",
-         |        "forename": "Jingly",
-         |        "surname": "Jingles"
-         |      },
-         |      "address": {
-         |        "country": "England",
-         |        "premises": "111",
-         |        "postal_code": "post2",
-         |        "address_line_1": "add11",
-         |        "locality": "local1"
-         |      }
-         |    }
-         |  ],
-         | "sic_codes": [
-         |
-           |  "84240",
-         |   "01410"
-         |
-           |  ]
-         |}
-         |    """.stripMargin
-    val dateTime = Json.toJson(LocalDateTime.parse("2017-05-15T17:45:45Z", TimestampFormats.ldtFormatter))
+    val dateTime = LocalDateTime.parse("2017-05-15T17:45:45Z", TimestampFormats.ldtFormatter)
+    val dateTimeJson = Json.toJson(dateTime)
     val officerListInput =
       s"""
                                 |{ "items":[{
@@ -477,7 +407,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
                                 |    "nationality" : "British",
                                 |    "occupation" : "Consultant",
                                 |    "officer_role" : "director",
-                                |    "resigned_on" : "$dateTime"
+                                |    "resigned_on" : "$dateTimeJson"
                                 |
                                 | }
                                 | ]}
@@ -547,7 +477,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
         |  "etag": "1db68f787d91310e659ab22690d504363aeb9361"
         |}
     """.stripMargin
-    val cohoDestinationUrl = s"/cohoFrontEndStubs/company-profile/$crn"
+
     val  cohOfficerListUrl = s"/cohoFrontEndStubs/company/$crn/officers"
 
     "return 404 if no officer list exists but company is incorporated  no data in tx api /public api" in new Setup {
@@ -577,7 +507,36 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
       val clientUrl = s"/incorporation-information/$transactionId/officer-list"
       val response = buildClient(clientUrl).get().futureValue
       response.status mustBe 200
-      // TODO - Add assertions for response
+      response.json mustBe Json.parse(
+        s"""
+          |{
+          |  "officers": [
+          |    {
+          |      "name_elements": {
+          |        "other_forenames": "Testy",
+          |        "title": "Mr",
+          |        "surname": "TESTERSON",
+          |        "forename": "Test"
+          |      },
+          |      "resigned_on": "${dateTime.toInstant(ZoneOffset.UTC).toEpochMilli}",
+          |      "appointment_link": "/test/link",
+          |      "officer_role": "director",
+          |      "address": {
+          |        "country": "United Kingdom",
+          |        "premises": "14",
+          |        "address_line_1": "test avenue",
+          |        "locality": "testville",
+          |        "address_line_2": "test line 2",
+          |        "postal_code": "TE1 1ST"
+          |      },
+          |      "date_of_birth": {
+          |        "month": 3,
+          |        "year": 1990
+          |      }
+          |    }
+          |  ]
+          |}
+          |""".stripMargin)
     }
 
     "return 200 if company incorporated, officer list exists in public api with corporate director" in new Setup {
@@ -593,7 +552,30 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
       val clientUrl = s"/incorporation-information/$transactionId/officer-list"
       val response = buildClient(clientUrl).get().futureValue
       response.status mustBe 200
-      // TODO - Add assertions for response
+      response.json mustBe Json.parse(
+        s"""
+           |{
+           |  "officers": [
+           |    {
+           |      "resigned_on": "${dateTime.toInstant(ZoneOffset.UTC).toEpochMilli}",
+           |      "appointment_link": "/test/link",
+           |      "officer_role": "director",
+           |      "address": {
+           |        "country": "United Kingdom",
+           |        "premises": "14",
+           |        "address_line_1": "test avenue",
+           |        "locality": "testville",
+           |        "address_line_2": "test line 2",
+           |        "postal_code": "TE1 1ST"
+           |      },
+           |      "date_of_birth": {
+           |        "month": 3,
+           |        "year": 1990
+           |      }
+           |    }
+           |  ]
+           |}
+           |""".stripMargin)
     }
   }
 }

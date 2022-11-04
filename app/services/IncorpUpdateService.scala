@@ -165,38 +165,40 @@ trait IncorpUpdateService extends ScheduledService[Either[InsertResult, LockResp
     }
   }
 
-  // TODO - look to refactor this into a simpler for-comprehension
-  def updateNextIncorpUpdateJobLot(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[InsertResult] = {
-    fetchIncorpUpdates flatMap { items =>
-      storeIncorpUpdates(items) flatMap {
-        case ir@InsertResult(0, 0, Seq(), 0, _) => {
-          logger.info("[updateNextIncorpUpdateJobLot] No Incorp updates were fetched")
-          Future.successful(ir)
-        }
-        case ir@InsertResult(0, d, Seq(), a, _) => {
-          logger.info(s"All $d fetched updates were duplicates")
-          timepointRepository.updateTimepoint(latestTimepoint(items)).map(tp => {
-            logger.info(s"[updateNextIncorpUpdateJobLot] 0 incorp updates were inserted, $d incorp updates were duplicates, $a alerts and the timepoint has been updated to $tp")
-            ir
-          })
-        }
-        case ir@InsertResult(i, d, Seq(), a, insertedItems) => {
-          copyToQueue(createQueuedIncorpUpdates(insertedItems)) flatMap {
-            case true =>
-              timepointRepository.updateTimepoint(latestTimepoint(items)).map(tp => {
-                logger.info(s"[updateNextIncorpUpdateJobLot] $i incorp updates were inserted, $d incorp updates were duplicates, $a alerts and the timepoint has been updated to $tp")
-                ir
-              })
-            case false =>
-              logger.warn(s"[updateNextIncorpUpdateJobLot] There was an error when copying incorp updates to the new queue")
-              Future.successful(ir)
-          }
-        }
-        case ir@InsertResult(_, _, e, _, _) =>
-          logger.warn(s"[updateNextIncorpUpdateJobLot] There was an error when inserting incorp updates, message: ${e.map(_.getMessage)}")
-          Future.successful(ir)
-      }
+  def updateNextIncorpUpdateJobLot(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[InsertResult] =
+    for {
+      items <- fetchIncorpUpdates
+      ir <- storeIncorpUpdates(items)
+      result <- handleInsertResult(items, ir)
+    } yield result
+
+  private def copy2queue(insertResult: InsertResult, items: Seq[IncorpUpdate])(implicit ec: ExecutionContext): Future[InsertResult] =
+    copyToQueue(createQueuedIncorpUpdates(insertResult.insertedItems)).flatMap {
+      case true =>
+        timepointRepository.updateTimepoint(latestTimepoint(items)).map(tp => {
+          logger.info(s"[updateNextIncorpUpdateJobLot] ${insertResult.inserted} incorp updates were inserted, ${insertResult.duplicate} incorp updates were duplicates, ${insertResult.alerts} alerts and the timepoint has been updated to $tp")
+          insertResult
+        })
+      case false =>
+        logger.warn(s"[updateNextIncorpUpdateJobLot] There was an error when copying incorp updates to the new queue")
+        Future.successful(insertResult)
     }
+
+  private def handleInsertResult(items: Seq[IncorpUpdate], insertResult: InsertResult)(implicit ec: ExecutionContext): Future[InsertResult] = insertResult match {
+    case ir@InsertResult(0, 0, Seq(), 0, _) =>
+      logger.info("[updateNextIncorpUpdateJobLot] No Incorp updates were fetched")
+      Future.successful(ir)
+    case ir@InsertResult(0, d, Seq(), a, _) =>
+      logger.info(s"All $d fetched updates were duplicates")
+      timepointRepository.updateTimepoint(latestTimepoint(items)).map(tp => {
+        logger.info(s"[updateNextIncorpUpdateJobLot] 0 incorp updates were inserted, $d incorp updates were duplicates, $a alerts and the timepoint has been updated to $tp")
+        ir
+      })
+    case ir@InsertResult(_, _, Seq(), _, _) =>
+      copy2queue(ir, items)
+    case ir@InsertResult(_, _, e, _, _) =>
+      logger.warn(s"[updateNextIncorpUpdateJobLot] There was an error when inserting incorp updates, message: ${e.map(_.getMessage)}")
+      Future.successful(ir)
   }
 
   def updateSpecificIncorpUpdateByTP(tps: Seq[String],

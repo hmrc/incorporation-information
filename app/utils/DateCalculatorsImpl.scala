@@ -35,7 +35,7 @@ trait DateCalculators {
     throw new Exception(s"timepoint is not 17 characters it is ${cohoString.size}")
   } else {
 
-    //TODO: Bespoke extraction due to issue with DateTimeFormatter in Java8. Moving to Java11 may resolve this and can be re-written back to:
+    // Bespoke extraction due to issue with DateTimeFormatter in Java8. Moving to Java11 may resolve this and can be re-written back to:
     //    val cohoFormat = DateTimeFormatter.ofPattern("uuuuMMddHHmmssSSS")
     //    LocalDateTime.parse(cohoString, cohoFormat)
     val year = cohoString.substring(0,4).toInt

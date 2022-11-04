@@ -74,10 +74,6 @@ class FireSubscriptionsAPIISpec extends IntegrationSpecBase with DateCalculators
   val sub3 = Subscription("transId3", "CT", "subscriber", s"$mockUrl/mockUri")
   val incorpUpdateResponse = IncorpUpdateResponse("CT", "subscriber", mockUrl, incorpUpdate)
 
-
-  // TODO - LJ - add scenario to test not picking up queue items in the future
-  // TODO - LJ - add scenario for ensuring failed updates get moved into the future
-
   "fireIncorpUpdateBatch" must {
 
     "return a Sequence of a true value when one queued incorp update has been successfully fired and both the " +
