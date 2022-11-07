@@ -18,7 +18,8 @@ package utils
 
 import java.time.LocalTime
 
-import Helpers.{LogCapturing, SCRSSpec}
+import uk.gov.hmrc.play.bootstrap.tools.LogCapturing
+import Helpers.SCRSSpec
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.spi.ILoggingEvent
 import org.scalatest.concurrent.Eventually

@@ -17,7 +17,8 @@
 package connectors
 
 
-import Helpers.{LogCapturing, SCRSSpec}
+import uk.gov.hmrc.play.bootstrap.tools.LogCapturing
+import Helpers.SCRSSpec
 import com.codahale.metrics.{Counter, Timer}
 import mocks.MockMetrics
 import org.mockito.ArgumentMatchers

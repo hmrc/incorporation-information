@@ -16,7 +16,8 @@
 
 package config
 
-import Helpers.{LogCapturing, SCRSSpec}
+import uk.gov.hmrc.play.bootstrap.tools.LogCapturing
+import Helpers.SCRSSpec
 import com.mongodb.client.result.DeleteResult
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
 import org.mockito.ArgumentMatchers.{any, eq => eqTo}

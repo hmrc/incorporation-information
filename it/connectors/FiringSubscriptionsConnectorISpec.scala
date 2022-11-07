@@ -53,10 +53,8 @@ class FiringSubscriptionsConnectorISpec extends IntegrationSpecBase {
   "fireIncorpUpdate" must {
 
     "return a 200 HTTP response from a given callbackUrl" in {
-      val firingSubscriptionsConnector = new FiringSubscriptionsConnector {
-        override implicit val ec: ExecutionContext = global
-        override val http: HttpClient = app.injector.instanceOf[HttpClient]
-      }
+
+      val firingSubscriptionsConnector = new FiringSubscriptionsConnector(app.injector.instanceOf[HttpClient])
 
       def connectToAnyURL = firingSubscriptionsConnector.connectToAnyURL(incorpUpdateResponse, s"$mockUrl/testuri")
 

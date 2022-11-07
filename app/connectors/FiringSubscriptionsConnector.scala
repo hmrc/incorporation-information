@@ -16,32 +16,22 @@
 
 package connectors
 
+import connectors.httpParsers.BaseHttpReads
 import models.IncorpUpdateResponse
-import utils.Logging
-import play.api.libs.json.{JsValue, Json}
-import uk.gov.hmrc.http._
-import uk.gov.hmrc.http.HttpClient
+import uk.gov.hmrc.http.{HttpClient, _}
 
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
-class FiringSubscriptionsConnectorImpl @Inject()(val http: HttpClient)
-                                                (implicit val ec: ExecutionContext) extends FiringSubscriptionsConnector {
+class FiringSubscriptionsConnector @Inject()(val http: HttpClient)
+                                            (implicit val ec: ExecutionContext) extends BaseConnector with BaseHttpReads {
 
-}
-
-trait FiringSubscriptionsConnector extends Logging {
-  val http: HttpClient
-  implicit val ec: ExecutionContext
-
-  def connectToAnyURL(iuResponse: IncorpUpdateResponse, url: String)(implicit hc: HeaderCarrier): Future[HttpResponse] = {
-    val json = Json.toJson[IncorpUpdateResponse](iuResponse)(IncorpUpdateResponse.writes)
+  def connectToAnyURL(iuResponse: IncorpUpdateResponse, url: String)(implicit hc: HeaderCarrier): Future[HttpResponse] =
     try {
-      http.POST[JsValue, HttpResponse](s"$url", json)
+      http.POST[IncorpUpdateResponse, HttpResponse](s"$url", iuResponse)(IncorpUpdateResponse.writes, rawReads, hc, ec)
     } catch {
       case ex: Exception =>
         logger.error(s"[connectToAnyURL] - Error posting incorp response to $url - ${ex.getMessage}", ex)
         Future.failed(ex)
     }
-  }
 }

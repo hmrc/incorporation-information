@@ -21,6 +21,7 @@ import connectors.FiringSubscriptionsConnector
 import jobs._
 import models.{IncorpUpdateResponse, QueuedIncorpUpdate}
 import play.api.Environment
+import play.api.http.Status.{NO_CONTENT, OK}
 import utils.Logging
 import repositories._
 import uk.gov.hmrc.http.HeaderCarrier
@@ -139,14 +140,13 @@ trait SubscriptionFiringService extends ScheduledService[Either[Seq[Boolean], Lo
         firingSubsConnector.connectToAnyURL(iuResponse, httpHttpsConverter(sub.callbackUrl)) flatMap { response =>
           logger.info(s"[SubscriptionFiringService] [fireIncorpUpdate] - Posting response to callback for txid : ${iu.incorpUpdate.transactionId} was successful")
           response.status match {
-            case 202 => {
+            case OK => deleteSub(sub.transactionId, sub.regime, sub.subscriber)
+            case NO_CONTENT =>
               val newTS = Instant.now.plusSeconds(queueRetryDelay)
               queueRepository.updateTimestamp(sub.transactionId, newTS).map(_ => false)
-            }
-            case _ => deleteSub(sub.transactionId, sub.regime, sub.subscriber)
           }
         } recoverWith {
-          case e: Exception =>
+          case _: Exception =>
             logger.info(s"[SubscriptionFiringService][fireIncorpUpdate] Subscription with transactionId: ${sub.transactionId} failed to return a 200 response")
             val newTS = Instant.now.plusSeconds(queueFailureDelay)
             queueRepository.updateTimestamp(sub.transactionId, newTS).map(_ => false)

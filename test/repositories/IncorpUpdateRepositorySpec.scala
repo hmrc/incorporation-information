@@ -16,7 +16,8 @@
 
 package repositories
 
-import Helpers.{LogCapturing, SCRSSpec}
+import uk.gov.hmrc.play.bootstrap.tools.LogCapturing
+import Helpers.SCRSSpec
 import ch.qos.logback.classic.Level
 import com.mongodb.bulk.BulkWriteError
 import models.IncorpUpdate
