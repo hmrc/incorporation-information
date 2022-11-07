@@ -63,19 +63,19 @@ trait IncorporationAPIHttpParsers extends BaseHttpReads with AlertLogging { _: B
   def fetchTransactionalDataHttpReads(txId: String): HttpReads[TransactionalAPIResponse] = (_: String, _: String, response: HttpResponse) =>
     response.status match {
       case NOT_FOUND =>
-        pagerduty(PagerDutyKeys.COHO_TX_API_NOT_FOUND, Some(s"Could not find incorporation data for transaction ID - $txId"))
+        pagerduty(PagerDutyKeys.COHO_TX_API_NOT_FOUND, Some(s"Could not find incorporation data" + logContext(txId = Some(txId))))
         FailedTransactionalAPIResponse
       case status if is4xx(status) =>
-        pagerduty(PagerDutyKeys.COHO_TX_API_4XX, Some(s"$status returned for transaction id - $txId"))
+        pagerduty(PagerDutyKeys.COHO_TX_API_4XX, Some(s"$status returned" + logContext(txId = Some(txId))))
         FailedTransactionalAPIResponse
       case GATEWAY_TIMEOUT =>
-        pagerduty(PagerDutyKeys.COHO_TX_API_GATEWAY_TIMEOUT, Some(s"Gateway timeout for transaction id - $txId"))
+        pagerduty(PagerDutyKeys.COHO_TX_API_GATEWAY_TIMEOUT, Some("Gateway timeout" + logContext(txId = Some(txId))))
         FailedTransactionalAPIResponse
       case SERVICE_UNAVAILABLE =>
-        pagerduty(PagerDutyKeys.COHO_TX_API_SERVICE_UNAVAILABLE)
+        pagerduty(PagerDutyKeys.COHO_TX_API_SERVICE_UNAVAILABLE, Some("Service unavailable" + logContext(txId = Some(txId))))
         FailedTransactionalAPIResponse
       case status if is5xx(status) =>
-        pagerduty(PagerDutyKeys.COHO_TX_API_5XX, Some(s"Returned status code: $status for $txId"))
+        pagerduty(PagerDutyKeys.COHO_TX_API_5XX, Some(s"Returned status code: $status" + logContext(txId = Some(txId))))
         FailedTransactionalAPIResponse
       case _ =>
         SuccessfulTransactionalAPIResponse(response.json)

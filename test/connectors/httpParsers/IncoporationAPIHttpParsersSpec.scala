@@ -368,7 +368,7 @@ class IncoporationAPIHttpParsersSpec extends SCRSSpec with LogCapturingHelper {
 
           withCaptureOfLoggingFrom(IncorporationAPIHttpParsers.logger) { logs =>
             rds.read("", "", HttpResponse(NOT_FOUND, "")) mustBe FailedTransactionalAPIResponse
-            logs.containsMsg(Level.ERROR, s"[IncorporationAPIHttpParsers] ${PagerDutyKeys.COHO_TX_API_NOT_FOUND} - Could not find incorporation data for transaction ID - $txId")
+            logs.containsMsg(Level.ERROR, s"[IncorporationAPIHttpParsers] ${PagerDutyKeys.COHO_TX_API_NOT_FOUND} - Could not find incorporation data for txId: '$txId'")
           }
         }
 
@@ -376,7 +376,7 @@ class IncoporationAPIHttpParsersSpec extends SCRSSpec with LogCapturingHelper {
 
           withCaptureOfLoggingFrom(IncorporationAPIHttpParsers.logger) { logs =>
             rds.read("", "", HttpResponse(BAD_REQUEST, "")) mustBe FailedTransactionalAPIResponse
-            logs.containsMsg(Level.ERROR, s"[IncorporationAPIHttpParsers] ${PagerDutyKeys.COHO_TX_API_4XX} - $BAD_REQUEST returned for transaction id - $txId")
+            logs.containsMsg(Level.ERROR, s"[IncorporationAPIHttpParsers] ${PagerDutyKeys.COHO_TX_API_4XX} - $BAD_REQUEST returned for txId: '$txId'")
           }
         }
 
@@ -384,7 +384,7 @@ class IncoporationAPIHttpParsersSpec extends SCRSSpec with LogCapturingHelper {
 
           withCaptureOfLoggingFrom(IncorporationAPIHttpParsers.logger) { logs =>
             rds.read("", "", HttpResponse(GATEWAY_TIMEOUT, "")) mustBe FailedTransactionalAPIResponse
-            logs.containsMsg(Level.ERROR, s"[IncorporationAPIHttpParsers] ${PagerDutyKeys.COHO_TX_API_GATEWAY_TIMEOUT} - Gateway timeout for transaction id - $txId")
+            logs.containsMsg(Level.ERROR, s"[IncorporationAPIHttpParsers] ${PagerDutyKeys.COHO_TX_API_GATEWAY_TIMEOUT} - Gateway timeout for txId: '$txId'")
           }
         }
 
@@ -392,7 +392,7 @@ class IncoporationAPIHttpParsersSpec extends SCRSSpec with LogCapturingHelper {
 
           withCaptureOfLoggingFrom(IncorporationAPIHttpParsers.logger) { logs =>
             rds.read("", "", HttpResponse(SERVICE_UNAVAILABLE, "")) mustBe FailedTransactionalAPIResponse
-            logs.containsMsg(Level.ERROR, s"[IncorporationAPIHttpParsers] ${PagerDutyKeys.COHO_TX_API_SERVICE_UNAVAILABLE}")
+            logs.containsMsg(Level.ERROR, s"[IncorporationAPIHttpParsers] ${PagerDutyKeys.COHO_TX_API_SERVICE_UNAVAILABLE} - Service unavailable for txId: '$txId'")
           }
         }
 
@@ -400,7 +400,7 @@ class IncoporationAPIHttpParsersSpec extends SCRSSpec with LogCapturingHelper {
 
           withCaptureOfLoggingFrom(IncorporationAPIHttpParsers.logger) { logs =>
             rds.read("", "", HttpResponse(NOT_IMPLEMENTED, "")) mustBe FailedTransactionalAPIResponse
-            logs.containsMsg(Level.ERROR, s"[IncorporationAPIHttpParsers] ${PagerDutyKeys.COHO_TX_API_5XX} - Returned status code: $NOT_IMPLEMENTED for $txId")
+            logs.containsMsg(Level.ERROR, s"[IncorporationAPIHttpParsers] ${PagerDutyKeys.COHO_TX_API_5XX} - Returned status code: $NOT_IMPLEMENTED for txId: '$txId'")
           }
         }
       }

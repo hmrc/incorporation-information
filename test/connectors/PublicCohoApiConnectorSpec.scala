@@ -25,7 +25,7 @@ import org.mockito.ArgumentMatchers
 import org.mockito.Mockito._
 import org.scalatest.concurrent.Eventually
 import play.api.Logger
-import play.api.libs.json.Json
+import play.api.libs.json.{JsValue, Json}
 import play.api.test.Helpers._
 import services.MetricsService
 import uk.gov.hmrc.http._
@@ -84,38 +84,40 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
     }
   }
 
-  val validCompanyProfileResourceJson = Json.parse(
-    """{
-      |   "company_name" : "MOOO LIMITED",
-      |   "company_number" : "1234567890",
-      |   "company_status" : "Accepted",
-      |   "registered_office_address" : {
-      |      "address_line_1" : "The road",
-      |      "address_line_2" : "GORING-BY-SEA",
-      |      "care_of" : "Bob",
-      |      "country" : "United Kingdom",
-      |      "locality" : "Worthing",
-      |      "po_box" : "123",
-      |      "postal_code" : "AA12 6ZZ",
-      |      "premises" : "21",
-      |      "region" : "Regionshire"
-      |   },
-      |   "sic_codes" : [
-      |      {"sic_code" : "84240"},
-      |      {"sic_code" : "01410"}
-      |   ],
-      |   "type" : "ltd"
-      |}""".stripMargin)
-
-
   val testCrn = "1234567890"
+  val testOfficerId = "123456"
+  val testOfficerUrl = "/officers/_Sdjhshdsnnsi-StreatMand-greattsfh/appointments"
 
   "getCompanyProfile" must {
+
+    val validCompanyProfileResourceJson = Json.parse(
+      """{
+        |   "company_name" : "MOOO LIMITED",
+        |   "company_number" : "1234567890",
+        |   "company_status" : "Accepted",
+        |   "registered_office_address" : {
+        |      "address_line_1" : "The road",
+        |      "address_line_2" : "GORING-BY-SEA",
+        |      "care_of" : "Bob",
+        |      "country" : "United Kingdom",
+        |      "locality" : "Worthing",
+        |      "po_box" : "123",
+        |      "postal_code" : "AA12 6ZZ",
+        |      "premises" : "21",
+        |      "region" : "Regionshire"
+        |   },
+        |   "sic_codes" : [
+        |      {"sic_code" : "84240"},
+        |      {"sic_code" : "01410"}
+        |   ],
+        |   "type" : "ltd"
+        |}""".stripMargin)
+
     val url = "stubbed/company-profile/1234567890"
 
     "return some valid JSON when a valid CRN is provided and stop the timer metric" in new Setup {
-      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.successful(HttpResponse(200, json = validCompanyProfileResourceJson, Map())))
+      when(mockHttp.GET[Option[JsValue]](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
+        .thenReturn(Future.successful(Some(validCompanyProfileResourceJson)))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(Connector.getCompanyProfile(testCrn))
@@ -124,42 +126,9 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       verify(mockTimerContext, times(1)).stop()
     }
 
-    "report an error when receiving a 404 and isSCRS is true" in new Setup {
-      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.failed(new NotFoundException("404")))
-
-      withCaptureOfLoggingFrom(Connector.logger) { logEvents =>
-        await(Connector.getCompanyProfile(testCrn, isScrs = true)) mustBe None
-        logEvents.map(_.getMessage) mustBe List("[Connector] COHO_PUBLIC_API_NOT_FOUND - Could not find company data for CRN - 1234567890")
-        logEvents.size mustBe 1
-      }
-    }
-
-    "report an error when receiving a 404 and isSCRS is false" in new Setup {
-      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.failed(new NotFoundException("404")))
-
-      withCaptureOfLoggingFrom(Connector.logger) { logEvents =>
-        await(Connector.getCompanyProfile(testCrn, isScrs = false)) mustBe None
-        logEvents.map(_.getMessage) mustBe List("[Connector][getCompanyProfile] Could not find company data for CRN - 1234567890")
-        logEvents.size mustBe 1
-      }
-    }
-
-    "report an error when receiving a 400" in new Setup {
-      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.failed(new HttpException("400", 400)))
-
-      val result = await(Connector.getCompanyProfile(testCrn))
-
-      result mustBe None
-
-      verify(mockTimerContext, times(1)).stop()
-    }
-
     "report an error when receiving a Throwable exception and stop the timer metric" in new Setup {
-      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.failed(new Throwable()))
+      when(mockHttp.GET[Option[JsValue]](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
+        .thenReturn(Future.failed(new Exception("bang")))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(Connector.getCompanyProfile(testCrn))
@@ -168,43 +137,44 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
     }
   }
 
-  val validOfficerListResourceJson = Json.parse(
-    """{
-      |   "items" : [
-      |      {
-      |         "address" : {
-      |            "address_line_1" : "The Road",
-      |            "address_line_2" : "The Street",
-      |            "care_of" : "John",
-      |            "country" : "U.K.",
-      |            "locality" : "Shropshire",
-      |            "po_box" : "4",
-      |            "postal_code" : "TF4 4TF",
-      |            "premises" : "33",
-      |            "region" : "Midlands"
-      |         },
-      |         "date_of_birth" : {
-      |            "month" : 11,
-      |            "year" : 1980
-      |         },
-      |         "links" : {
-      |            "officer" : {
-      |               "appointments" : "test"
-      |            }
-      |         },
-      |         "name" : "Tom Tom",
-      |         "officer_role" : "Director",
-      |         "resigned_on" : "2014-01-01T23:28:56.782Z"
-      |      }
-      |   ]
-      |}""".stripMargin)
-
   "getOfficerList" must {
+
+    val validOfficerListResourceJson = Json.parse(
+      """{
+        |   "items" : [
+        |      {
+        |         "address" : {
+        |            "address_line_1" : "The Road",
+        |            "address_line_2" : "The Street",
+        |            "care_of" : "John",
+        |            "country" : "U.K.",
+        |            "locality" : "Shropshire",
+        |            "po_box" : "4",
+        |            "postal_code" : "TF4 4TF",
+        |            "premises" : "33",
+        |            "region" : "Midlands"
+        |         },
+        |         "date_of_birth" : {
+        |            "month" : 11,
+        |            "year" : 1980
+        |         },
+        |         "links" : {
+        |            "officer" : {
+        |               "appointments" : "test"
+        |            }
+        |         },
+        |         "name" : "Tom Tom",
+        |         "officer_role" : "Director",
+        |         "resigned_on" : "2014-01-01T23:28:56.782Z"
+        |      }
+        |   ]
+        |}""".stripMargin)
+
     val url = "stubbed/company/1234567890/officers"
 
     "return some valid JSON when a valid CRN is provided and stop the timer metric" in new Setup {
-      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.successful(HttpResponse(200, json = validOfficerListResourceJson, Map())))
+      when(mockHttp.GET[Option[JsValue]](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
+        .thenReturn(Future.successful(Some(validOfficerListResourceJson)))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(Connector.getOfficerList(testCrn))
@@ -213,27 +183,9 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       verify(mockTimerContext, times(1)).stop()
     }
 
-    "report an error when receiving a 404" in new Setup {
-      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.failed(new NotFoundException("404")))
-
-      val result = await(Connector.getOfficerList(testCrn))
-
-      result mustBe None
-    }
-
-    "report an error when receiving a 400" in new Setup {
-      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.failed(new HttpException("400", 400)))
-
-      val result = await(Connector.getOfficerList(testCrn))
-
-      result mustBe None
-    }
-
     "report an error when receiving a Throwable exception and stop the timer metric" in new Setup {
       when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.failed(new Throwable()))
+        .thenReturn(Future.failed(new Exception("bang")))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(Connector.getOfficerList(testCrn))
@@ -244,31 +196,28 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
     }
   }
 
-  val validOfficerAppointmentsResourceJson = Json.parse(
-    """{
-      |   "items" : [
-      |      {
-      |         "name_elements" : {
-      |            "forename" : "Bob",
-      |            "honours" : "MBE",
-      |            "other_forenames" : "John",
-      |            "surname" : "Thomas",
-      |            "title" : "Mr"
-      |         }
-      |      }
-      |   ]
-      |}""".stripMargin)
-
-  val testOfficerId = "123456"
-  val testOfficerUrl = "/officers/_Sdjhshdsnnsi-StreatMand-greattsfh/appointments"
-
   "getOfficerAppointmentList" must {
+
+    val validOfficerAppointmentsResourceJson = Json.parse(
+      """{
+        |   "items" : [
+        |      {
+        |         "name_elements" : {
+        |            "forename" : "Bob",
+        |            "honours" : "MBE",
+        |            "other_forenames" : "John",
+        |            "surname" : "Thomas",
+        |            "title" : "Mr"
+        |         }
+        |      }
+        |   ]
+        |}""".stripMargin)
+
     val url = "stubbed/get-officer-appointment?fn=testFirstName&sn=testSurname"
 
-
     "return some valid JSON when a valid Officer ID is provided and stop the timer metric" in new Setup {
-      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.successful(HttpResponse(200, json = validOfficerAppointmentsResourceJson, Map())))
+      when(mockHttp.GET[JsValue](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
+        .thenReturn(Future.successful(validOfficerAppointmentsResourceJson))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
       val result = await(Connector.getOfficerAppointment(testOfficerId))
@@ -280,36 +229,20 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
     "generate a unique officer name when a url longer than 15 characters is passed" in new Setup {
       val url = "stubbed/get-officer-appointment?fn=tMand-greattsfh&sn=officersSdjhshd"
 
-      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.successful(HttpResponse(200, json = validOfficerAppointmentsResourceJson, Map())))
+      when(mockHttp.GET[JsValue](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
+        .thenReturn(Future.successful(validOfficerAppointmentsResourceJson))
 
 
       val result = await(Connector.getOfficerAppointment(testOfficerUrl))
       result mustBe validOfficerAppointmentsResourceJson
     }
 
-    "report an error when receiving a 404" in new Setup {
-      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.failed(new NotFoundException("404")))
-
-      intercept[NotFoundException](await(Connector.getOfficerAppointment(testOfficerId)))
-    }
-
-    "report an error when receiving a 400" in new Setup {
-      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.failed(new HttpException("400", 400)))
-
-      val ex = intercept[HttpException](await(Connector.getOfficerAppointment(testOfficerId)))
-
-      ex.responseCode mustBe 400
-    }
-
     "report an error when receiving a Throwable exception and stop the timer metric" in new Setup {
-      when(mockHttp.GET[HttpResponse](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(Future.failed(new Throwable()))
+      when(mockHttp.GET[JsValue](ArgumentMatchers.eq(url), ArgumentMatchers.any(), ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
+        .thenReturn(Future.failed(new Exception("bang")))
       when(mockTimer.time()).thenReturn(mockTimerContext)
 
-      intercept[Throwable](await(Connector.getOfficerAppointment(testOfficerId)))
+      intercept[Exception](await(Connector.getOfficerAppointment(testOfficerId)))
 
       verify(mockTimerContext, times(1)).stop()
     }
@@ -339,5 +272,4 @@ class PublicCohoApiConnectorSpec extends SCRSSpec with LogCapturing with Eventua
       }
     }
   }
-
 }
