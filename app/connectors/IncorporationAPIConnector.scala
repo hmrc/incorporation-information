@@ -16,33 +16,19 @@
 
 package connectors
 
-import com.codahale.metrics.Counter
+import com.codahale.metrics.{Counter, Timer}
 import config.{MicroserviceConfig, WSHttpProxy}
-import models.IncorpUpdate
-import utils.Logging
-import play.api.libs.functional.syntax._
-import play.api.libs.json.{JsValue, Reads, __}
+import connectors.httpParsers.IncorporationAPIHttpParsers
+import models.{IncorpUpdate, IncorpUpdatesResponse}
+import play.api.libs.json.JsValue
 import services.MetricsService
-import uk.gov.hmrc.http._
-import uk.gov.hmrc.http.HttpClient
+import uk.gov.hmrc.http.{HttpClient, _}
 import uk.gov.hmrc.play.http.ws.WSProxy
-import utils.{AlertLogging, DateCalculators, PagerDutyKeys, SCRSFeatureSwitches}
+import utils._
 
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NoStackTrace
-
-case class IncorpUpdatesResponse(items: Seq[IncorpUpdate], nextLink: String)
-
-object IncorpUpdatesResponse {
-
-  implicit val updateFmt = IncorpUpdate.cohoFormat
-
-  implicit val reads: Reads[IncorpUpdatesResponse] = (
-    (__ \ "items").read[Seq[IncorpUpdate]] and
-      (__ \ "links" \ "next").read[String]
-    ) (IncorpUpdatesResponse.apply _)
-}
 
 class IncorporationAPIConnectorImpl @Inject()(config: MicroserviceConfig,
                                               injMetricsService: MetricsService,
@@ -63,7 +49,7 @@ class IncorporationAPIConnectorImpl @Inject()(config: MicroserviceConfig,
   protected lazy val loggingTimes: String = config.noRegisterAnInterestLoggingTime
 }
 
-case class IncorpUpdateAPIFailure(ex: Exception) extends NoStackTrace
+case class IncorpUpdateAPIFailure(ex: Exception) extends Exception with NoStackTrace
 
 sealed trait TransactionalAPIResponse
 
@@ -71,7 +57,7 @@ case class SuccessfulTransactionalAPIResponse(js: JsValue) extends Transactional
 
 case object FailedTransactionalAPIResponse extends TransactionalAPIResponse
 
-trait IncorporationAPIConnector extends AlertLogging with Logging {
+trait IncorporationAPIConnector extends BaseConnector with IncorporationAPIHttpParsers with AlertLogging {
 
   def httpProxy: CoreGet with WSProxy
 
@@ -87,118 +73,51 @@ trait IncorporationAPIConnector extends AlertLogging with Logging {
   val successCounter: Counter
   val failureCounter: Counter
 
-  def checkForIncorpUpdate(timepoint: Option[String] = None)(implicit hc: HeaderCarrier): Future[Seq[IncorpUpdate]] = {
-    import play.api.http.Status.NO_CONTENT
+  def checkForIncorpUpdate(timepoint: Option[String] = None)(implicit hc: HeaderCarrier): Future[Seq[IncorpUpdate]] =
+    withIncorpUpdateAPIRecovery {
+      withMetrics() {
+        val (http, extraHeaders, url) = incorpUpdateHttpMeta(timepoint, itemsToFetch)
+        http.GET[Seq[IncorpUpdate]](url = url, headers = extraHeaders)(checkForIncorpUpdateHttpReads(timepoint), hc, ec)
+      }
+    }
 
-    val (http, extraHeaders, url) = if (useProxy) {
+  def checkForIndividualIncorpUpdate(timepoint: Option[String] = None)(implicit hc: HeaderCarrier): Future[Seq[IncorpUpdate]] =
+    withIncorpUpdateAPIRecovery {
+      withMetrics() {
+        val (http, extraHeaders, url) = incorpUpdateHttpMeta(timepoint, "1")
+        http.GET[Seq[IncorpUpdate]](url = url, headers = extraHeaders)(checkForIndividualIncorpUpdateHttpReads(timepoint), hc, ec)
+      }
+    }
+
+  def fetchTransactionalData(transactionID: String)(implicit hc: HeaderCarrier): Future[TransactionalAPIResponse] =
+    withRecovery[TransactionalAPIResponse](Some(FailedTransactionalAPIResponse))("fetchTransactionalData", txId = Some(transactionID)) {
+      withMetrics(Some(metrics.internalAPITimer.time())) {
+        val (http, extraHeaders, url) = fetchTransactionalHttpMeta(transactionID)
+        http.GET[TransactionalAPIResponse](url = url, headers = extraHeaders)(fetchTransactionalDataHttpReads(transactionID), hc, ec)
+      }
+    }
+
+  private def withMetrics[T](timer: Option[Timer.Context] = None)(f: => Future[T]): Future[T] =
+    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter), timer)(f)
+
+  private def withIncorpUpdateAPIRecovery(f: => Future[Seq[IncorpUpdate]]): Future[Seq[IncorpUpdate]] = f recover {
+    case e: IncorpUpdateAPIFailure => throw e
+    case e: Exception => throw IncorpUpdateAPIFailure(e)
+  }
+
+  private[connectors] def incorpUpdateHttpMeta(timepoint: Option[String], itemsToFetch: String): (CoreGet, Seq[(String, String)], String) =
+    if (useProxy) {
       (httpProxy, createAPIAuthHeader, s"$cohoBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
     } else {
       (httpNoProxy, Seq(), s"$stubBaseUrl/submissions${buildQueryString(timepoint, itemsToFetch)}")
     }
 
-    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
-      http.GET[HttpResponse](url = url, headers = extraHeaders).map {
-        res =>
-          res.status match {
-            case NO_CONTENT => Seq()
-            case _ =>
-              val items = res.json.as[IncorpUpdatesResponse].items
-              if (
-                items exists {
-                  case IncorpUpdate(_, "accepted", Some(crn), Some(incorpDate), _, _) => false
-                  case IncorpUpdate(_, "rejected", _, _, _, _) => false
-                  case failure =>
-                    logger.error("[checkForIncorpUpdate] CH_UPDATE_INVALID")
-                    logger.info(s"[checkForIncorpUpdate] CH Update failed for transaction ID: ${failure.transactionId}. Status: ${failure.status}, incorpdate provided: ${failure.incorpDate.isDefined}")
-                    true
-                }
-              ) {
-                Seq()
-              } else {
-                items
-              }
-          }
-      }
-    } recover handleError(timepoint)
-  }
-
-  def checkForIndividualIncorpUpdate(timepoint: Option[String] = None)(implicit hc: HeaderCarrier): Future[Seq[IncorpUpdate]] = {
-    import play.api.http.Status.NO_CONTENT
-
-    val (http, extraHeaders, url) = if (useProxy) {
-      (httpProxy, createAPIAuthHeader, s"$cohoBaseUrl/submissions${buildQueryString(timepoint, "1")}")
-    } else {
-      (httpNoProxy, Seq(), s"$stubBaseUrl/submissions${buildQueryString(timepoint, "1")}")
-    }
-
-    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter)) {
-      http.GET[HttpResponse](url = url, headers = extraHeaders).map {
-        res =>
-          res.status match {
-            case NO_CONTENT => Seq()
-            case _ => res.json.as[IncorpUpdatesResponse].items
-          }
-      }
-    } recover handleError(timepoint)
-  }
-
-  def fetchTransactionalData(transactionID: String)(implicit hc: HeaderCarrier): Future[TransactionalAPIResponse] = {
-    val (http, extraHeaders, url) = if (useProxy) {
+  private[connectors] def fetchTransactionalHttpMeta(transactionID: String): (CoreGet, Seq[(String, String)], String) =
+    if (useProxy) {
       (httpProxy, createAPIAuthHeader, s"$cohoBaseUrl/submissionData/$transactionID")
     } else {
       (httpNoProxy, Seq(), s"$stubBaseUrl/fetch-data/$transactionID")
     }
-
-    metrics.processDataResponseWithMetrics(Some(successCounter), Some(failureCounter), Some(metrics.internalAPITimer.time())) {
-      http.GET[JsValue](url = url, headers = extraHeaders).map {
-        res =>
-          logger.debug("[TransactionalData] json - " + res)
-          SuccessfulTransactionalAPIResponse(res)
-      }
-    } recover handleError(transactionID)
-  }
-
-  private def logError(ex: HttpException, timepoint: Option[String]) = {
-    logger.error(s"[incorpUpdates]" +
-      s" request to fetch incorp updates returned a ${ex.responseCode}. " +
-      s"No incorporations were processed for timepoint $timepoint - Reason = ${ex.getMessage}")
-  }
-
-  private def handleError(timepoint: Option[String]): PartialFunction[Throwable, Seq[IncorpUpdate]] = {
-    case ex: BadRequestException =>
-      logError(ex, timepoint)
-      throw IncorpUpdateAPIFailure(ex)
-    case ex: NotFoundException =>
-      logError(ex, timepoint)
-      throw IncorpUpdateAPIFailure(ex)
-    case ex: UpstreamErrorResponse =>
-      logger.error("[incorpUpdates]" + ex.statusCode + " " + ex.message)
-      throw IncorpUpdateAPIFailure(ex)
-    case ex: Exception =>
-      logger.error("[incorpUpdates]" + ex)
-      throw IncorpUpdateAPIFailure(ex)
-  }
-
-  private def handleError(transactionID: String): PartialFunction[Throwable, TransactionalAPIResponse] = {
-    case _: NotFoundException =>
-      pagerduty(PagerDutyKeys.COHO_TX_API_NOT_FOUND, Some(s"Could not find incorporation data for transaction ID - $transactionID"))
-      FailedTransactionalAPIResponse
-    case ex: UpstreamErrorResponse if UpstreamErrorResponse.Upstream4xxResponse.unapply(ex).isDefined =>
-      pagerduty(PagerDutyKeys.COHO_TX_API_4XX, Some(s"${ex.statusCode} returned for transaction id - $transactionID"))
-      FailedTransactionalAPIResponse
-    case _: GatewayTimeoutException =>
-      pagerduty(PagerDutyKeys.COHO_TX_API_GATEWAY_TIMEOUT, Some(s"Gateway timeout for transaction id - $transactionID"))
-      FailedTransactionalAPIResponse
-    case _: ServiceUnavailableException =>
-      pagerduty(PagerDutyKeys.COHO_TX_API_SERVICE_UNAVAILABLE)
-      FailedTransactionalAPIResponse
-    case ex: UpstreamErrorResponse if UpstreamErrorResponse.Upstream5xxResponse.unapply(ex).isDefined =>
-      pagerduty(PagerDutyKeys.COHO_TX_API_5XX, Some(s"Returned status code: ${ex.statusCode} for $transactionID - reason: ${ex.getMessage}"))
-      FailedTransactionalAPIResponse
-    case ex: Throwable =>
-      logger.info(s"[fetchTransactionalData] - Failed for $transactionID - reason: ${ex.getMessage}")
-      FailedTransactionalAPIResponse
-  }
 
   private[connectors] def useProxy: Boolean = featureSwitch.transactionalAPI.enabled
 

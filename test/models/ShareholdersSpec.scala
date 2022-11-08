@@ -16,7 +16,8 @@
 
 package models
 
-import Helpers.{LogCapturing, SCRSSpec}
+import uk.gov.hmrc.play.bootstrap.tools.LogCapturing
+import Helpers.SCRSSpec
 import play.api.Logger
 import play.api.libs.json.{JsArray, Json}
 

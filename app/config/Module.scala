@@ -59,7 +59,6 @@ class Module extends AbstractModule {
     bind(classOf[IncorpUpdateController]).to(classOf[IncorpUpdateControllerImpl]).asEagerSingleton()
     bind(classOf[MetricsService]).to(classOf[MetricsServiceImpl]).asEagerSingleton()
     bind(classOf[IncorporationAPIConnector]).to(classOf[IncorporationAPIConnectorImpl]).asEagerSingleton()
-    bind(classOf[FiringSubscriptionsConnector]).to(classOf[FiringSubscriptionsConnectorImpl]).asEagerSingleton()
     bind(classOf[PublicCohoApiConnector]).to(classOf[PublicCohoApiConnectorImpl]).asEagerSingleton()
 
     bind(classOf[DateCalculators]).to(classOf[DateCalculatorsImpl]).asEagerSingleton()

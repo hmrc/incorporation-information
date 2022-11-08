@@ -16,7 +16,7 @@
 
 package services
 
-import Helpers.{JSONhelpers, LogCapturing, SCRSSpec}
+import Helpers.{JSONhelpers, SCRSSpec}
 import com.mongodb.client.result.UpdateResult
 import connectors.IncorporationAPIConnector
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
@@ -29,6 +29,7 @@ import play.api.test.Helpers._
 import repositories._
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.lock.LockService
+import uk.gov.hmrc.play.bootstrap.tools.LogCapturing
 import utils.{DateCalculators, PagerDutyKeys}
 
 import java.time.{LocalDateTime, LocalTime, ZoneOffset}

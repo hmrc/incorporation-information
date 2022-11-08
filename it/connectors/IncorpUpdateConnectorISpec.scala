@@ -22,7 +22,7 @@ import models.IncorpUpdate
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.test.Helpers._
-import uk.gov.hmrc.http.{Authorization, BadRequestException, HeaderCarrier}
+import uk.gov.hmrc.http.{Authorization, BadRequestException, HeaderCarrier, Upstream4xxResponse, UpstreamErrorResponse}
 
 import java.time.LocalDateTime
 
@@ -95,7 +95,8 @@ class IncorpUpdateConnectorISpec extends IntegrationSpecBase {
       val connector = app.injector.instanceOf[IncorporationAPIConnector]
       val f = connector.checkForIncorpUpdate(None)(HeaderCarrier())
       val failure = intercept[IncorpUpdateAPIFailure](await(f))
-      failure.ex mustBe a[BadRequestException]
+      failure.ex mustBe a[UpstreamErrorResponse]
+      failure.ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe BAD_REQUEST
     }
 
   }
