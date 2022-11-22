@@ -79,15 +79,11 @@ trait TransactionalController extends BackendBaseController with Logging {
   def fetchOfficerList(transactionId: String): Action[AnyContent] = Action.async {
     implicit request =>
       service.fetchOfficerList(transactionId).map(Ok(_)) recover {
-        case ex: TransactionalServiceException =>
-          logger.error(s"[fetchOfficerList] - TransactionalServiceException caught - reason: ${
-            ex.message
-          }", ex)
+        case _: TransactionalServiceException =>
+          logger.error(s"[fetchOfficerList] - TransactionalServiceException caught - Officer List not found")
           NotFound
-        case ex: Throwable =>
-          logger.error(s"[fetchOfficerList] - Exception caught - reason: ${
-            ex.getMessage
-          }", ex)
+        case _: Throwable =>
+          logger.error(s"[fetchOfficerList] - TransactionalServiceException caught - Failed to fetch Officer List internal server error")
           InternalServerError
       }
   }
