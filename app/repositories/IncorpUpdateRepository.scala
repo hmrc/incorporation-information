@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 HM Revenue & Customs
+ * Copyright 2023 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 
 import javax.inject.Inject
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
 
@@ -70,10 +70,10 @@ class IncorpUpdateMongoRepository(val mongo: MongoComponent, format: Format[Inco
         InsertResult(inserted = result.getInsertedCount, duplicate = 0, insertedItems = updates)
       } recover {
         case ex: MongoBulkWriteException =>
-          val nonDupIU = nonDuplicateIncorporations(updates, ex.getWriteErrors.asScala)
+          val nonDupIU = nonDuplicateIncorporations(updates, ex.getWriteErrors.asScala.toSeq)
           val inserted = ex.getWriteResult.getInsertedCount
           val (duplicates, errors) = ex.getWriteErrors.asScala.partition(_.getCode == ERR_DUPLICATE)
-          InsertResult(inserted, duplicates.size, errors, insertedItems = nonDupIU)
+          InsertResult(inserted, duplicates.size, errors.toSeq, insertedItems = nonDupIU)
       }
     } else {
       Future.successful(InsertResult(0, 0, Seq()))

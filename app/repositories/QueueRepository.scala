@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 HM Revenue & Customs
+ * Copyright 2023 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,9 +26,9 @@ import play.api.libs.json.Format
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 
-import java.time.{Instant, LocalDateTime, ZoneOffset}
+import java.time.Instant
 import javax.inject.Inject
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
 
@@ -90,7 +90,7 @@ class QueueMongoRepository(mongo: MongoComponent, format: Format[QueuedIncorpUpd
         case ex: MongoBulkWriteException =>
           val inserted = ex.getWriteResult.getInsertedCount
           val (duplicates, errors) = ex.getWriteErrors.asScala.partition(_.getCode == ERR_DUPLICATE)
-          InsertResult(inserted, duplicates.size, errors)
+          InsertResult(inserted, duplicates.size, errors.toSeq)
       }
     } else {
       Future.successful(InsertResult(0, 0, Seq()))
