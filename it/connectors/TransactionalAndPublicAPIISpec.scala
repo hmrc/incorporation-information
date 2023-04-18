@@ -539,7 +539,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
           |""".stripMargin)
     }
 
-    "return 200 if company incorporated, officer list exists in public api with corporate director" in new Setup {
+    "return 204 if company incorporated, officer list exists in public api with corporate director and no named elements" in new Setup {
 
       val transactionId = "12345"
 
@@ -551,12 +551,33 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
       stubGet("/cohoFrontEndStubs/get-officer-appointment?.*", 200,appointments(appointment1(corporateName, "corporate-director")))
       val clientUrl = s"/incorporation-information/$transactionId/officer-list"
       val response = buildClient(clientUrl).get().futureValue
+      response.status mustBe 204
+    }
+
+    "return 200 if company incorporated, officer list exists in public api with corporate director and named elements" in new Setup {
+
+      val transactionId = "12345"
+
+      // insert into incorp info db -> company is registered so dont go to tx api
+      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), Some(incorpDate), "tp", Some("description"))
+      insert(incorpUpdate)
+      //succeed in getting officer list
+      stubGet(cohOfficerListUrl, 200, officerListInput)
+      stubGet("/cohoFrontEndStubs/get-officer-appointment?.*", 200, appointments(appointment1(naturalName, "corporate-director")))
+      val clientUrl = s"/incorporation-information/$transactionId/officer-list"
+      val response = buildClient(clientUrl).get().futureValue
       response.status mustBe 200
       response.json mustBe Json.parse(
         s"""
            |{
            |  "officers": [
            |    {
+           |      "name_elements": {
+           |        "other_forenames": "Testy",
+           |        "title": "Mr",
+           |        "surname": "TESTERSON",
+           |        "forename": "Test"
+           |      },
            |      "resigned_on": "${dateTime.toInstant(ZoneOffset.UTC).toEpochMilli}",
            |      "appointment_link": "/test/link",
            |      "officer_role": "director",

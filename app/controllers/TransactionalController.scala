@@ -20,7 +20,7 @@ import config.MicroserviceConfig
 import connectors.PublicCohoApiConnector
 import models.IncorpUpdate
 import utils.Logging
-import play.api.libs.json.Json
+import play.api.libs.json.{JsArray, JsBoolean, JsNull, JsNumber, JsObject, JsString, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import repositories.{IncorpUpdateMongo, IncorpUpdateMongoRepository, IncorpUpdateRepository}
 import services.{TransactionalService, TransactionalServiceException}
@@ -78,7 +78,15 @@ trait TransactionalController extends BackendBaseController with Logging {
 
   def fetchOfficerList(transactionId: String): Action[AnyContent] = Action.async {
     implicit request =>
-      service.fetchOfficerList(transactionId).map(Ok(_)) recover {
+      service.fetchOfficerList(transactionId).map { json =>
+        val officerArray = (json \ "officers").as[JsArray]
+        officerArray match {
+          case _ if (officerArray.value.isEmpty) =>
+            logger.warn(s"[fetchOfficerList] - Officer list was empty (this should not happen as this means no name elements are present this should be investigated)")
+            NoContent
+          case _ => Ok(json)
+        }
+      } recover {
         case _: TransactionalServiceException =>
           logger.error(s"[fetchOfficerList] - TransactionalServiceException caught - Officer List not found")
           NotFound
