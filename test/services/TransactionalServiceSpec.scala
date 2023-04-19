@@ -540,6 +540,341 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
       Service.transformDataFromCoho(input) mustBe Some(expected)
     }
 
+    "return a transformed officer appointment Json with named_elements and without named_elements" in new Setup {
+
+      val testJson1 = "/officers/testJson1/appointments"
+      val testJson2 = "/officers/testJson2/appointments"
+      val testJson3 = "/officers/testJson3/appointments"
+
+      val officerAppointmentJson1 = Json.parse(
+        s"""
+         {
+           |   "name":"test name",
+           |   "etag":"34bdb219bbfd6833bc2b72d746d0c7eeeadeb1e1",
+           |   "items_per_page":35,
+           |   "links":{
+           |      "self":"${testJson1}"
+           |   },
+           |   "is_corporate_officer":false,
+           |   "kind":"personal-appointment",
+           |   "total_results":1,
+           |   "date_of_birth":{
+           |      "month":7,
+           |      "year":1999
+           |   },
+           |   "items":[
+           |      {
+           |         "occupation":"Director",
+           |         "nationality":"South Korean",
+           |         "country_of_residence":"South Korea",
+           |         "former_names":[
+           |            {
+           |               "surname":"test surname"
+           |            }
+           |         ],
+           |         "name":"test name",
+           |         "name_elements":{
+           |            "surname":"testSurname",
+           |            "title":"Ms",
+           |            "forename":"test"
+           |         },
+           |         "appointed_on":"2023-03-08",
+           |         "address":{
+           |            "country":"United Kingdom",
+           |            "premises":"test 12",
+           |            "locality":"London",
+           |            "address_line_1":"test line 1",
+           |            "postal_code":"AA1A 1AA"
+           |         },
+           |         "officer_role":"director",
+           |         "links":{
+           |            "company":"/company/111111111"
+           |         },
+           |         "appointed_to":{
+           |            "company_number":"111111111",
+           |            "company_status":"active",
+           |            "company_name":"Test UK LTD"
+           |         }
+           |      }
+           |   ],
+           |   "start_index":0
+           |}
+           |
+        """.stripMargin)
+
+      val officerAppointmentJson2 = Json.parse(
+        s"""
+           |{
+           |   "kind":"personal-appointment",
+           |   "start_index":0,
+           |   "items":[
+           |      {
+           |         "appointed_to":{
+           |            "company_number":"111111111",
+           |            "company_name":"Test UK LTD",
+           |            "company_status":"active"
+           |         },
+           |         "address":{
+           |            "country":"United Kingdom",
+           |            "address_line_1":"test address line 1",
+           |            "premises":"Suite Test ",
+           |            "locality":"London",
+           |            "postal_code":"AA1A 8AA"
+           |         },
+           |         "nationality":"South Korean",
+           |         "name":"test name",
+           |         "country_of_residence":"England",
+           |         "links":{
+           |            "company":"/company/111111111"
+           |         },
+           |         "former_names":[
+           |            {
+           |               "surname":"test surname"
+           |            }
+           |         ],
+           |         "appointed_on":"2023-03-08",
+           |         "officer_role":"director",
+           |         "name_elements":{
+           |            "title":"Mr",
+           |            "surname":"test",
+           |            "forename":"testFore"
+           |         },
+           |         "occupation":"Director"
+           |      }
+           |   ],
+           |   "etag":"3b8d1397df3fca624c84cdf99ed9fa2875b4ed2f",
+           |   "items_per_page":35,
+           |   "name":"test name",
+           |   "links":{
+           |      "self":"${testJson2}"
+           |   },
+           |   "total_results":1,
+           |   "is_corporate_officer":false,
+           |   "date_of_birth":{
+           |      "year":1990,
+           |      "month":10
+           |   }
+           |}
+        """.stripMargin)
+
+
+      val officerAppointmentJson3 = Json.parse(
+        s"""
+        {
+           "is_corporate_officer":true,
+           "start_index":0,
+           "etag":"57d943bacf0e565028890163271a428c49284a14",
+           "name":"Test name",
+           "total_results":1,
+           "links":{
+              "self":"${testJson3}"
+           },
+           "kind":"personal-appointment",
+           "items":[
+              {
+                 "appointed_to":{
+                    "company_name":"test UK LTD",
+                    "company_number":"111111111",
+                    "company_status":"active"
+                 },
+                 "links":{
+                    "company":"/company/111111111"
+                 },
+                 "officer_role":"corporate-director",
+                 "name":"Test name",
+                 "address":{
+                    "country":"South Korea",
+                    "postal_code":"11111",
+                    "locality":"Seoul",
+                    "premises":"10A",
+                    "address_line_1":"test address line 1"
+                 },
+                 "appointed_on":"2023-03-08",
+                 "identification":{
+                    "legal_form":"INCORPORATION",
+                    "identification_type":"other-corporate-body-or-firm",
+                    "legal_authority":"SOUTH KOREA",
+                    "registration_number":"111-11-11111",
+                    "place_registered":"SOUTH KOREA"
+                 }
+              }
+           ],
+           "items_per_page":35
+        }
+        """.stripMargin)
+
+
+      val officerListJson = Json.parse(
+        s"""
+           |{
+           |   "items_per_page":35,
+           |   "total_results":3,
+           |   "items":[
+           |      {
+           |         "date_of_birth":{
+           |            "year":1979,
+           |            "month":7
+           |         },
+           |         "nationality":"South Korean",
+           |         "officer_role":"director",
+           |         "name":"test name",
+           |         "address":{
+           |            "postal_code":"AA1A 8AA",
+           |            "locality":"London",
+           |            "country":"United Kingdom",
+           |            "premises":"Suite 1111",
+           |            "address_line_1":"test address line 1"
+           |         },
+           |         "former_names":[
+           |            {
+           |               "surname":"test surname"
+           |            }
+           |         ],
+           |         "occupation":"Director",
+           |         "country_of_residence":"South Korea",
+           |         "links":{
+           |            "self":"/company/111111111/appointments/U-3u2qpboQWbaUk27jikP1CgsP4",
+           |            "officer":{
+           |               "appointments":"${testJson1}"
+           |            }
+           |         },
+           |         "appointed_on":"2023-03-08"
+           |      },
+           |      {
+           |         "address":{
+           |            "premises":"Suite 1111",
+           |            "locality":"London",
+           |            "country":"United Kingdom",
+           |            "postal_code":"AA1A 8AA",
+           |            "address_line_1":"address line 1"
+           |         },
+           |         "name":"test, name",
+           |         "officer_role":"director",
+           |         "former_names":[
+           |            {
+           |               "surname":"test surname"
+           |            }
+           |         ],
+           |         "nationality":"South Korean",
+           |         "date_of_birth":{
+           |            "year":1990,
+           |            "month":10
+           |         },
+           |         "links":{
+           |            "officer":{
+           |               "appointments":"${testJson2}"
+           |            },
+           |            "self":"/company/111111111/appointments/rKGhKhGmo0XM64KJ17Z_xLi7cVE"
+           |         },
+           |         "appointed_on":"2023-03-08",
+           |         "country_of_residence":"England",
+           |         "occupation":"Director"
+           |      },
+           |      {
+           |         "identification":{
+           |            "registration_number":"111-11-11111",
+           |            "legal_authority":"SOUTH KOREA",
+           |            "place_registered":"SOUTH KOREA",
+           |            "legal_form":"INCORPORATION",
+           |            "identification_type":"other-corporate-body-or-firm"
+           |         },
+           |         "appointed_on":"2023-03-08",
+           |         "links":{
+           |            "self":"/company/14716412/appointments/n74TvHvLocUHo8p75wzfQEiN7aY",
+           |            "officer":{
+           |               "appointments":"${testJson3}"
+           |            }
+           |         },
+           |         "name":"testName",
+           |         "officer_role":"corporate-director",
+           |         "address":{
+           |            "country":"South Korea",
+           |            "locality":"Seoul",
+           |            "premises":"11A",
+           |            "address_line_1":"test address line 1",
+           |            "postal_code":"11111"
+           |         }
+           |      }
+           |   ],
+           |   "kind":"officer-list",
+           |   "etag":"07a86b3e11f19bac3a17b5fbfbad0a92f09c45f5",
+           |   "inactive_count":0,
+           |   "start_index":0,
+           |   "links":{
+           |      "self":"/company/111111111/officers"
+           |   },
+           |   "active_count":3,
+           |   "resigned_count":0
+           |}
+        """.stripMargin)
+
+      val expectedJson = Json.parse(
+        """
+          |{
+          |   "officers":[
+          |      {
+          |         "name_elements":{
+          |            "surname":"testSurname",
+          |            "title":"Ms",
+          |            "forename":"test"
+          |         },
+          |         "appointment_link":"/officers/testJson1/appointments",
+          |         "officer_role":"director",
+          |         "address":{
+          |            "country":"United Kingdom",
+          |            "premises":"Suite 1111",
+          |            "address_line_1":"test address line 1",
+          |            "locality":"London",
+          |            "postal_code":"AA1A 8AA"
+          |         },
+          |         "date_of_birth":{
+          |            "year":1979,
+          |            "month":7
+          |         }
+          |      },
+          |      {
+          |         "name_elements":{
+          |            "title":"Mr",
+          |            "surname":"test",
+          |            "forename":"testFore"
+          |         },
+          |         "appointment_link":"/officers/testJson2/appointments",
+          |         "officer_role":"director",
+          |         "address":{
+          |            "country":"United Kingdom",
+          |            "premises":"Suite 1111",
+          |            "address_line_1":"address line 1",
+          |            "locality":"London",
+          |            "postal_code":"AA1A 8AA"
+          |         },
+          |         "date_of_birth":{
+          |            "year":1990,
+          |            "month":10
+          |         }
+          |      }
+          |   ]
+          |}
+          |""".stripMargin)
+
+
+      when(mockCohoConnector.getOfficerAppointment(eqTo(testJson1))(any()))
+        .thenReturn(Future.successful(officerAppointmentJson1))
+
+      when(mockCohoConnector.getOfficerAppointment(eqTo(testJson2))(any()))
+        .thenReturn(Future.successful(officerAppointmentJson2))
+
+      when(mockCohoConnector.getOfficerAppointment(eqTo(testJson3))(any()))
+        .thenReturn(Future.successful(officerAppointmentJson3))
+
+
+      when(mockCohoConnector.getOfficerList(any())(any()))
+        .thenReturn(Future.successful(Some(officerListJson)))
+
+      val result = await(Service.fetchOfficerListFromPublicAPI(transactionId, crn))
+
+      result mustBe expectedJson
+    }
+
     "return JSValue containing formatted data successfully without sic codes & company status as these are optional" in new Setup {
       val input = Json.parse(
         s"""
@@ -879,24 +1214,7 @@ class TransactionalServiceSpec extends SCRSSpec with LogCapturing {
       val expected = Json.parse(
         s"""
            |{
-           |  "officers" : [
-           |    {
-           |      "date_of_birth" : {
-           |        "month" : 3,
-           |        "year" : 1990
-           |      },
-           |      "address" : {
-           |        "address_line_1" : "test avenue",
-           |        "country" : "United Kingdom",
-           |        "locality" : "testville",
-           |        "premises" : "14",
-           |        "postal_code" : "TE1 1ST"
-           |      },
-           |      "officer_role" : "director",
-           |      "resigned_on" : "$dateTime",
-           |      "appointment_link":"/test/link"
-           |    }
-           |  ]
+           |  "officers" : []
            |}
         """.stripMargin)
 

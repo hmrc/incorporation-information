@@ -177,15 +177,62 @@ class TransactionalControllerSpec extends SCRSSpec {
 
   "fetchOfficerList" must {
 
-    val json = Json.parse("""{"test":"json"}""")
+    val officerJson = Json.parse(
+      """
+        |{
+        |   "officers":[
+        |      {
+        |         "name_elements":{
+        |            "surname":"testSurname",
+        |            "title":"Ms",
+        |            "forename":"test"
+        |         },
+        |         "appointment_link":"/officers/testJson1/appointments",
+        |         "officer_role":"director",
+        |         "address":{
+        |            "country":"United Kingdom",
+        |            "premises":"Suite 1111",
+        |            "address_line_1":"test address line 1",
+        |            "locality":"London",
+        |            "postal_code":"AA1A 8AA"
+        |         },
+        |         "date_of_birth":{
+        |            "year":1979,
+        |            "month":7
+        |         }
+        |      },
+        |      {
+        |         "name_elements":{
+        |            "title":"Mr",
+        |            "surname":"test",
+        |            "forename":"testFore"
+        |         },
+        |         "appointment_link":"/officers/testJson2/appointments",
+        |         "officer_role":"director",
+        |         "address":{
+        |            "country":"United Kingdom",
+        |            "premises":"Suite 1111",
+        |            "address_line_1":"address line 1",
+        |            "locality":"London",
+        |            "postal_code":"AA1A 8AA"
+        |         },
+        |         "date_of_birth":{
+        |            "year":1990,
+        |            "month":10
+        |         }
+        |      }
+        |   ]
+        |}
+        |""".stripMargin)
+
 
     "return a 200 and a json when an officer list is successfully fetched" in new Setup {
       when(mockService.fetchOfficerList(eqTo(transactionId))(any(), any[ExecutionContext]))
-        .thenReturn(Future.successful(json))
+        .thenReturn(Future.successful(officerJson))
 
       val result: Future[Result] = controller.fetchOfficerList(transactionId)(FakeRequest())
       status(result) mustBe 200
-      contentAsJson(result) mustBe json
+      contentAsJson(result) mustBe officerJson
     }
 
     "return a 404 when an officer list could not be found by the supplied transaction Id" in new Setup {
@@ -202,6 +249,16 @@ class TransactionalControllerSpec extends SCRSSpec {
 
       val result: Future[Result] = controller.fetchOfficerList(transactionId)(FakeRequest())
       status(result) mustBe 500
+    }
+
+    "return a 204 when officer list Json is empty" in new Setup {
+      val json = Json.parse("""{"officers":[]}""")
+
+      when(mockService.fetchOfficerList(eqTo(transactionId))(any(), any[ExecutionContext]))
+        .thenReturn(Future.successful(json))
+
+      val result: Future[Result] = controller.fetchOfficerList(transactionId)(FakeRequest())
+      status(result) mustBe 204
     }
   }
 

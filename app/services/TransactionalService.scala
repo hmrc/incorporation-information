@@ -147,11 +147,12 @@ trait TransactionalService extends Logging {
           fetchOfficerAppointment(appointmentUrl) map { officerAppointment =>
             transformOfficerAppointment(officerAppointment) match {
               case Some(oA) => oA ++ transformOfficerList(officer)
-              case _ => transformOfficerList(officer)
+              case _ => JsObject.empty
             }
           }
         }) map { listTransformedOfficers =>
-          Json.obj("officers" -> Json.toJson(listTransformedOfficers).as[JsArray])
+          val filteredJson = listTransformedOfficers.filter(obj => obj.value.nonEmpty)
+          Json.obj("officers" -> filteredJson)
         }
       case None =>
 
