@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package repositories
+package test.repositories
 
-import helpers.SCRSMongoSpec
 import models.Subscription
 import org.mongodb.scala.bson.BsonDocument
 import play.api.test.Helpers._
+import repositories.{SubscriptionsMongo, UpsertResult}
+import test.helpers.SCRSMongoSpec
 
 import scala.concurrent.ExecutionContext.Implicits.global
 

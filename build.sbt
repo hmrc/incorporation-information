@@ -1,8 +1,11 @@
 
+import uk.gov.hmrc.DefaultBuildSettings.*
 import uk.gov.hmrc.DefaultBuildSettings
-import uk.gov.hmrc.DefaultBuildSettings.{defaultSettings, integrationTestSettings, scalaSettings}
 
 val appName = "incorporation-information"
+
+ThisBuild / majorVersion := 1
+ThisBuild / scalaVersion := "2.13.14"
 
 lazy val scoverageSettings = {
   import scoverage.ScoverageKeys
@@ -16,22 +19,22 @@ lazy val scoverageSettings = {
 }
 
 lazy val microservice = Project(appName, file("."))
-  .enablePlugins(play.sbt.PlayScala, SbtAutoBuildPlugin, SbtDistributablesPlugin)
-  .settings(scoverageSettings : _*)
-  .settings(scalaSettings: _*)
-  .settings(defaultSettings(): _*)
+  .enablePlugins(play.sbt.PlayScala, SbtDistributablesPlugin)
+  .settings(scoverageSettings *)
+  .settings(scalaSettings *)
+  .settings(defaultSettings() *)
   .settings(
     scalacOptions += "-Xlint:-unused",
     libraryDependencies ++= AppDependencies(),
     retrieveManaged := true,
     evictionWarningOptions := EvictionWarningOptions.default.withWarnScalaVersionEviction(false),
-    scalaVersion := "2.13.8",
     resolvers += Resolver.jcenterRepo
   )
-  .configs(IntegrationTest)
-  .settings(DefaultBuildSettings.integrationTestSettings())
-  .settings(IntegrationTest / javaOptions += "-Dlogger.resource=logback-test.xml")
-  .settings(integrationTestSettings())
-  .settings(majorVersion := 1)
   .disablePlugins(JUnitXmlReportPlugin) //Required to prevent https://github.com/scalatest/scalatest/issues/1427
 
+lazy val it = project
+  .enablePlugins(PlayScala)
+  .dependsOn(microservice % "test->test") // the "test->test" allows reusing test code and test dependencies
+  .settings(DefaultBuildSettings.itSettings())
+  .settings(libraryDependencies ++= AppDependencies.test)
+   Test / javaOptions += "-Dlogger.resource=logback-test.xml"

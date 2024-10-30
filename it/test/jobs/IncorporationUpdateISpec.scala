@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package jobs
+package test.jobs
 
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.google.inject.name.Names
-import helpers.IntegrationSpecBase
+import jobs.{LockResponse, ScheduledJob}
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
 import org.mongodb.scala.MongoWriteException
 import org.mongodb.scala.bson.BsonDocument
@@ -28,6 +28,8 @@ import play.api.libs.json.Json
 import play.api.test.Helpers._
 import play.api.{Application, inject}
 import repositories._
+import test.helpers.IntegrationSpecBase
+import test.repositories.DocValidator
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.test.MongoSupport
 import utils.DateCalculators
@@ -114,7 +116,7 @@ class IncorporationUpdateISpec extends IntegrationSpecBase with MongoSupport wit
 
       await(incorpRepo.collection.countDocuments().toFuture()) mustBe 0
 
-      val job = lookupJob("incorp-update-job")
+      val job: ScheduledJob = lookupJob("incorp-update-job")
 
       val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult, LockResponse]])
       val r = await(f)
@@ -137,12 +139,12 @@ class IncorporationUpdateISpec extends IntegrationSpecBase with MongoSupport wit
       await(incorpRepo.collection.countDocuments().toFuture()) mustBe 0
       await(timepointRepo.retrieveTimePoint) mustBe None
 
-      val job = lookupJob("incorp-update-job")
+      val job: ScheduledJob = lookupJob("incorp-update-job")
 
       val f = job.scheduledMessage.service.invoke.map(res => res.asInstanceOf[Either[InsertResult, LockResponse]])
       val r = await(f)
 
-      val inserted = Seq(iu(json))
+      val inserted: Seq[IncorpUpdate] = Seq(iu(json))
       r mustBe Left(InsertResult(1, 0, alerts = 1, insertedItems = inserted))
 
       await(incorpRepo.collection.countDocuments().toFuture()) mustBe 1

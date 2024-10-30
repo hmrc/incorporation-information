@@ -203,3 +203,10 @@ A ```200``` response:
   }
   ]
 ```
+# Running the App
+
+To run the app you can run the service manager profile ```sm2 -start SCRS_ALL``` then run the```./run.sh``` script
+
+# Testing the App
+
+To run the tests for the application, you can run: ```sbt test or sbt it/test ```

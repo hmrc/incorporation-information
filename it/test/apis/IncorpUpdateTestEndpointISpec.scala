@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-package apis.test
+package test.apis
 
-import helpers.IntegrationSpecBase
 import models.IncorpUpdate
 import play.api.inject.guice.GuiceApplicationBuilder
+import play.api.libs.ws.WSResponse
 import play.api.test.Helpers._
 import play.api.{Application, inject}
 import repositories._
+import test.helpers.IntegrationSpecBase
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.test.MongoSupport
 import utils.TimestampFormats
@@ -76,7 +77,7 @@ class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase with MongoSuppor
       await(incRepo.collection.countDocuments().toFuture()) mustBe 0
       await(queueRepository.collection.countDocuments().toFuture()) mustBe 0
 
-      val response = client(s"test-only/add-incorp-update?txId=${transactionId}").get().futureValue
+      val response: WSResponse = client(s"test-only/add-incorp-update?txId=${transactionId}").get().futureValue
       response.status mustBe 200
 
       await(incRepo.collection.countDocuments().toFuture()) mustBe 1
@@ -94,7 +95,7 @@ class IncorpUpdateTestEndpointISpec extends IntegrationSpecBase with MongoSuppor
       await(incRepo.collection.find().toFuture()).size mustBe 0
       await(queueRepository.collection.find().toFuture()).size mustBe 0
 
-      val response = client(s"test-only/add-incorp-update?txId=${transactionId}&date=${incorpDate}&success=true&crn=1234").get().futureValue
+      val response: WSResponse = client(s"test-only/add-incorp-update?txId=${transactionId}&date=${incorpDate}&success=true&crn=1234").get().futureValue
       response.status mustBe 200
 
       await(incRepo.collection.find().toFuture()).size mustBe 1

@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package config
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import com.google.inject.Singleton
 import play.api.Configuration
 import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo, TimepointMongo}
@@ -41,7 +41,7 @@ class StartUpJobs @Inject()(val configuration: Configuration,
                            )(implicit val ec: ExecutionContext) extends Logging {
 
   lazy val jobName = "startUpJob"
-  lazy val actor = ActorSystem(jobName)
+  lazy val actor: ActorSystem = ActorSystem(jobName)
   lazy val initialDelayMillis = appConfig.getConfigInt(s"$jobName.initialDelayMillis")
 
   lazy val tpConfig = configuration.getOptional[String]("timepointList")
@@ -86,7 +86,7 @@ class StartUpJobs @Inject()(val configuration: Configuration,
     }
   }
 
-  def logIncorpInfo(): Unit = {
+  private def logIncorpInfo(): Unit = {
     val transIdsFromConfig = configuration.getOptional[String]("transactionIdList")
     transIdsFromConfig.fold(()) { transIds =>
       val transIdList = utils.Base64.decode(transIds).split(",")
@@ -112,7 +112,7 @@ class StartUpJobs @Inject()(val configuration: Configuration,
     }
   }
 
-  def logRemainingSubscriptionIdentifiers(): Unit = {
+  private def logRemainingSubscriptionIdentifiers(): Unit = {
     val regime = configuration.getOptional[String]("log-regime").getOrElse("ct")
     val maxAmountToLog = configuration.getOptional[Int]("log-count").getOrElse(20)
 
@@ -135,7 +135,7 @@ class StartUpJobs @Inject()(val configuration: Configuration,
     }
   }
 
-  def removeBrokenSubmissions(): Unit = {
+  private def removeBrokenSubmissions(): Unit = {
     val transIdsFromConfig = configuration.getOptional[String]("brokenTxIds")
     transIdsFromConfig.fold(
       logger.info(s"[removeBrokenSubmissions] No broken submissions in config")

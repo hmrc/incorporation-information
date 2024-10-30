@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,13 @@
 
 package services
 
-import helpers.IntegrationSpecBase
 import models.{IncorpUpdate, QueuedIncorpUpdate}
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json._
 import play.api.test.Helpers._
 import repositories.{IncorpUpdateMongo, IncorpUpdateMongoRepository, QueueMongo, QueueMongoRepository}
+import test.helpers.IntegrationSpecBase
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.test.MongoSupport
 
@@ -154,7 +154,7 @@ class IncorpUpdateServiceISpec extends IntegrationSpecBase with MongoSupport {
 
       await(incorpInfoRepo.collection.find.headOption()) mustBe Some(newIncorpInfo.as[IncorpUpdate](IncorpUpdate.mongoFormat))
 
-      val queueItem = await(incorpQueueRepo.collection.find().head())
+      val queueItem: QueuedIncorpUpdate = await(incorpQueueRepo.collection.find().head())
 
       Json.toJson(queueItem).as[JsObject].withoutTimestamp.withoutOID mustBe newQueueItem.withoutTimestamp.withoutOID
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-package repositories
+package test.repositories
 
-import helpers.SCRSMongoSpec
+
 import models.IncorpUpdate
 import play.api.test.Helpers._
+import repositories.{IncorpUpdateMongoImpl, MongoErrorCodes}
+import test.helpers.SCRSMongoSpec
 
 class IncorpUpdateRepositoryISpec extends SCRSMongoSpec with DocValidator {
 

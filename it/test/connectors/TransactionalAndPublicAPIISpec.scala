@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,16 @@
  * limitations under the License.
  */
 
-package connectors
+package test.connectors
 
-import helpers.IntegrationSpecBase
 import models.IncorpUpdate
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsObject, Json}
+import play.api.libs.ws.WSResponse
 import play.api.test.Helpers._
-import repositories.IncorpUpdateMongo
+import repositories.{IncorpUpdateMongo, IncorpUpdateMongoRepository}
+import test.helpers.IntegrationSpecBase
 import utils.TimestampFormats
 import utils.TimestampFormats._
 
@@ -43,13 +44,13 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
     .build()
 
   class Setup {
-    val incRepo = app.injector.instanceOf[IncorpUpdateMongo].repo
+    val incRepo: IncorpUpdateMongoRepository = app.injector.instanceOf[IncorpUpdateMongo].repo
     await(incRepo.collection.drop.toFuture())
     await(incRepo.ensureIndexes)
     def insert(update: IncorpUpdate) = await(incRepo.storeSingleIncorpUpdate(update))
   }
 
-  val incorpDate = LocalDateTime.parse("2018-05-01", TimestampFormats.ldtFormatter)
+  val incorpDate: LocalDateTime = LocalDateTime.parse("2018-05-01", TimestampFormats.ldtFormatter)
 
   "fetchTransactionalData" must {
 
@@ -131,7 +132,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
 
       val clientUrl = s"/incorporation-information/$transactionId/company-profile"
 
-      val response = buildClient(clientUrl).get().futureValue
+      val response: WSResponse = buildClient(clientUrl).get().futureValue
       response.status mustBe 200
       response.body mustBe (Json.parse(body).as[JsObject] - "officers").toString()
     }
@@ -141,7 +142,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
 
       val clientUrl = s"/incorporation-information/$transactionId/company-profile"
 
-      val response = buildClient(clientUrl).get().futureValue
+      val response: WSResponse = buildClient(clientUrl).get().futureValue
       response.status mustBe 404
     }
 
@@ -234,7 +235,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
     """.stripMargin
 
       val crn = "crn1"
-      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some(crn), Some(incorpDate), "tp", Some("description"))
+      val incorpUpdate: IncorpUpdate = IncorpUpdate(transactionId, "foo", Some(crn), Some(incorpDate), "tp", Some("description"))
       insert(incorpUpdate)
 
       val clientUrl = s"/incorporation-information/$transactionId/company-profile"
@@ -243,10 +244,10 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
 
       stubGet(cohoDestinationUrl, 200, input)
 
-      val response = buildClient(clientUrl).get().futureValue
+      val response: WSResponse = buildClient(clientUrl).get().futureValue
       response.status mustBe 200
 
-      val res = Json.parse(response.body).as[JsObject]
+      val res: JsObject = Json.parse(response.body).as[JsObject]
 
       res mustBe Json.parse(expected).as[JsObject]
     }
@@ -257,7 +258,7 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
       val clientUrl = s"/incorporation-information/$transactionId/company-profile"
       val cohoDestinationUrl = s"/cohoFrontEndStubs/company-profile/$crn"
       stubGet(cohoDestinationUrl, 404, "")
-      val response = buildClient(clientUrl).get().futureValue
+      val response: WSResponse = buildClient(clientUrl).get().futureValue
       response.status mustBe 404
     }
 
@@ -366,10 +367,10 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
         val clientUrl = s"/incorporation-information/$transactionId/company-profile"
         val cohoDestinationUrl = s"/cohoFrontEndStubs/company-profile/$crn"
         stubGet(cohoDestinationUrl, 404, "")
-        val response = buildClient(clientUrl).get().futureValue
+        val response: WSResponse = buildClient(clientUrl).get().futureValue
         response.status mustBe 200
 
-      val res = Json.parse(response.body).as[JsObject]
+      val res: JsObject = Json.parse(response.body).as[JsObject]
 
       res mustBe Json.parse(expectedTXBody).as[JsObject]
       }
@@ -484,13 +485,13 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
       val transactionId = "12345"
 
       // insert into incorp info db -> company is registered so dont go to tx api
-      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), Some(incorpDate), "tp", Some("description"))
+      val incorpUpdate: IncorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), Some(incorpDate), "tp", Some("description"))
       insert(incorpUpdate)
       //fail to get officer list can be 404 / 500 etc, as long as not 200 this test is valid
       stubGet(cohOfficerListUrl, 404, "")
       //nothing is in tx api. so overall we will get 404
       val clientUrl = s"/incorporation-information/$transactionId/officer-list"
-      val response = buildClient(clientUrl).get().futureValue
+      val response: WSResponse = buildClient(clientUrl).get().futureValue
       response.status mustBe 404
     }
 
@@ -499,13 +500,13 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
       val transactionId = "12345"
 
       // insert into incorp info db -> company is registered so dont go to tx api
-      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), Some(incorpDate), "tp", Some("description"))
+      val incorpUpdate: IncorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), Some(incorpDate), "tp", Some("description"))
       insert(incorpUpdate)
       //succeed in getting officer list
       stubGet(cohOfficerListUrl, 200, officerListInput)
       stubGet("/cohoFrontEndStubs/get-officer-appointment?.*", 200,appointments(appointment1(naturalName, "director")))
       val clientUrl = s"/incorporation-information/$transactionId/officer-list"
-      val response = buildClient(clientUrl).get().futureValue
+      val response: WSResponse = buildClient(clientUrl).get().futureValue
       response.status mustBe 200
       response.json mustBe Json.parse(
         s"""
@@ -544,13 +545,13 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
       val transactionId = "12345"
 
       // insert into incorp info db -> company is registered so dont go to tx api
-      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), Some(incorpDate), "tp", Some("description"))
+      val incorpUpdate: IncorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), Some(incorpDate), "tp", Some("description"))
       insert(incorpUpdate)
       //succeed in getting officer list
       stubGet(cohOfficerListUrl, 200, officerListInput)
       stubGet("/cohoFrontEndStubs/get-officer-appointment?.*", 200,appointments(appointment1(corporateName, "corporate-director")))
       val clientUrl = s"/incorporation-information/$transactionId/officer-list"
-      val response = buildClient(clientUrl).get().futureValue
+      val response: WSResponse = buildClient(clientUrl).get().futureValue
       response.status mustBe 204
     }
 
@@ -559,13 +560,13 @@ class TransactionalAndPublicAPIISpec extends IntegrationSpecBase {
       val transactionId = "12345"
 
       // insert into incorp info db -> company is registered so dont go to tx api
-      val incorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), Some(incorpDate), "tp", Some("description"))
+      val incorpUpdate: IncorpUpdate = IncorpUpdate(transactionId, "foo", Some("crn5"), Some(incorpDate), "tp", Some("description"))
       insert(incorpUpdate)
       //succeed in getting officer list
       stubGet(cohOfficerListUrl, 200, officerListInput)
       stubGet("/cohoFrontEndStubs/get-officer-appointment?.*", 200, appointments(appointment1(naturalName, "corporate-director")))
       val clientUrl = s"/incorporation-information/$transactionId/officer-list"
-      val response = buildClient(clientUrl).get().futureValue
+      val response: WSResponse = buildClient(clientUrl).get().futureValue
       response.status mustBe 200
       response.json mustBe Json.parse(
         s"""

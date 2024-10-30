@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package services
 
 import Helpers.SCRSSpec
 import com.codahale.metrics.{Counter, Histogram, MetricRegistry, Timer}
-import com.kenshoo.play.metrics.Metrics
 import models.{IncorpUpdate, Subscription}
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito._
@@ -26,6 +25,7 @@ import org.scalatest.BeforeAndAfterEach
 import play.api.test.Helpers._
 import repositories._
 import uk.gov.hmrc.mongo.lock.LockService
+import uk.gov.hmrc.play.bootstrap.metrics.Metrics
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

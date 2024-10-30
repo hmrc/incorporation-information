@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package apis
+package test.apis
 
 import com.github.tomakehurst.wiremock.client.WireMock._
-import helpers.IntegrationSpecBase
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsArray, Json}
+import test.helpers.IntegrationSpecBase
 
 class TransactionalControllerISpec extends IntegrationSpecBase {
 

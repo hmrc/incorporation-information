@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,17 @@
  * limitations under the License.
  */
 
-package jobs
+package test.jobs
 
 import com.google.inject.name.Names
-import helpers.IntegrationSpecBase
+import jobs.{LockResponse, ScheduledJob}
 import models.Subscription
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.inject.{BindingKey, QualifierInstance}
 import play.api.test.Helpers._
 import repositories.SubscriptionsMongo
+import test.helpers.IntegrationSpecBase
 
 import scala.concurrent.ExecutionContext.Implicits._
 
