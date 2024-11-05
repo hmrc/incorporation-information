@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-package connectors
+package test.connectors
 
 import com.github.tomakehurst.wiremock.client.WireMock._
-import helpers.IntegrationSpecBase
+import connectors.FiringSubscriptionsConnector
 import models.{IncorpUpdate, IncorpUpdateResponse}
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.test.Helpers._
+import test.helpers.IntegrationSpecBase
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.HttpClient
 
@@ -30,8 +31,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class FiringSubscriptionsConnectorISpec extends IntegrationSpecBase {
 
-  val mockHost = wiremockHost
-  val mockPort = wiremockPort
+  val mockHost: String = wiremockHost
+  val mockPort: Int = wiremockPort
   val mockUrl = s"http://$mockHost:$mockPort"
 
   val additionalConfiguration = Map(
@@ -46,8 +47,8 @@ class FiringSubscriptionsConnectorISpec extends IntegrationSpecBase {
 
   implicit val hc = HeaderCarrier()
 
-  val incorpUpdate = IncorpUpdate("trans123", "rejected", None, None, "tp", Some("description"))
-  val incorpUpdateResponse = IncorpUpdateResponse("CT", "test", "www.test.com", incorpUpdate)
+  val incorpUpdate: IncorpUpdate = IncorpUpdate("trans123", "rejected", None, None, "tp", Some("description"))
+  val incorpUpdateResponse: IncorpUpdateResponse = IncorpUpdateResponse("CT", "test", "www.test.com", incorpUpdate)
 
 
   "fireIncorpUpdate" must {

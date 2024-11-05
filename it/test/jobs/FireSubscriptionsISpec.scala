@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 
-package jobs
+package test.jobs
 
+import com.github.tomakehurst.wiremock.stubbing.StubMapping
 import com.google.inject.name.Names
-import helpers.IntegrationSpecBase
+import jobs.{LockRepositoryProvider, LockResponse, ScheduledJob}
+import test.helpers.IntegrationSpecBase
 import models.{IncorpUpdate, QueuedIncorpUpdate, Subscription}
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
@@ -25,8 +27,6 @@ import play.api.inject.{BindingKey, QualifierInstance}
 import play.api.test.Helpers._
 import repositories.{IncorpUpdateMongo, QueueMongo, SubscriptionsMongo, TimepointMongo}
 import utils.DateCalculators
-
-import java.time.LocalDateTime
 import scala.concurrent.ExecutionContext.Implicits._
 
 class FireSubscriptionsISpec extends IntegrationSpecBase with DateCalculators {
@@ -66,10 +66,10 @@ class FireSubscriptionsISpec extends IntegrationSpecBase with DateCalculators {
     }
   }
 
-  override def afterEach() = new Setup {
+  override def afterEach(): Unit = new Setup {
   }
 
-  def setupAuditMocks() = {
+  def setupAuditMocks(): StubMapping = {
     stubPost("/write/audit", 200, """{"x":2}""")
   }
 
@@ -89,7 +89,7 @@ class FireSubscriptionsISpec extends IntegrationSpecBase with DateCalculators {
 
       await(incorpRepo.collection.countDocuments().toFuture()) mustBe 0
 
-      val job = lookupJob("fire-subs-job")
+      val job: ScheduledJob = lookupJob("fire-subs-job")
 
       val f = job.schedule
       f mustBe true
@@ -109,8 +109,8 @@ class FireSubscriptionsISpec extends IntegrationSpecBase with DateCalculators {
       await(queueRepo.collection.countDocuments().toFuture()) mustBe 0
       await(timepointRepo.retrieveTimePoint) mustBe None
 
-      val incorpUpdate = IncorpUpdate("transId1", "awaiting", None, None, "timepoint", None)
-      val QIU = QueuedIncorpUpdate(getDateTimeNowUTC, incorpUpdate)
+      val incorpUpdate: IncorpUpdate = IncorpUpdate("transId1", "awaiting", None, None, "timepoint", None)
+      val QIU: QueuedIncorpUpdate = QueuedIncorpUpdate(getDateTimeNowUTC, incorpUpdate)
       insert(QIU)
       await(queueRepo.collection.countDocuments().toFuture()) mustBe 1
 
@@ -122,11 +122,11 @@ class FireSubscriptionsISpec extends IntegrationSpecBase with DateCalculators {
       insert(sub2)
       await(subRepo.collection.countDocuments().toFuture()) mustBe 2
 
-      val job = lookupJob("fire-subs-job")
+      val job: ScheduledJob = lookupJob("fire-subs-job")
 
       val res = await(job.scheduledMessage.service.invoke.map(_.asInstanceOf[Either[Seq[Boolean], LockResponse]]))
 
-      res.left.get mustBe Seq(true)
+      res.left.getOrElse(-1) mustBe Seq(true)
       await(subRepo.collection.countDocuments().toFuture()) mustBe 0
       await(queueRepo.collection.countDocuments().toFuture()) mustBe 0
     }

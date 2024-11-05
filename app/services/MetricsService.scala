@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,12 @@
 package services
 
 import com.codahale.metrics.{Counter, Gauge, Timer}
-import com.kenshoo.play.metrics.{Metrics, MetricsDisabledException}
 import config.MicroserviceConfig
 import jobs._
 import utils.Logging
 import repositories._
 import uk.gov.hmrc.mongo.lock.LockService
+import uk.gov.hmrc.play.bootstrap.metrics.Metrics
 
 import javax.inject.Inject
 import scala.concurrent.duration.DurationInt
@@ -44,7 +44,7 @@ class MetricsServiceImpl @Inject()(val injSubRepo: SubscriptionsMongo,
   override val publicAPITimer: Timer = metrics.defaultRegistry.timer("public-api-timer")
   override val internalAPITimer: Timer = metrics.defaultRegistry.timer("internal-api-timer")
 
-  lazy val lockoutTimeout = msConfig.getConfigInt("schedules.metrics-job.lockTimeout")
+  lazy val lockoutTimeout: Int = msConfig.getConfigInt("schedules.metrics-job.lockTimeout")
 
   lazy val lockKeeper: LockService = LockService(lockRepositoryProvider.repo, "metrics-job-lock", lockoutTimeout.seconds)
 }
@@ -88,11 +88,13 @@ trait MetricsService extends ScheduledService[Either[Map[String, Int], LockRespo
     }
   }
 
+  private class MetricsDisabledException extends Throwable
+
   private def recordSubscriptionRegimeStat(regime: String, count: Int) = {
     val metricName = s"subscription-regime-stat.$regime"
     try {
-      val gauge = new Gauge[Int] {
-        val getValue = count
+      val gauge: Gauge[Int] = new Gauge[Int] {
+        val getValue: Int = count
       }
 
       metrics.defaultRegistry.remove(metricName)
@@ -109,12 +111,12 @@ trait MetricsService extends ScheduledService[Either[Map[String, Int], LockRespo
                                        )(f: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
     f map { data =>
       timer.map(_.stop())
-      success.map(_.inc(1))
+      success.foreach(_.inc(1))
       data
     } recover {
       case e =>
         timer.map(_.stop())
-        failed.map(_.inc(1))
+        failed.foreach(_.inc(1))
         throw e
     }
   }

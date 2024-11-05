@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 
 package jobs
 
-import akka.actor.{ActorRef, ActorSystem}
-import com.typesafe.akka.extension.quartz.QuartzSchedulerExtension
+import org.apache.pekko.actor.{ActorRef, ActorSystem}
+import org.apache.pekko.extension.quartz.QuartzSchedulerExtension
 import jobs.SchedulingActor.ScheduledMessage
 import org.quartz.CronExpression
 import play.api.Configuration
@@ -39,7 +39,7 @@ trait ScheduledJob extends Logging {
 
   lazy val expression: String = config.get[String](s"schedules.$jobName.expression") .replaceAll("_", " ")
 
-  lazy val expressionValid = CronExpression.isValidExpression(expression)
+  lazy val expressionValid: Boolean = CronExpression.isValidExpression(expression)
 
   lazy val schedule: Boolean = {
     (enabled, expressionValid) match {

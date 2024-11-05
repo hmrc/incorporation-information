@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package helpers
+package test.helpers
 
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.classic.{Level, Logger => LogbackLogger}
@@ -57,21 +57,21 @@ trait IntegrationSpecBase extends PlaySpec
 
   def stubAuditEvents: StubMapping = stubPost("/write/audit/merged", 200, "")
 
-  override def beforeEach() = {
+  override def beforeEach(): Unit = {
     resetWiremock()
   }
 
-  override def beforeAll() = {
+  override def beforeAll(): Unit = {
     super.beforeAll()
     startWiremock()
   }
 
-  override def afterAll() = {
+  override def afterAll(): Unit = {
     stopWiremock()
     super.afterAll()
   }
 
-  def withCaptureOfLoggingFrom(logger: LogbackLogger)(body: (=> List[ILoggingEvent]) => Unit) {
+  def withCaptureOfLoggingFrom(logger: LogbackLogger)(body: (=> List[ILoggingEvent]) => Unit): Unit = {
     val appender = new ListAppender[ILoggingEvent]()
     appender.setContext(logger.getLoggerContext)
     appender.start()
@@ -81,7 +81,7 @@ trait IntegrationSpecBase extends PlaySpec
     body(appender.list.asScala.toList)
   }
 
-  def withCaptureOfLoggingFrom(logger: LoggerLike)(body: (=> List[ILoggingEvent]) => Unit) {
+  def withCaptureOfLoggingFrom(logger: LoggerLike)(body: (=> List[ILoggingEvent]) => Unit): Unit = {
     withCaptureOfLoggingFrom(logger.logger.asInstanceOf[LogbackLogger])(body)
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@
 package config
 
 import Helpers.SCRSSpec
-import akka.actor.{ActorRef, ActorSystem}
-import com.typesafe.akka.extension.quartz.QuartzSchedulerExtension
+import org.apache.pekko.actor.{ActorRef, ActorSystem}
+import org.apache.pekko.extension.quartz.QuartzSchedulerExtension
 import jobs.SchedulingActor.FireSubscriptions
 import jobs.{ScheduledJob, SchedulingActor}
 import org.mockito.Mockito._

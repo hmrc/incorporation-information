@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 
 package repositories
 
-import helpers.SCRSMongoSpec
 import play.api.test.Helpers._
+import test.helpers.SCRSMongoSpec
 
 import java.util.UUID
 

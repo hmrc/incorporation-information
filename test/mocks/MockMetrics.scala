@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,11 @@
 package mocks
 
 import com.codahale.metrics.{Counter, Timer}
-import com.kenshoo.play.metrics.Metrics
 import org.scalatestplus.mockito.MockitoSugar
 import repositories.SubscriptionsMongoRepository
 import services.MetricsService
 import uk.gov.hmrc.mongo.lock.LockService
+import uk.gov.hmrc.play.bootstrap.metrics.Metrics
 
 
 class MockMetrics extends MetricsService with MockitoSugar {
@@ -32,12 +32,12 @@ class MockMetrics extends MetricsService with MockitoSugar {
 
   val mockTimer = mock[Timer]
 
-  val metrics = mockMetrics
+  val metrics: Metrics = mockMetrics
   override val publicCohoApiFailureCounter: Counter = mockCounter
   override val publicCohoApiSuccessCounter: Counter = mockCounter
   override val transactionApiFailureCounter: Counter = mockCounter
   override val transactionApiSuccessCounter: Counter = mockCounter
   override val subRepo = mock[SubscriptionsMongoRepository]
-  override val publicAPITimer = mockTimer
-  override val internalAPITimer = mockTimer
+  override val publicAPITimer: Timer = mockTimer
+  override val internalAPITimer: Timer = mockTimer
 }

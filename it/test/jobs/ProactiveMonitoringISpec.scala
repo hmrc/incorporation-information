@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package jobs
+package test.jobs
 
 import com.github.tomakehurst.wiremock.stubbing.StubMapping
-import helpers.{FakeAppConfig, IntegrationSpecBase}
 import org.scalatest.concurrent.Eventually
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
 import play.api.test.Helpers._
 import play.api.{Application, Logger}
 import services.ProactiveMonitoringService
+import test.helpers.{FakeAppConfig, IntegrationSpecBase}
 import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext.Implicits.global

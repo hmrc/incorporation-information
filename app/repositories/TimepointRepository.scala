@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,8 +25,7 @@ import play.api.libs.json.Json
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 
-import javax.inject.Inject
-import scala.concurrent.ExecutionContext.global
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 case class TimePoint(
@@ -38,8 +37,8 @@ object TimePoint {
   implicit val formats = Json.format[TimePoint]
 }
 
-class TimepointMongo @Inject()(mongo: MongoComponent) {
-  implicit val ec: ExecutionContext = global
+@Singleton
+class TimepointMongo @Inject()(mongo: MongoComponent)(implicit val ec: ExecutionContext) {
   lazy val repo = new TimepointMongoRepository(mongo)
 }
 

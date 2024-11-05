@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,17 @@
  * limitations under the License.
  */
 
-package repositories
+package test.repositories
 
-import helpers.SCRSMongoSpec
+
 import models.{IncorpUpdate, QueuedIncorpUpdate}
+import org.mongodb.scala.result.InsertOneResult
 import play.api.test.Helpers._
+import repositories.{MongoErrorCodes, QueueMongoImpl}
+import test.helpers.SCRSMongoSpec
 import utils.DateCalculators
 
-import java.time.{Instant, LocalDateTime, ZoneOffset}
+import java.time.{Instant, ZoneOffset}
 import java.time.temporal.ChronoUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -36,20 +39,20 @@ class QueueRepositoryISpec extends SCRSMongoSpec with DateCalculators {
     await(repo.collection.drop.toFuture())
     await(repo.ensureIndexes)
 
-    def count = await(repo.collection.countDocuments().toFuture())
+    def count: Long = await(repo.collection.countDocuments().toFuture())
 
-    def insert(u: QueuedIncorpUpdate) = await(fInsert(u))
+    def insert(u: QueuedIncorpUpdate): InsertOneResult = await(fInsert(u))
 
-    def fInsert(u: QueuedIncorpUpdate) = repo.collection.insertOne(u).toFuture()
+    def fInsert(u: QueuedIncorpUpdate): Future[InsertOneResult] = repo.collection.insertOne(u).toFuture()
   }
 
   val now = getDateTimeNowUTC.withNano(0)
   val transactionId = "12345"
 
-  val update = IncorpUpdate(transactionId, "rejected", None, None, "tp", Some("description"))
-  val queuedUpdate = QueuedIncorpUpdate(now, update)
+  val update: IncorpUpdate = IncorpUpdate(transactionId, "rejected", None, None, "tp", Some("description"))
+  val queuedUpdate: QueuedIncorpUpdate = QueuedIncorpUpdate(now, update)
 
-  def docs(num: Int = 1) = (1 to num).map(n =>
+  def docs(num: Int = 1): IndexedSeq[QueuedIncorpUpdate] = (1 to num).map(n =>
     QueuedIncorpUpdate(
       now,
       IncorpUpdate(
@@ -68,7 +71,7 @@ class QueueRepositoryISpec extends SCRSMongoSpec with DateCalculators {
       insert(queuedUpdate)
       count mustBe 1
 
-      val result = await(repo.removeQueuedIncorpUpdate(transactionId))
+      val result: Boolean = await(repo.removeQueuedIncorpUpdate(transactionId))
       count mustBe 0
 
       result mustBe true
@@ -77,7 +80,7 @@ class QueueRepositoryISpec extends SCRSMongoSpec with DateCalculators {
     "return false if no document was deleted" in new Setup {
       count mustBe 0
 
-      val result = await(repo.removeQueuedIncorpUpdate(transactionId))
+      val result: Boolean = await(repo.removeQueuedIncorpUpdate(transactionId))
       result mustBe false
     }
   }
@@ -122,7 +125,7 @@ class QueueRepositoryISpec extends SCRSMongoSpec with DateCalculators {
       val q5 = q1.copy(timestamp = baseTs.minus(1, ChronoUnit.MILLIS))
       val q6 = q1.copy(timestamp = baseTs.minusSeconds(1))
 
-      await(Future.sequence(Seq(q1, q2, q3, q4, q5, q6) map (fInsert(_))))
+      await(Future.sequence(Seq(q1, q2, q3, q4, q5, q6) map fInsert))
 
       val result = await(repo.getIncorpUpdates(10))
 

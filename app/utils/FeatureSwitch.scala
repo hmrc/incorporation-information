@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package utils
 
 import java.time.LocalDateTime
+import scala.util.matching.Regex
 
 
 sealed trait FeatureSwitch {
@@ -46,14 +47,14 @@ case class BooleanFeatureSwitch(name: String, enabled: Boolean) extends FeatureS
 case class EnabledTimedFeatureSwitch(name: String, start: Option[LocalDateTime], end: Option[LocalDateTime], target: LocalDateTime) extends TimedFeatureSwitch
 
 case class DisabledTimedFeatureSwitch(name: String, start: Option[LocalDateTime], end: Option[LocalDateTime], target: LocalDateTime) extends TimedFeatureSwitch {
-  override def enabled = !super.enabled
+  override def enabled: Boolean = !super.enabled
 }
 
 
 object FeatureSwitch extends DateCalculators {
 
-  val DisabledIntervalExtractor = """!(\S+)_(\S+)""".r
-  val EnabledIntervalExtractor = """(\S+)_(\S+)""".r
+  val DisabledIntervalExtractor: Regex = """!(\S+)_(\S+)""".r
+  val EnabledIntervalExtractor: Regex = """(\S+)_(\S+)""".r
   val UNSPECIFIED = "X"
   val dateFormat = TimestampFormats.ldtFormatter
 
