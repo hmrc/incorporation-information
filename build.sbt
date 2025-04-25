@@ -5,7 +5,7 @@ import uk.gov.hmrc.DefaultBuildSettings
 val appName = "incorporation-information"
 
 ThisBuild / majorVersion := 1
-ThisBuild / scalaVersion := "2.13.14"
+ThisBuild / scalaVersion := "2.13.16"
 
 lazy val scoverageSettings = {
   import scoverage.ScoverageKeys
