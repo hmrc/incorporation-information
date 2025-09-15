@@ -23,7 +23,7 @@ import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.test.Helpers._
 import test.helpers.IntegrationSpecBase
-import uk.gov.hmrc.http.{Authorization, BadRequestException, HeaderCarrier, Upstream4xxResponse, UpstreamErrorResponse}
+import uk.gov.hmrc.http.{Authorization, HeaderCarrier, UpstreamErrorResponse}
 
 import java.time.LocalDateTime
 

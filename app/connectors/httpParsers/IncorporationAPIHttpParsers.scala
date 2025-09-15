@@ -19,8 +19,8 @@ package connectors.httpParsers
 import connectors.{BaseConnector, FailedTransactionalAPIResponse, IncorpUpdateAPIFailure, SuccessfulTransactionalAPIResponse, TransactionalAPIResponse}
 import models.{IncorpUpdate, IncorpUpdatesResponse}
 import play.api.http.Status.{GATEWAY_TIMEOUT, NOT_FOUND, NO_CONTENT, OK, SERVICE_UNAVAILABLE}
-import uk.gov.hmrc.http.HttpReads.{is4xx, is5xx}
-import uk.gov.hmrc.http.{GatewayTimeoutException, HttpReads, HttpResponse, NotFoundException, ServiceUnavailableException, UpstreamErrorResponse}
+import uk.gov.hmrc.http.HttpErrorFunctions.{is4xx, is5xx}
+import uk.gov.hmrc.http.{HttpReads, HttpResponse, UpstreamErrorResponse}
 import utils.{AlertLogging, PagerDutyKeys}
 
 trait IncorporationAPIHttpParsers extends BaseHttpReads with AlertLogging { _: BaseConnector =>
