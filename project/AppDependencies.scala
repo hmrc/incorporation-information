@@ -7,9 +7,9 @@ object AppDependencies {
   import play.core.PlayVersion
 
   private val playVersion = "-play-30"
-  private val bootstrapPlayVersion  =  "8.6.0"
+  private val bootstrapPlayVersion  =  "10.1.0"
   private val bootstrapVersion = "7.13.0"
-  private val hmrcMongoVersion = "2.6.0"
+  private val hmrcMongoVersion = "2.7.0"
   private val scalaTestVersion = "3.2.18"
   private val pekkoVersion                =  "1.2.0-pekko-1.0.x"
   private val scalatestPlusPlayVersion    =  "7.0.1"

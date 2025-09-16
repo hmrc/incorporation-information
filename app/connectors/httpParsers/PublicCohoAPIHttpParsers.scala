@@ -17,11 +17,10 @@
 package connectors.httpParsers
 
 import connectors._
-import models.{IncorpUpdate, IncorpUpdatesResponse}
 import play.api.http.Status._
 import play.api.libs.json.JsValue
-import uk.gov.hmrc.http.HttpReads.{is4xx, is5xx}
-import uk.gov.hmrc.http.{GatewayTimeoutException, HttpException, HttpReads, HttpResponse, NotFoundException, ServiceUnavailableException, UpstreamErrorResponse}
+import uk.gov.hmrc.http.HttpErrorFunctions.{is4xx, is5xx}
+import uk.gov.hmrc.http.{HttpReads, HttpResponse, NotFoundException, UpstreamErrorResponse}
 import utils.{AlertLogging, PagerDutyKeys}
 
 trait PublicCohoAPIHttpParsers extends BaseHttpReads with AlertLogging {

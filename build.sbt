@@ -27,8 +27,7 @@ lazy val microservice = Project(appName, file("."))
     scalacOptions += "-Xlint:-unused",
     libraryDependencies ++= AppDependencies(),
     retrieveManaged := true,
-    evictionWarningOptions := EvictionWarningOptions.default.withWarnScalaVersionEviction(false),
-    resolvers += Resolver.jcenterRepo
+    evictionWarningOptions := EvictionWarningOptions.default.withWarnScalaVersionEviction(false)
   )
   .disablePlugins(JUnitXmlReportPlugin) //Required to prevent https://github.com/scalatest/scalatest/issues/1427
 
