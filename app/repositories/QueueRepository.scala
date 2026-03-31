@@ -111,7 +111,7 @@ class QueueMongoRepository(mongo: MongoComponent, format: Format[QueuedIncorpUpd
   override def getIncorpUpdates(fetchSize: Int): Future[Seq[QueuedIncorpUpdate]] =
     collection
       .find(lte("timestamp", Instant.now().toEpochMilli))
-      .sort(Sorts.ascending("timestamp"))
+      .sort(Sorts.descending("timestamp")) // 31/03/2026 - DL-18873: Temp reversal from ASC to DESC
       .limit(fetchSize)
       .toFuture()
 

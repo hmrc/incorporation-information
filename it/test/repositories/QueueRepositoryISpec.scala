@@ -98,7 +98,8 @@ class QueueRepositoryISpec extends SCRSMongoSpec with DateCalculators {
 
       val result = await(repo.getIncorpUpdates(10))
 
-      result mustBe Seq(q1, q2)
+//      result mustBe Seq(q1, q2) // DL-18873: Temp reversal from ASC to DESC
+      result mustBe Seq(q2, q1)
     }
 
     "return the updates in the correct order #2" in new Setup {
@@ -112,7 +113,8 @@ class QueueRepositoryISpec extends SCRSMongoSpec with DateCalculators {
 
       val result = await(repo.getIncorpUpdates(10))
 
-      result mustBe Seq(q2, q1)
+//      result mustBe Seq(q2, q1) // DL-18873: Temp reversal from ASC to DESC
+      result mustBe Seq(q1, q2)
     }
 
     "return the updates in the correct order, eliding the ones in the future" in new Setup {
@@ -129,7 +131,8 @@ class QueueRepositoryISpec extends SCRSMongoSpec with DateCalculators {
 
       val result = await(repo.getIncorpUpdates(10))
 
-      result mustBe Seq(q3, q1, q6, q5)
+//      result mustBe Seq(q3, q1, q6, q5) // DL-18873: Temp reversal from ASC to DESC
+      result mustBe Seq(q5, q6, q1, q3)
     }
   }
 
@@ -146,8 +149,9 @@ class QueueRepositoryISpec extends SCRSMongoSpec with DateCalculators {
     await(Future.sequence(Seq(q1, q2, q3, q4, q5, q6) map (fInsert(_))))
 
     val result = await(repo.getIncorpUpdates(2))
-
-    result mustBe Seq(q3, q1)
+    
+//    result mustBe Seq(q3, q1) // DL-18873: Temp reversal from ASC to DESC
+    result mustBe Seq(q5, q6)
   }
 
   "getIncorpUpdate" must {
